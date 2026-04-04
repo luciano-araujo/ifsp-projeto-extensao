@@ -8,6 +8,8 @@
 # Datasource local storage ignored files
 /dataSources/
 /dataSources.local.xml
-# Default idea files
-.idea/
-*.iml
+/compiler.xml
+/encodings.xml
+/jarRepositories.xml
+/misc.xml
+/vcs.xml
