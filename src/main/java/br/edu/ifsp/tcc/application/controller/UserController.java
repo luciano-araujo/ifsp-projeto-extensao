@@ -2,74 +2,47 @@ package br.edu.ifsp.tcc.application.controller;
 
 import br.edu.ifsp.tcc.application.dto.CreateUserDTO;
 import br.edu.ifsp.tcc.application.entity.User;
-import br.edu.ifsp.tcc.application.service.UserService;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.Data;
+import br.edu.ifsp.tcc.application.usecase.CreateUserUseCase;
+import br.edu.ifsp.tcc.application.usecase.DeleteUserUseCase;
+import br.edu.ifsp.tcc.application.usecase.GetUserByIdUseCase;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-@Tag(name = "Users", description = "User management endpoints")
+import java.util.Optional;
+
 @RestController
-@RequestMapping("/users")
+@RequestMapping("/api/v1/users")
+@CrossOrigin(origins = "http://localhost:3000") // Required for future Next.js Admin Panel features
 public class UserController {
 
-    private final UserService userService;
+    private final CreateUserUseCase createUserUseCase;
+    private final GetUserByIdUseCase getUserByIdUseCase;
+    private final DeleteUserUseCase deleteUserUseCase;
 
-    public UserController(UserService userService) {
-        this.userService = userService;
+    public UserController(CreateUserUseCase createUserUseCase,
+                          GetUserByIdUseCase getUserByIdUseCase,
+                          DeleteUserUseCase deleteUserUseCase) {
+        this.createUserUseCase = createUserUseCase;
+        this.getUserByIdUseCase = getUserByIdUseCase;
+        this.deleteUserUseCase = deleteUserUseCase;
     }
 
-    @Operation(
-            summary = "Create a new user",
-            description = "Creates a user with name and email"
-    )
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "User created successfully"),
-            @ApiResponse(responseCode = "400", description = "Invalid input data"),
-            @ApiResponse(responseCode = "409", description = "User already exists")
-    })
     @PostMapping
     public ResponseEntity<User> createUser(@RequestBody CreateUserDTO dto) {
-        User user = userService.createUser(dto);
-        return ResponseEntity.ok(user);
+        User createdUser = createUserUseCase.execute(dto);
+        return ResponseEntity.ok(createdUser);
     }
 
-    @Operation(
-            summary = "Get user by ID",
-            description = "Retrieves a user by their unique ID"
-    )
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "User found"),
-            @ApiResponse(responseCode = "404", description = "User not found")
-    })
     @GetMapping("/{id}")
-    public ResponseEntity<User> getUserById(
-            @Parameter(description = "ID of the user to be retrieved", example = "1")
-            @PathVariable Long id
-    ) {
-        User user = userService.getUserById(id);
-        return ResponseEntity.ok(user);
+    public ResponseEntity<User> getUserById(@PathVariable Long id) {
+        Optional<User> user = getUserByIdUseCase.execute(id);
+        return user.map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    @Operation(
-        summary = "Delete a user",
-        description = "Deletes a user by ID"
-    )
-    @ApiResponses({
-            @ApiResponse(responseCode = "204", description = "User deleted successfully"),
-            @ApiResponse(responseCode = "404", description = "User not found")
-    })
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteUser(
-        @Parameter(description = "ID of the user to be deleted", example = "1")
-        @PathVariable Long id
-    ) {
-        userService.deleteUser(id);
+    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
+        deleteUserUseCase.execute(id);
         return ResponseEntity.noContent().build();
     }
-
 }

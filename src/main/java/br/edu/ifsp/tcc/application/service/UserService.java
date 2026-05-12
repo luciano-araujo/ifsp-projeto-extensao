@@ -1,39 +1,37 @@
 package br.edu.ifsp.tcc.application.service;
 
-import br.edu.ifsp.tcc.application.dto.CreateUserDTO;
 import br.edu.ifsp.tcc.application.entity.User;
-import br.edu.ifsp.tcc.application.usecase.CreateUserUseCase;
-import br.edu.ifsp.tcc.application.usecase.DeleteUserUseCase;
-import br.edu.ifsp.tcc.application.usecase.GetUserByIdUseCase;
-import org.springframework.data.relational.core.sql.Delete;
+import br.edu.ifsp.tcc.application.repository.UserRepository;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.Optional;
 
 @Service
 public class UserService {
 
-    private final CreateUserUseCase createUserUseCase;
-    private final GetUserByIdUseCase getUserByIdUseCase;
-    private final DeleteUserUseCase deleteUserUseCase;
+    private final UserRepository userRepository;
 
-    public UserService(CreateUserUseCase createUserUseCase,
-                       GetUserByIdUseCase getUserByIdUseCase,
-                       DeleteUserUseCase deleteUserUseCase){
-        this.createUserUseCase = createUserUseCase;
-        this.getUserByIdUseCase = getUserByIdUseCase;
-        this.deleteUserUseCase = deleteUserUseCase;
+    public UserService(UserRepository userRepository) {
+        this.userRepository = userRepository;
     }
 
-    public User createUser(CreateUserDTO dto) {
-        return createUserUseCase.execute(
-                new CreateUserUseCase.input(dto.name(), dto.email())
-        );
+    public User save(User user) {
+        // JPA automatically handles the INSERT command
+        return userRepository.save(user);
     }
 
-    public void deleteUser(Long id) {
-        deleteUserUseCase.execute(id);
+    public Optional<User> findById(Long id) {
+        // JPA automatically handles the SELECT * WHERE id = ? command
+        return userRepository.findById(id);
     }
 
-    public User getUserById(Long id) {
-        getUserByIdUseCase.execute(id);
+    public List<User> findAll() {
+        return userRepository.findAll();
+    }
+
+    public void deleteById(Long id) {
+        // JPA automatically handles the DELETE command
+        userRepository.deleteById(id);
     }
 }
