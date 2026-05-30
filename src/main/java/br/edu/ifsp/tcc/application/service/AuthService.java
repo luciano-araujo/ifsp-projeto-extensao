@@ -14,20 +14,12 @@ public class AuthService {
 
     private final UserRepository userRepository;
 
-    // In-memory token storage for the PoC
-    private final Map<String, String> tokenStore = new HashMap<>();
-
     public AuthService(UserRepository userRepository) {
         this.userRepository = userRepository;
     }
 
     public User authenticate(String email, String password) {
-        Optional<User> userOpt = userRepository.findByEmail(email);
-
-        if (userOpt.isPresent() && userOpt.get().getPassword().equals(password)) {
-            return userOpt.get();
-        }
-        throw new RuntimeException("Credenciais inválidas. Verifique o e-mail e a senha digitados.");
+        // to implement
     }
 
     public void generateRegistrationToken(String name, String email) {
@@ -36,21 +28,15 @@ public class AuthService {
         }
 
         String token = String.format("%06d", new Random().nextInt(999999));
-        tokenStore.put(email, token);
-
-        System.out.println("=============================================");
-        System.out.println("SIMULAÇÃO DE E-MAIL (PoC TCC)");
-        System.out.println("Para: " + name + " <" + email + ">");
-        System.out.println("Seu código de acesso é: " + token);
-        System.out.println("=============================================");
+//        tokenStore.put(email, token);
     }
 
     public User confirmRegistration(String email, String token, String password) {
-        String storedToken = tokenStore.get(email);
-
-        if (storedToken == null || !storedToken.equals(token)) {
-            throw new RuntimeException("Código de segurança inválido ou expirado.");
-        }
+//        String storedToken = tokenStore.get(email);
+//
+//        if (storedToken == null || !storedToken.equals(token)) {
+//            throw new RuntimeException("Código de segurança inválido ou expirado.");
+//        }
 
         User newUser = new User();
         newUser.setName(email.split("@")[0]);
@@ -58,7 +44,7 @@ public class AuthService {
         newUser.setPassword(password);
 
         userRepository.save(newUser);
-        tokenStore.remove(email);
+//        tokenStore.remove(email);
 
         return newUser;
     }

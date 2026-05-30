@@ -12,7 +12,7 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/v1/users")
-@CrossOrigin(origins = "http://localhost:3000") // Required for future Next.js Admin Panel features
+//@CrossOrigin(origins = "http://localhost:3000")
 public class UserController {
 
     private final CreateUserUseCase createUserUseCase;
