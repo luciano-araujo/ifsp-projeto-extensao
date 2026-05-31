@@ -2,6 +2,7 @@ package br.edu.ifsp.tcc.application.service;
 
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -13,6 +14,7 @@ public class EmailService {
         this.mailSender = mailSender;
     }
 
+    @Async
     public void sendRegistrationToken(String to, String name, String token) {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(to);
