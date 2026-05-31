@@ -366,9 +366,349 @@ DELETE /api/v1/kanban/{id}
 
 ---
 
-## 3. USUARIO (rotas protegidas)
+## 3. EDITOR DE ROTEIRO / SCRIPT (rotas protegidas)
 
-### 3.1 Buscar usuario por ID
+Cada item do Kanban pode ter um roteiro (script) vinculado. O conteudo e HTML (vindo do editor TipTap do frontend).
+O backend salva o conteudo atual e permite criar versoes (snapshots) para historico.
+
+Todas estas rotas precisam do header `Authorization: Bearer <token>`.
+
+### 3.1 Salvar conteudo do roteiro
+
+Cria o script na primeira vez, ou atualiza o conteudo existente.
+
+```
+PUT /api/v1/kanban/{kanbanItemId}/script
+```
+
+**Header:** `Authorization: Bearer <token>`
+
+**O que enviar:**
+```json
+{
+  "content": "<h1>Introducao</h1><p>Nesta aula vamos aprender sobre...</p>"
+}
+```
+
+O `content` e o HTML completo que vem do `editor.getHTML()` do TipTap.
+
+**O que recebe de volta (200 OK):**
+```json
+{
+  "id": 1,
+  "kanbanItemId": 1,
+  "content": "<h1>Introducao</h1><p>Nesta aula vamos aprender sobre...</p>",
+  "createdAt": "2026-05-31T19:00:00",
+  "updatedAt": "2026-05-31T19:05:00"
+}
+```
+
+---
+
+### 3.2 Buscar conteudo do roteiro
+
+```
+GET /api/v1/kanban/{kanbanItemId}/script
+```
+
+**Header:** `Authorization: Bearer <token>`
+
+**O que recebe de volta (200 OK):** o objeto do script (mesmo formato acima).
+
+Use o campo `content` para carregar no editor TipTap com `editor.commands.setContent(content)`.
+
+**Erro:** `400` se o item nao tem script ainda.
+
+---
+
+### 3.3 Criar snapshot (versao)
+
+Tira uma "foto" do conteudo atual do roteiro. Util para o botao "Salvar versao" do editor.
+
+```
+POST /api/v1/kanban/{kanbanItemId}/script/versions
+```
+
+**Header:** `Authorization: Bearer <token>`
+
+**Nao precisa enviar body.** O backend copia automaticamente o conteudo atual do script.
+
+**O que recebe de volta (200 OK):**
+```json
+{
+  "id": 1,
+  "scriptId": 1,
+  "content": "<h1>Introducao</h1><p>Nesta aula vamos aprender sobre...</p>",
+  "createdAt": "2026-05-31T19:10:00"
+}
+```
+
+**Erro:** `400` se o script ainda nao foi salvo (precisa salvar o conteudo antes de criar versao).
+
+---
+
+### 3.4 Listar historico de versoes
+
+Retorna todas as versoes salvas, da mais recente para a mais antiga.
+
+```
+GET /api/v1/kanban/{kanbanItemId}/script/versions
+```
+
+**Header:** `Authorization: Bearer <token>`
+
+**O que recebe de volta (200 OK):**
+```json
+[
+  {
+    "id": 3,
+    "scriptId": 1,
+    "content": "<h1>Versao 3</h1><p>Conteudo mais recente...</p>",
+    "createdAt": "2026-05-31T20:00:00"
+  },
+  {
+    "id": 2,
+    "scriptId": 1,
+    "content": "<h1>Versao 2</h1><p>Conteudo anterior...</p>",
+    "createdAt": "2026-05-31T19:30:00"
+  },
+  {
+    "id": 1,
+    "scriptId": 1,
+    "content": "<h1>Versao 1</h1><p>Primeiro rascunho...</p>",
+    "createdAt": "2026-05-31T19:10:00"
+  }
+]
+```
+
+Use o `createdAt` para mostrar a data/hora de cada versao na sidebar do editor.
+
+---
+
+### 3.5 Restaurar uma versao anterior
+
+Substitui o conteudo atual do roteiro pelo conteudo de uma versao anterior.
+
+```
+POST /api/v1/kanban/{kanbanItemId}/script/versions/{versionId}/restore
+```
+
+**Header:** `Authorization: Bearer <token>`
+
+**Nao precisa enviar body.**
+
+**O que recebe de volta (200 OK):** o objeto do script com o conteudo restaurado.
+
+**Dica:** Antes de restaurar, crie um snapshot da versao atual para nao perder o trabalho.
+
+---
+
+## 4. CURRICULUM / GRADE CURRICULAR (rotas protegidas)
+
+Cada item do Kanban (projeto) pode ter uma grade curricular com modulos e aulas.
+A estrutura e hierarquica: Projeto > Modulos > Aulas.
+
+Todas estas rotas precisam do header `Authorization: Bearer <token>`.
+
+### Tipos de aula
+
+| Tipo | Significado |
+|------|-------------|
+| `VIDEO` | Aula em video |
+| `TEXT` | Aula em texto |
+| `QUIZ` | Questionario/quiz |
+
+---
+
+### 4.1 Criar um modulo
+
+```
+POST /api/v1/kanban/{kanbanItemId}/curriculum/modules
+```
+
+**Header:** `Authorization: Bearer <token>`
+
+**O que enviar:**
+```json
+{
+  "title": "01_INTRODUCAO_AO_CONCEITO"
+}
+```
+
+**O que recebe de volta (200 OK):**
+```json
+{
+  "id": 1,
+  "kanbanItemId": 1,
+  "title": "01_INTRODUCAO_AO_CONCEITO",
+  "sortOrder": 0,
+  "lessons": [],
+  "createdAt": "2026-05-31T19:00:00"
+}
+```
+
+O `sortOrder` e definido automaticamente (proximo numero disponivel).
+
+---
+
+### 4.2 Listar modulos de um projeto
+
+Retorna todos os modulos com suas aulas, ordenados por `sortOrder`.
+
+```
+GET /api/v1/kanban/{kanbanItemId}/curriculum/modules
+```
+
+**Header:** `Authorization: Bearer <token>`
+
+**O que recebe de volta (200 OK):**
+```json
+[
+  {
+    "id": 1,
+    "kanbanItemId": 1,
+    "title": "01_INTRODUCAO_AO_CONCEITO",
+    "sortOrder": 0,
+    "lessons": [
+      {
+        "id": 1,
+        "moduleId": 1,
+        "title": "Visao Geral e Mindset",
+        "type": "VIDEO",
+        "published": true,
+        "sortOrder": 0,
+        "createdAt": "2026-05-31T19:05:00"
+      },
+      {
+        "id": 2,
+        "moduleId": 1,
+        "title": "Quiz de Conceitos Basicos",
+        "type": "QUIZ",
+        "published": false,
+        "sortOrder": 1,
+        "createdAt": "2026-05-31T19:10:00"
+      }
+    ],
+    "createdAt": "2026-05-31T19:00:00"
+  },
+  {
+    "id": 2,
+    "kanbanItemId": 1,
+    "title": "02_FUNDAMENTOS_PRATICOS",
+    "sortOrder": 1,
+    "lessons": [],
+    "createdAt": "2026-05-31T19:15:00"
+  }
+]
+```
+
+---
+
+### 4.3 Atualizar um modulo
+
+```
+PUT /api/v1/kanban/{kanbanItemId}/curriculum/modules/{moduleId}
+```
+
+**Header:** `Authorization: Bearer <token>`
+
+**O que enviar (todos os campos sao opcionais):**
+```json
+{
+  "title": "01_NOVO_TITULO",
+  "sortOrder": 2
+}
+```
+
+**O que recebe de volta (200 OK):** o objeto do modulo atualizado (com suas aulas).
+
+---
+
+### 4.4 Deletar um modulo
+
+Deleta o modulo e TODAS as aulas dentro dele.
+
+```
+DELETE /api/v1/kanban/{kanbanItemId}/curriculum/modules/{moduleId}
+```
+
+**Header:** `Authorization: Bearer <token>`
+
+**O que recebe de volta:** `204 No Content` (sem corpo).
+
+---
+
+### 4.5 Criar uma aula dentro de um modulo
+
+```
+POST /api/v1/kanban/{kanbanItemId}/curriculum/modules/{moduleId}/lessons
+```
+
+**Header:** `Authorization: Bearer <token>`
+
+**O que enviar:**
+```json
+{
+  "title": "Visao Geral e Mindset",
+  "type": "VIDEO"
+}
+```
+
+- `title` e obrigatorio
+- `type` e opcional (padrao: `VIDEO`). Valores aceitos: `VIDEO`, `TEXT`, `QUIZ`
+
+**O que recebe de volta (200 OK):**
+```json
+{
+  "id": 1,
+  "moduleId": 1,
+  "title": "Visao Geral e Mindset",
+  "type": "VIDEO",
+  "published": false,
+  "sortOrder": 0,
+  "createdAt": "2026-05-31T19:05:00"
+}
+```
+
+---
+
+### 4.6 Atualizar uma aula
+
+```
+PUT /api/v1/kanban/{kanbanItemId}/curriculum/modules/{moduleId}/lessons/{lessonId}
+```
+
+**Header:** `Authorization: Bearer <token>`
+
+**O que enviar (todos os campos sao opcionais):**
+```json
+{
+  "title": "Novo titulo da aula",
+  "type": "TEXT",
+  "published": true,
+  "sortOrder": 3
+}
+```
+
+**O que recebe de volta (200 OK):** o objeto da aula atualizado.
+
+---
+
+### 4.7 Deletar uma aula
+
+```
+DELETE /api/v1/kanban/{kanbanItemId}/curriculum/modules/{moduleId}/lessons/{lessonId}
+```
+
+**Header:** `Authorization: Bearer <token>`
+
+**O que recebe de volta:** `204 No Content` (sem corpo).
+
+---
+
+## 5. USUARIO (rotas protegidas)
+
+### 5.1 Buscar usuario por ID
 
 ```
 GET /api/v1/users/{id}
@@ -392,7 +732,7 @@ A senha nunca e retornada nas respostas.
 
 ---
 
-### 3.2 Atualizar usuario
+### 5.2 Atualizar usuario
 
 ```
 PUT /api/v1/users/{id}
@@ -415,7 +755,7 @@ Envie somente o que quer alterar.
 
 ---
 
-### 3.3 Deletar usuario
+### 5.3 Deletar usuario
 
 ```
 DELETE /api/v1/users/{id}
@@ -427,7 +767,7 @@ DELETE /api/v1/users/{id}
 
 ---
 
-## 4. ERROS
+## 6. ERROS
 
 Todos os erros seguem o mesmo formato:
 
@@ -446,26 +786,60 @@ Todos os erros seguem o mesmo formato:
 
 ---
 
-## 5. RESUMO RAPIDO DE TODAS AS ROTAS
+## 7. RESUMO RAPIDO DE TODAS AS ROTAS
 
-| Metodo | Rota | Protegida? | O que faz |
-|--------|------|------------|-----------|
-| POST | `/api/auth/register/request-token` | Nao | Envia codigo de verificacao por e-mail |
-| POST | `/api/auth/register/confirm` | Nao | Confirma cadastro com o codigo e cria a conta |
-| POST | `/api/auth/login` | Nao | Faz login e retorna o token JWT |
-| POST | `/api/v1/kanban` | Sim | Cria uma nova ideia |
-| GET | `/api/v1/kanban` | Sim | Lista todos os itens (aceita ?state=) |
-| GET | `/api/v1/kanban/{id}` | Sim | Busca um item especifico |
-| PUT | `/api/v1/kanban/{id}` | Sim | Atualiza um item |
-| POST | `/api/v1/kanban/{id}/convert` | Sim | Converte ideia em projeto |
-| DELETE | `/api/v1/kanban/{id}` | Sim | Deleta um item |
-| GET | `/api/v1/users/{id}` | Sim | Busca dados de um usuario |
-| PUT | `/api/v1/users/{id}` | Sim | Atualiza dados do usuario |
-| DELETE | `/api/v1/users/{id}` | Sim | Deleta o usuario |
+### Autenticacao (publicas)
+
+| Metodo | Rota | O que faz |
+|--------|------|-----------|
+| POST | `/api/auth/register/request-token` | Envia codigo de verificacao por e-mail |
+| POST | `/api/auth/register/confirm` | Confirma cadastro com o codigo e cria a conta |
+| POST | `/api/auth/login` | Faz login e retorna o token JWT |
+
+### Kanban (protegidas)
+
+| Metodo | Rota | O que faz |
+|--------|------|-----------|
+| POST | `/api/v1/kanban` | Cria uma nova ideia |
+| GET | `/api/v1/kanban` | Lista todos os itens (aceita ?state=) |
+| GET | `/api/v1/kanban/{id}` | Busca um item especifico |
+| PUT | `/api/v1/kanban/{id}` | Atualiza um item |
+| POST | `/api/v1/kanban/{id}/convert` | Converte ideia em projeto |
+| DELETE | `/api/v1/kanban/{id}` | Deleta um item |
+
+### Editor de Roteiro (protegidas)
+
+| Metodo | Rota | O que faz |
+|--------|------|-----------|
+| PUT | `/api/v1/kanban/{id}/script` | Salva conteudo do roteiro (HTML) |
+| GET | `/api/v1/kanban/{id}/script` | Busca conteudo do roteiro |
+| POST | `/api/v1/kanban/{id}/script/versions` | Cria snapshot da versao atual |
+| GET | `/api/v1/kanban/{id}/script/versions` | Lista historico de versoes |
+| POST | `/api/v1/kanban/{id}/script/versions/{versionId}/restore` | Restaura uma versao anterior |
+
+### Grade Curricular (protegidas)
+
+| Metodo | Rota | O que faz |
+|--------|------|-----------|
+| POST | `/api/v1/kanban/{id}/curriculum/modules` | Cria um modulo |
+| GET | `/api/v1/kanban/{id}/curriculum/modules` | Lista modulos com aulas |
+| PUT | `/api/v1/kanban/{id}/curriculum/modules/{moduleId}` | Atualiza modulo |
+| DELETE | `/api/v1/kanban/{id}/curriculum/modules/{moduleId}` | Deleta modulo e suas aulas |
+| POST | `.../modules/{moduleId}/lessons` | Cria uma aula |
+| PUT | `.../modules/{moduleId}/lessons/{lessonId}` | Atualiza uma aula |
+| DELETE | `.../modules/{moduleId}/lessons/{lessonId}` | Deleta uma aula |
+
+### Usuario (protegidas)
+
+| Metodo | Rota | O que faz |
+|--------|------|-----------|
+| GET | `/api/v1/users/{id}` | Busca dados de um usuario |
+| PUT | `/api/v1/users/{id}` | Atualiza dados do usuario |
+| DELETE | `/api/v1/users/{id}` | Deleta o usuario |
 
 ---
 
-## 6. EXEMPLO DE FLUXO COMPLETO
+## 8. EXEMPLO DE FLUXO COMPLETO
 
 ### Cadastro + Criar ideia + Converter em projeto
 
@@ -507,9 +881,65 @@ Todos os erros seguem o mesmo formato:
    -> Recebe: item com state="DONE"
 ```
 
+### Escrevendo o roteiro de um projeto
+
+```
+1. PUT /api/v1/kanban/1/script
+   Header: Authorization: Bearer eyJ...
+   Body: { "content": "<h1>Aula 1</h1><p>Primeiro rascunho do roteiro...</p>" }
+   -> Recebe: script salvo com id=1
+
+2. POST /api/v1/kanban/1/script/versions
+   Header: Authorization: Bearer eyJ...
+   (sem body)
+   -> Recebe: snapshot versao id=1 criado
+
+3. PUT /api/v1/kanban/1/script
+   Header: Authorization: Bearer eyJ...
+   Body: { "content": "<h1>Aula 1</h1><p>Versao revisada do roteiro...</p>" }
+   -> Recebe: script atualizado
+
+4. GET /api/v1/kanban/1/script/versions
+   Header: Authorization: Bearer eyJ...
+   -> Recebe: lista de versoes [{ id: 1, content: "...", createdAt: "..." }]
+
+5. POST /api/v1/kanban/1/script/versions/1/restore
+   Header: Authorization: Bearer eyJ...
+   (sem body)
+   -> Recebe: script com conteudo restaurado para a versao 1
+```
+
+### Montando a grade curricular de um projeto
+
+```
+1. POST /api/v1/kanban/1/curriculum/modules
+   Header: Authorization: Bearer eyJ...
+   Body: { "title": "01_INTRODUCAO" }
+   -> Recebe: modulo com id=1
+
+2. POST /api/v1/kanban/1/curriculum/modules/1/lessons
+   Header: Authorization: Bearer eyJ...
+   Body: { "title": "Visao Geral", "type": "VIDEO" }
+   -> Recebe: aula com id=1, published=false
+
+3. POST /api/v1/kanban/1/curriculum/modules/1/lessons
+   Header: Authorization: Bearer eyJ...
+   Body: { "title": "Quiz de Conceitos", "type": "QUIZ" }
+   -> Recebe: aula com id=2
+
+4. PUT /api/v1/kanban/1/curriculum/modules/1/lessons/1
+   Header: Authorization: Bearer eyJ...
+   Body: { "published": true }
+   -> Recebe: aula com published=true
+
+5. GET /api/v1/kanban/1/curriculum/modules
+   Header: Authorization: Bearer eyJ...
+   -> Recebe: lista de modulos com suas aulas dentro
+```
+
 ---
 
-## 7. CONFIGURACAO DO AXIOS/FETCH NO FRONTEND
+## 9. CONFIGURACAO DO AXIOS/FETCH NO FRONTEND
 
 Exemplo de como configurar um cliente HTTP:
 
@@ -550,11 +980,23 @@ async function apiRequest(method: string, path: string, body?: any) {
 // await apiRequest("POST", "/api/v1/kanban", { title: "Minha ideia" });
 // await apiRequest("PUT", "/api/v1/kanban/1", { progress: 50 });
 // await apiRequest("DELETE", "/api/v1/kanban/1");
+//
+// Roteiro:
+// await apiRequest("PUT", "/api/v1/kanban/1/script", { content: editor.getHTML() });
+// await apiRequest("GET", "/api/v1/kanban/1/script");
+// await apiRequest("POST", "/api/v1/kanban/1/script/versions");
+// await apiRequest("GET", "/api/v1/kanban/1/script/versions");
+// await apiRequest("POST", "/api/v1/kanban/1/script/versions/1/restore");
+//
+// Curriculum:
+// await apiRequest("POST", "/api/v1/kanban/1/curriculum/modules", { title: "Modulo 1" });
+// await apiRequest("GET", "/api/v1/kanban/1/curriculum/modules");
+// await apiRequest("POST", "/api/v1/kanban/1/curriculum/modules/1/lessons", { title: "Aula 1", type: "VIDEO" });
 ```
 
 ---
 
-## 8. SWAGGER (DOCUMENTACAO INTERATIVA)
+## 10. SWAGGER (DOCUMENTACAO INTERATIVA)
 
 Quando o backend estiver rodando, acesse:
 
