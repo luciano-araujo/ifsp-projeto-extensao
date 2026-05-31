@@ -1,5 +1,6 @@
 package br.edu.ifsp.tcc.application.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
@@ -14,6 +15,7 @@ public class User {
     @Column(nullable = false, unique = true)
     private String email;
 
+    @JsonIgnore
     @Column(nullable = false)
     private String password;
 
@@ -28,7 +30,6 @@ public class User {
         createdAt = LocalDateTime.now();
     }
 
-    // Getters and Setters required by Spring and AuthService
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -40,4 +41,6 @@ public class User {
 
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
+
+    public LocalDateTime getCreatedAt() { return createdAt; }
 }

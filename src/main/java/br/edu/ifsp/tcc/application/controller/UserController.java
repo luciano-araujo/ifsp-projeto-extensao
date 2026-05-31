@@ -1,11 +1,13 @@
 package br.edu.ifsp.tcc.application.controller;
 
 import br.edu.ifsp.tcc.application.dto.CreateUserDTO;
+import br.edu.ifsp.tcc.application.dto.UpdateUserDTO;
 import br.edu.ifsp.tcc.application.entity.User;
 import br.edu.ifsp.tcc.application.usecase.CreateUserUseCase;
 import br.edu.ifsp.tcc.application.usecase.DeleteUserUseCase;
 import br.edu.ifsp.tcc.application.usecase.GetUserByIdUseCase;
 import br.edu.ifsp.tcc.application.usecase.UpdateUserUseCase;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -13,7 +15,6 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/v1/users")
-//@CrossOrigin(origins = "http://localhost:3000")
 public class UserController {
 
     private final CreateUserUseCase createUserUseCase;
@@ -32,14 +33,15 @@ public class UserController {
     }
 
     @PostMapping
-    public ResponseEntity<User> createUser(@RequestBody CreateUserDTO dto) {
+    public ResponseEntity<User> createUser(@Valid @RequestBody CreateUserDTO dto) {
         User createdUser = createUserUseCase.execute(dto);
         return ResponseEntity.ok(createdUser);
     }
 
-    @PutMapping
-    public ResponseEntity<User> updateUser(@RequestBody UpdateUserDTO userdto) {
-        User updatedUser = u
+    @PutMapping("/{id}")
+    public ResponseEntity<User> updateUser(@PathVariable Long id, @Valid @RequestBody UpdateUserDTO dto) {
+        User updatedUser = updateUserUseCase.execute(id, dto);
+        return ResponseEntity.ok(updatedUser);
     }
 
     @GetMapping("/{id}")
