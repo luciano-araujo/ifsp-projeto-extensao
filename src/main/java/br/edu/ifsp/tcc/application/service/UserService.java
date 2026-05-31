@@ -21,6 +21,11 @@ public class UserService {
         return userRepository.save(user);
     }
 
+    public User update(User user) {
+        // JPA automatically handles the UPDATE command
+        return userRepository.save(user);
+    }
+
     public Optional<User> findById(Long id) {
         // JPA automatically handles the SELECT * WHERE id = ? command
         return userRepository.findById(id);
