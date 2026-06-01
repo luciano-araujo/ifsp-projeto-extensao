@@ -18,5 +18,5 @@ public interface ModuleRepository extends JpaRepository<Module, Long> {
     @Query("SELECT m FROM Module m LEFT JOIN FETCH m.lessons WHERE m.id = :id AND m.kanbanItem.id = :kanbanItemId")
     Optional<Module> findByIdAndKanbanItemId(@Param("id") Long id, @Param("kanbanItemId") Long kanbanItemId);
 
-    int countByKanbanItemId(Long kanbanItemId);
+    int countByKanbanItem_Id(Long kanbanItemId);
 }

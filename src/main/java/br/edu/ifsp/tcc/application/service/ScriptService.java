@@ -25,7 +25,7 @@ public class ScriptService {
     }
 
     public Optional<Script> findByKanbanItemId(Long kanbanItemId) {
-        return scriptRepository.findByKanbanItemId(kanbanItemId);
+        return scriptRepository.findByKanbanItem_Id(kanbanItemId);
     }
 
     public ScriptVersion saveVersion(ScriptVersion version) {
@@ -33,7 +33,7 @@ public class ScriptService {
     }
 
     public List<ScriptVersion> findVersionsByScriptId(Long scriptId) {
-        return scriptVersionRepository.findByScriptIdOrderByCreatedAtDesc(scriptId);
+        return scriptVersionRepository.findByScript_IdOrderByCreatedAtDesc(scriptId);
     }
 
     public Optional<ScriptVersion> findVersionById(Long versionId) {

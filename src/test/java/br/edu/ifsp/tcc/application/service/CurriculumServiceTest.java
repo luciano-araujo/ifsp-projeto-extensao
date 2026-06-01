@@ -46,7 +46,7 @@ class CurriculumServiceTest {
 
     @Test
     void countModulesByKanbanItemId_shouldReturn() {
-        when(moduleRepository.countByKanbanItemId(1L)).thenReturn(3);
+        when(moduleRepository.countByKanbanItem_Id(1L)).thenReturn(3);
         assertEquals(3, curriculumService.countModulesByKanbanItemId(1L));
     }
 
@@ -66,13 +66,13 @@ class CurriculumServiceTest {
     @Test
     void findLessonByIdAndModuleId_shouldReturn() {
         Lesson lesson = new Lesson();
-        when(lessonRepository.findByIdAndModuleId(1L, 1L)).thenReturn(Optional.of(lesson));
+        when(lessonRepository.findByIdAndModule_Id(1L, 1L)).thenReturn(Optional.of(lesson));
         assertTrue(curriculumService.findLessonByIdAndModuleId(1L, 1L).isPresent());
     }
 
     @Test
     void countLessonsByModuleId_shouldReturn() {
-        when(lessonRepository.countByModuleId(1L)).thenReturn(5);
+        when(lessonRepository.countByModule_Id(1L)).thenReturn(5);
         assertEquals(5, curriculumService.countLessonsByModuleId(1L));
     }
 
