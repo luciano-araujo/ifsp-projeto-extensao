@@ -22,15 +22,15 @@ public class KanbanItemService {
     }
 
     public List<KanbanItem> findByUserId(Long userId) {
-        return kanbanItemRepository.findByUserId(userId);
+        return kanbanItemRepository.findByUser_Id(userId);
     }
 
     public List<KanbanItem> findByUserIdAndState(Long userId, KanbanItemState state) {
-        return kanbanItemRepository.findByUserIdAndState(userId, state);
+        return kanbanItemRepository.findByUser_IdAndState(userId, state);
     }
 
     public Optional<KanbanItem> findByIdAndUserId(Long id, Long userId) {
-        return kanbanItemRepository.findByIdAndUserId(id, userId);
+        return kanbanItemRepository.findByIdAndUser_Id(id, userId);
     }
 
     public void deleteById(Long id) {
