@@ -43,7 +43,7 @@ class KanbanItemServiceTest {
     @Test
     void findByUserId_shouldReturnUserItems() {
         List<KanbanItem> items = List.of(createItem());
-        when(kanbanItemRepository.findByUserId(1L)).thenReturn(items);
+        when(kanbanItemRepository.findByUser_Id(1L)).thenReturn(items);
 
         List<KanbanItem> result = kanbanItemService.findByUserId(1L);
 
@@ -53,7 +53,7 @@ class KanbanItemServiceTest {
     @Test
     void findByUserIdAndState_shouldFilterByState() {
         List<KanbanItem> items = List.of(createItem());
-        when(kanbanItemRepository.findByUserIdAndState(1L, KanbanItemState.IDEATION)).thenReturn(items);
+        when(kanbanItemRepository.findByUser_IdAndState(1L, KanbanItemState.IDEATION)).thenReturn(items);
 
         List<KanbanItem> result = kanbanItemService.findByUserIdAndState(1L, KanbanItemState.IDEATION);
 
@@ -64,7 +64,7 @@ class KanbanItemServiceTest {
     @Test
     void findByIdAndUserId_shouldReturnItemWhenOwned() {
         KanbanItem item = createItem();
-        when(kanbanItemRepository.findByIdAndUserId(1L, 1L)).thenReturn(Optional.of(item));
+        when(kanbanItemRepository.findByIdAndUser_Id(1L, 1L)).thenReturn(Optional.of(item));
 
         Optional<KanbanItem> result = kanbanItemService.findByIdAndUserId(1L, 1L);
 
@@ -73,7 +73,7 @@ class KanbanItemServiceTest {
 
     @Test
     void findByIdAndUserId_shouldReturnEmptyWhenNotOwned() {
-        when(kanbanItemRepository.findByIdAndUserId(1L, 99L)).thenReturn(Optional.empty());
+        when(kanbanItemRepository.findByIdAndUser_Id(1L, 99L)).thenReturn(Optional.empty());
 
         Optional<KanbanItem> result = kanbanItemService.findByIdAndUserId(1L, 99L);
 

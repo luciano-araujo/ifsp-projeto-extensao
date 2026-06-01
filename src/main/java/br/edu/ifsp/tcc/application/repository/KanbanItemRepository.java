@@ -10,7 +10,7 @@ import java.util.Optional;
 
 @Repository
 public interface KanbanItemRepository extends JpaRepository<KanbanItem, Long> {
-    List<KanbanItem> findByUserId(Long userId);
-    List<KanbanItem> findByUserIdAndState(Long userId, KanbanItemState state);
-    Optional<KanbanItem> findByIdAndUserId(Long id, Long userId);
+    List<KanbanItem> findByUser_Id(Long userId);
+    List<KanbanItem> findByUser_IdAndState(Long userId, KanbanItemState state);
+    Optional<KanbanItem> findByIdAndUser_Id(Long id, Long userId);
 }
