@@ -59,10 +59,10 @@
 			<version>4.4.0</version>
 		</dependency>
 
-		<!-- Database Migrations -->
+		<!-- Database Migrations (Flyway) -->
 		<dependency>
-			<groupId>org.flywaydb</groupId>
-			<artifactId>flyway-core</artifactId>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-flyway</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.flywaydb</groupId>
