@@ -8,6 +8,6 @@ import java.util.Optional;
 
 @Repository
 public interface LessonRepository extends JpaRepository<Lesson, Long> {
-    Optional<Lesson> findByIdAndModuleId(Long id, Long moduleId);
-    int countByModuleId(Long moduleId);
+    Optional<Lesson> findByIdAndModule_Id(Long id, Long moduleId);
+    int countByModule_Id(Long moduleId);
 }

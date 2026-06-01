@@ -8,5 +8,5 @@ import java.util.List;
 
 @Repository
 public interface ScriptVersionRepository extends JpaRepository<ScriptVersion, Long> {
-    List<ScriptVersion> findByScriptIdOrderByCreatedAtDesc(Long scriptId);
+    List<ScriptVersion> findByScript_IdOrderByCreatedAtDesc(Long scriptId);
 }

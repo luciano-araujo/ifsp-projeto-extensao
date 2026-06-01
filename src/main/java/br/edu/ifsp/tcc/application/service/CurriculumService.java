@@ -33,7 +33,7 @@ public class CurriculumService {
     }
 
     public int countModulesByKanbanItemId(Long kanbanItemId) {
-        return moduleRepository.countByKanbanItemId(kanbanItemId);
+        return moduleRepository.countByKanbanItem_Id(kanbanItemId);
     }
 
     public void deleteModule(Long moduleId) {
@@ -45,11 +45,11 @@ public class CurriculumService {
     }
 
     public Optional<Lesson> findLessonByIdAndModuleId(Long lessonId, Long moduleId) {
-        return lessonRepository.findByIdAndModuleId(lessonId, moduleId);
+        return lessonRepository.findByIdAndModule_Id(lessonId, moduleId);
     }
 
     public int countLessonsByModuleId(Long moduleId) {
-        return lessonRepository.countByModuleId(moduleId);
+        return lessonRepository.countByModule_Id(moduleId);
     }
 
     public void deleteLesson(Long lessonId) {

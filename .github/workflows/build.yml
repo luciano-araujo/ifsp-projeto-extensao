@@ -43,8 +43,8 @@ jobs:
           MAIL_PORT: 2525
           MAIL_USERNAME: test@test.com
           MAIL_PASSWORD: test
-          REDIS_HOST: localhost
-          REDIS_PORT: 6379
+#          REDIS_HOST: localhost
+#          REDIS_PORT: 6379
           SPRING_CACHE_TYPE: none
         run: mvn clean verify
 

@@ -8,5 +8,5 @@ import java.util.Optional;
 
 @Repository
 public interface ScriptRepository extends JpaRepository<Script, Long> {
-    Optional<Script> findByKanbanItemId(Long kanbanItemId);
+    Optional<Script> findByKanbanItem_Id(Long kanbanItemId);
 }

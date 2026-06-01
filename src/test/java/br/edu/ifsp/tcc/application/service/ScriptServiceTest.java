@@ -33,13 +33,13 @@ class ScriptServiceTest {
     @Test
     void findByKanbanItemId_shouldReturnScript() {
         Script script = new Script();
-        when(scriptRepository.findByKanbanItemId(1L)).thenReturn(Optional.of(script));
+        when(scriptRepository.findByKanbanItem_Id(1L)).thenReturn(Optional.of(script));
         assertTrue(scriptService.findByKanbanItemId(1L).isPresent());
     }
 
     @Test
     void findByKanbanItemId_shouldReturnEmptyWhenNotFound() {
-        when(scriptRepository.findByKanbanItemId(99L)).thenReturn(Optional.empty());
+        when(scriptRepository.findByKanbanItem_Id(99L)).thenReturn(Optional.empty());
         assertTrue(scriptService.findByKanbanItemId(99L).isEmpty());
     }
 
@@ -53,7 +53,7 @@ class ScriptServiceTest {
     @Test
     void findVersionsByScriptId_shouldReturnOrderedVersions() {
         List<ScriptVersion> versions = List.of(new ScriptVersion(), new ScriptVersion());
-        when(scriptVersionRepository.findByScriptIdOrderByCreatedAtDesc(1L)).thenReturn(versions);
+        when(scriptVersionRepository.findByScript_IdOrderByCreatedAtDesc(1L)).thenReturn(versions);
         assertEquals(2, scriptService.findVersionsByScriptId(1L).size());
     }
 
