@@ -3,8 +3,10 @@ package br.edu.ifsp.tcc.application.usecase;
 import br.edu.ifsp.tcc.application.dto.UpdateUserDTO;
 import br.edu.ifsp.tcc.application.entity.User;
 import br.edu.ifsp.tcc.application.service.UserService;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
+import org.springframework.web.server.ResponseStatusException;
 
 @Component
 public class UpdateUserUseCase {
@@ -17,7 +19,11 @@ public class UpdateUserUseCase {
         this.passwordEncoder = passwordEncoder;
     }
 
-    public User execute(Long id, UpdateUserDTO dto) {
+    public User execute(Long id, Long authenticatedUserId, UpdateUserDTO dto) {
+        if (!id.equals(authenticatedUserId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Acesso negado.");
+        }
+
         User user = userService.findById(id)
                 .orElseThrow(() -> new RuntimeException("Usuario nao encontrado."));
 

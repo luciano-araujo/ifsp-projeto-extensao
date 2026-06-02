@@ -5,7 +5,6 @@ import br.edu.ifsp.tcc.application.entity.Lesson;
 import br.edu.ifsp.tcc.application.entity.Module;
 import br.edu.ifsp.tcc.application.entity.User;
 import br.edu.ifsp.tcc.application.service.CurriculumService;
-import br.edu.ifsp.tcc.application.service.KanbanItemService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -18,16 +17,9 @@ import java.util.List;
 public class CurriculumController {
 
     private final CurriculumService curriculumService;
-    private final KanbanItemService kanbanItemService;
 
-    public CurriculumController(CurriculumService curriculumService, KanbanItemService kanbanItemService) {
+    public CurriculumController(CurriculumService curriculumService) {
         this.curriculumService = curriculumService;
-        this.kanbanItemService = kanbanItemService;
-    }
-
-    private void verifyOwnership(Long kanbanItemId, Long userId) {
-        kanbanItemService.findByIdAndUserId(kanbanItemId, userId)
-                .orElseThrow(() -> new RuntimeException("Item nao encontrado."));
     }
 
     // --- Modules ---
@@ -36,22 +28,15 @@ public class CurriculumController {
     public ResponseEntity<Module> createModule(@AuthenticationPrincipal User user,
                                                 @PathVariable Long kanbanItemId,
                                                 @Valid @RequestBody CreateModuleDTO dto) {
-        var item = kanbanItemService.findByIdAndUserId(kanbanItemId, user.getId())
-                .orElseThrow(() -> new RuntimeException("Item nao encontrado."));
-
-        Module module = new Module();
-        module.setKanbanItem(item);
-        module.setTitle(dto.getTitle());
-        module.setSortOrder(curriculumService.countModulesByKanbanItemId(kanbanItemId));
-
-        return ResponseEntity.ok(curriculumService.saveModule(module));
+        Module module = curriculumService.createModule(kanbanItemId, user.getId(), dto);
+        return ResponseEntity.ok(module);
     }
 
     @GetMapping("/modules")
     public ResponseEntity<List<Module>> listModules(@AuthenticationPrincipal User user,
                                                      @PathVariable Long kanbanItemId) {
-        verifyOwnership(kanbanItemId, user.getId());
-        return ResponseEntity.ok(curriculumService.findModulesByKanbanItemId(kanbanItemId));
+        List<Module> modules = curriculumService.listModules(kanbanItemId, user.getId());
+        return ResponseEntity.ok(modules);
     }
 
     @PutMapping("/modules/{moduleId}")
@@ -59,27 +44,15 @@ public class CurriculumController {
                                                 @PathVariable Long kanbanItemId,
                                                 @PathVariable Long moduleId,
                                                 @RequestBody UpdateModuleDTO dto) {
-        verifyOwnership(kanbanItemId, user.getId());
-
-        Module module = curriculumService.findModuleByIdAndKanbanItemId(moduleId, kanbanItemId)
-                .orElseThrow(() -> new RuntimeException("Modulo nao encontrado."));
-
-        if (dto.getTitle() != null) module.setTitle(dto.getTitle());
-        if (dto.getSortOrder() != null) module.setSortOrder(dto.getSortOrder());
-
-        return ResponseEntity.ok(curriculumService.saveModule(module));
+        Module module = curriculumService.updateModule(kanbanItemId, user.getId(), moduleId, dto);
+        return ResponseEntity.ok(module);
     }
 
     @DeleteMapping("/modules/{moduleId}")
     public ResponseEntity<Void> deleteModule(@AuthenticationPrincipal User user,
                                               @PathVariable Long kanbanItemId,
                                               @PathVariable Long moduleId) {
-        verifyOwnership(kanbanItemId, user.getId());
-
-        curriculumService.findModuleByIdAndKanbanItemId(moduleId, kanbanItemId)
-                .orElseThrow(() -> new RuntimeException("Modulo nao encontrado."));
-
-        curriculumService.deleteModule(moduleId);
+        curriculumService.deleteModule(kanbanItemId, user.getId(), moduleId);
         return ResponseEntity.noContent().build();
     }
 
@@ -90,18 +63,8 @@ public class CurriculumController {
                                                 @PathVariable Long kanbanItemId,
                                                 @PathVariable Long moduleId,
                                                 @Valid @RequestBody CreateLessonDTO dto) {
-        verifyOwnership(kanbanItemId, user.getId());
-
-        Module module = curriculumService.findModuleByIdAndKanbanItemId(moduleId, kanbanItemId)
-                .orElseThrow(() -> new RuntimeException("Modulo nao encontrado."));
-
-        Lesson lesson = new Lesson();
-        lesson.setModule(module);
-        lesson.setTitle(dto.getTitle());
-        lesson.setType(dto.getType());
-        lesson.setSortOrder(curriculumService.countLessonsByModuleId(moduleId));
-
-        return ResponseEntity.ok(curriculumService.saveLesson(lesson));
+        Lesson lesson = curriculumService.createLesson(kanbanItemId, user.getId(), moduleId, dto);
+        return ResponseEntity.ok(lesson);
     }
 
     @PutMapping("/modules/{moduleId}/lessons/{lessonId}")
@@ -110,20 +73,8 @@ public class CurriculumController {
                                                 @PathVariable Long moduleId,
                                                 @PathVariable Long lessonId,
                                                 @RequestBody UpdateLessonDTO dto) {
-        verifyOwnership(kanbanItemId, user.getId());
-
-        curriculumService.findModuleByIdAndKanbanItemId(moduleId, kanbanItemId)
-                .orElseThrow(() -> new RuntimeException("Modulo nao encontrado."));
-
-        Lesson lesson = curriculumService.findLessonByIdAndModuleId(lessonId, moduleId)
-                .orElseThrow(() -> new RuntimeException("Aula nao encontrada."));
-
-        if (dto.getTitle() != null) lesson.setTitle(dto.getTitle());
-        if (dto.getType() != null) lesson.setType(dto.getType());
-        if (dto.getPublished() != null) lesson.setPublished(dto.getPublished());
-        if (dto.getSortOrder() != null) lesson.setSortOrder(dto.getSortOrder());
-
-        return ResponseEntity.ok(curriculumService.saveLesson(lesson));
+        Lesson lesson = curriculumService.updateLesson(kanbanItemId, user.getId(), moduleId, lessonId, dto);
+        return ResponseEntity.ok(lesson);
     }
 
     @DeleteMapping("/modules/{moduleId}/lessons/{lessonId}")
@@ -131,15 +82,7 @@ public class CurriculumController {
                                               @PathVariable Long kanbanItemId,
                                               @PathVariable Long moduleId,
                                               @PathVariable Long lessonId) {
-        verifyOwnership(kanbanItemId, user.getId());
-
-        curriculumService.findModuleByIdAndKanbanItemId(moduleId, kanbanItemId)
-                .orElseThrow(() -> new RuntimeException("Modulo nao encontrado."));
-
-        curriculumService.findLessonByIdAndModuleId(lessonId, moduleId)
-                .orElseThrow(() -> new RuntimeException("Aula nao encontrada."));
-
-        curriculumService.deleteLesson(lessonId);
+        curriculumService.deleteLesson(kanbanItemId, user.getId(), moduleId, lessonId);
         return ResponseEntity.noContent().build();
     }
 }
