@@ -20,17 +20,20 @@ public class KanbanItemController {
 
     private final CreateKanbanItemUseCase createKanbanItemUseCase;
     private final GetKanbanItemsByUserUseCase getKanbanItemsByUserUseCase;
+    private final GetKanbanItemByIdUseCase getKanbanItemByIdUseCase;
     private final UpdateKanbanItemUseCase updateKanbanItemUseCase;
     private final ConvertToProjectUseCase convertToProjectUseCase;
     private final DeleteKanbanItemUseCase deleteKanbanItemUseCase;
 
     public KanbanItemController(CreateKanbanItemUseCase createKanbanItemUseCase,
                                 GetKanbanItemsByUserUseCase getKanbanItemsByUserUseCase,
+                                GetKanbanItemByIdUseCase getKanbanItemByIdUseCase,
                                 UpdateKanbanItemUseCase updateKanbanItemUseCase,
                                 ConvertToProjectUseCase convertToProjectUseCase,
                                 DeleteKanbanItemUseCase deleteKanbanItemUseCase) {
         this.createKanbanItemUseCase = createKanbanItemUseCase;
         this.getKanbanItemsByUserUseCase = getKanbanItemsByUserUseCase;
+        this.getKanbanItemByIdUseCase = getKanbanItemByIdUseCase;
         this.updateKanbanItemUseCase = updateKanbanItemUseCase;
         this.convertToProjectUseCase = convertToProjectUseCase;
         this.deleteKanbanItemUseCase = deleteKanbanItemUseCase;
@@ -53,9 +56,7 @@ public class KanbanItemController {
     @GetMapping("/{id}")
     public ResponseEntity<KanbanItem> getById(@AuthenticationPrincipal User user,
                                                @PathVariable Long id) {
-        return getKanbanItemsByUserUseCase.execute(user.getId(), null).stream()
-                .filter(item -> item.getId().equals(id))
-                .findFirst()
+        return getKanbanItemByIdUseCase.execute(id, user.getId())
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }

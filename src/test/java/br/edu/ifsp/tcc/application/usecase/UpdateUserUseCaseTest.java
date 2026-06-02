@@ -9,6 +9,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Optional;
 
@@ -40,7 +41,7 @@ class UpdateUserUseCaseTest {
         UpdateUserDTO dto = new UpdateUserDTO();
         dto.setName("New Name");
 
-        User result = updateUserUseCase.execute(1L, dto);
+        User result = updateUserUseCase.execute(1L, 1L, dto);
 
         assertEquals("New Name", result.getName());
         assertEquals("old@example.com", result.getEmail());
@@ -57,7 +58,7 @@ class UpdateUserUseCaseTest {
         UpdateUserDTO dto = new UpdateUserDTO();
         dto.setPassword("newpass");
 
-        User result = updateUserUseCase.execute(1L, dto);
+        User result = updateUserUseCase.execute(1L, 1L, dto);
 
         assertEquals("new-encoded", result.getPassword());
         verify(passwordEncoder).encode("newpass");
@@ -73,7 +74,7 @@ class UpdateUserUseCaseTest {
         dto.setName("   ");
         dto.setEmail("");
 
-        User result = updateUserUseCase.execute(1L, dto);
+        User result = updateUserUseCase.execute(1L, 1L, dto);
 
         assertEquals("Old Name", result.getName());
         assertEquals("old@example.com", result.getEmail());
@@ -86,6 +87,14 @@ class UpdateUserUseCaseTest {
         UpdateUserDTO dto = new UpdateUserDTO();
         dto.setName("x");
 
-        assertThrows(RuntimeException.class, () -> updateUserUseCase.execute(99L, dto));
+        assertThrows(RuntimeException.class, () -> updateUserUseCase.execute(99L, 99L, dto));
+    }
+
+    @Test
+    void execute_shouldThrowForbiddenWhenUserIdDoesNotMatch() {
+        UpdateUserDTO dto = new UpdateUserDTO();
+        dto.setName("x");
+
+        assertThrows(ResponseStatusException.class, () -> updateUserUseCase.execute(1L, 2L, dto));
     }
 }

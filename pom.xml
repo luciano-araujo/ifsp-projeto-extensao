@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>br.edu.ifsp.tcc</groupId>
 	<artifactId>application</artifactId>
-	<version>1.0.0</version>
+	<version>2.0.0</version>
 	<name>application</name>
 	<description>Projeto do TCC</description>
 	<properties>

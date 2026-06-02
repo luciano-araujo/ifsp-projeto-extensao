@@ -1,5 +1,6 @@
 package br.edu.ifsp.tcc.application.entity;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
@@ -30,6 +31,7 @@ public class Lesson {
     @Column(name = "sort_order", nullable = false)
     private Integer sortOrder = 0;
 
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'")
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
