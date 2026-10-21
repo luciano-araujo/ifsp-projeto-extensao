@@ -1,9 +1,9 @@
 package br.edu.ifsp.tcc.application.controller;
 
 import br.edu.ifsp.tcc.application.dto.*;
-import br.edu.ifsp.tcc.application.entity.User;
-import br.edu.ifsp.tcc.application.service.AuthService;
-import br.edu.ifsp.tcc.application.service.JwtService;
+import br.edu.ifsp.tcc.application.usecase.ConfirmRegistrationUseCase;
+import br.edu.ifsp.tcc.application.usecase.LoginUseCase;
+import br.edu.ifsp.tcc.application.usecase.RequestRegistrationTokenUseCase;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -12,31 +12,31 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/auth")
 public class AuthController {
 
-    private final AuthService authService;
-    private final JwtService jwtService;
+    private final LoginUseCase loginUseCase;
+    private final RequestRegistrationTokenUseCase requestRegistrationTokenUseCase;
+    private final ConfirmRegistrationUseCase confirmRegistrationUseCase;
 
-    public AuthController(AuthService authService, JwtService jwtService) {
-        this.authService = authService;
-        this.jwtService = jwtService;
+    public AuthController(LoginUseCase loginUseCase,
+                          RequestRegistrationTokenUseCase requestRegistrationTokenUseCase,
+                          ConfirmRegistrationUseCase confirmRegistrationUseCase) {
+        this.loginUseCase = loginUseCase;
+        this.requestRegistrationTokenUseCase = requestRegistrationTokenUseCase;
+        this.confirmRegistrationUseCase = confirmRegistrationUseCase;
     }
 
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
-        User user = authService.authenticate(request.getEmail(), request.getPassword());
-        String token = jwtService.generateToken(user);
-        return ResponseEntity.ok(new LoginResponse(token, user.getId(), user.getName(), user.getEmail()));
+        return ResponseEntity.ok(loginUseCase.execute(request));
     }
 
     @PostMapping("/register/request-token")
     public ResponseEntity<MessageResponse> requestToken(@Valid @RequestBody RegisterTokenRequest request) {
-        authService.generateRegistrationToken(request.getName(), request.getEmail());
+        requestRegistrationTokenUseCase.execute(request);
         return ResponseEntity.ok(new MessageResponse("Codigo de verificacao enviado para " + request.getEmail()));
     }
 
     @PostMapping("/register/confirm")
     public ResponseEntity<LoginResponse> confirmRegistration(@Valid @RequestBody ConfirmRegistrationRequest request) {
-        User user = authService.confirmRegistration(request.getEmail(), request.getToken(), request.getPassword());
-        String token = jwtService.generateToken(user);
-        return ResponseEntity.ok(new LoginResponse(token, user.getId(), user.getName(), user.getEmail()));
+        return ResponseEntity.ok(confirmRegistrationUseCase.execute(request));
     }
 }

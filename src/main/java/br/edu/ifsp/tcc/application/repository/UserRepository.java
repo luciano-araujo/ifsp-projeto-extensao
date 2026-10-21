@@ -8,6 +8,6 @@ import java.util.Optional;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
-    // This custom method is required by your AuthService
+    // Used by login, registration and team member lookup (through UserService)
     Optional<User> findByEmail(String email);
 }

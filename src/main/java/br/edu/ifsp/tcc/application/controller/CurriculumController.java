@@ -4,7 +4,7 @@ import br.edu.ifsp.tcc.application.dto.*;
 import br.edu.ifsp.tcc.application.entity.Lesson;
 import br.edu.ifsp.tcc.application.entity.Module;
 import br.edu.ifsp.tcc.application.entity.User;
-import br.edu.ifsp.tcc.application.service.CurriculumService;
+import br.edu.ifsp.tcc.application.usecase.*;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -16,10 +16,28 @@ import java.util.List;
 @RequestMapping("/api/v1/kanban/{kanbanItemId}/curriculum")
 public class CurriculumController {
 
-    private final CurriculumService curriculumService;
+    private final ListModulesUseCase listModulesUseCase;
+    private final CreateModuleUseCase createModuleUseCase;
+    private final UpdateModuleUseCase updateModuleUseCase;
+    private final DeleteModuleUseCase deleteModuleUseCase;
+    private final CreateLessonUseCase createLessonUseCase;
+    private final UpdateLessonUseCase updateLessonUseCase;
+    private final DeleteLessonUseCase deleteLessonUseCase;
 
-    public CurriculumController(CurriculumService curriculumService) {
-        this.curriculumService = curriculumService;
+    public CurriculumController(ListModulesUseCase listModulesUseCase,
+                                CreateModuleUseCase createModuleUseCase,
+                                UpdateModuleUseCase updateModuleUseCase,
+                                DeleteModuleUseCase deleteModuleUseCase,
+                                CreateLessonUseCase createLessonUseCase,
+                                UpdateLessonUseCase updateLessonUseCase,
+                                DeleteLessonUseCase deleteLessonUseCase) {
+        this.listModulesUseCase = listModulesUseCase;
+        this.createModuleUseCase = createModuleUseCase;
+        this.updateModuleUseCase = updateModuleUseCase;
+        this.deleteModuleUseCase = deleteModuleUseCase;
+        this.createLessonUseCase = createLessonUseCase;
+        this.updateLessonUseCase = updateLessonUseCase;
+        this.deleteLessonUseCase = deleteLessonUseCase;
     }
 
     // --- Modules ---
@@ -28,14 +46,14 @@ public class CurriculumController {
     public ResponseEntity<Module> createModule(@AuthenticationPrincipal User user,
                                                 @PathVariable Long kanbanItemId,
                                                 @Valid @RequestBody CreateModuleDTO dto) {
-        Module module = curriculumService.createModule(kanbanItemId, user.getId(), dto);
+        Module module = createModuleUseCase.execute(kanbanItemId, user.getId(), dto);
         return ResponseEntity.ok(module);
     }
 
     @GetMapping("/modules")
     public ResponseEntity<List<Module>> listModules(@AuthenticationPrincipal User user,
                                                      @PathVariable Long kanbanItemId) {
-        List<Module> modules = curriculumService.listModules(kanbanItemId, user.getId());
+        List<Module> modules = listModulesUseCase.execute(kanbanItemId, user.getId());
         return ResponseEntity.ok(modules);
     }
 
@@ -44,7 +62,7 @@ public class CurriculumController {
                                                 @PathVariable Long kanbanItemId,
                                                 @PathVariable Long moduleId,
                                                 @RequestBody UpdateModuleDTO dto) {
-        Module module = curriculumService.updateModule(kanbanItemId, user.getId(), moduleId, dto);
+        Module module = updateModuleUseCase.execute(kanbanItemId, user.getId(), moduleId, dto);
         return ResponseEntity.ok(module);
     }
 
@@ -52,7 +70,7 @@ public class CurriculumController {
     public ResponseEntity<Void> deleteModule(@AuthenticationPrincipal User user,
                                               @PathVariable Long kanbanItemId,
                                               @PathVariable Long moduleId) {
-        curriculumService.deleteModule(kanbanItemId, user.getId(), moduleId);
+        deleteModuleUseCase.execute(kanbanItemId, user.getId(), moduleId);
         return ResponseEntity.noContent().build();
     }
 
@@ -63,7 +81,7 @@ public class CurriculumController {
                                                 @PathVariable Long kanbanItemId,
                                                 @PathVariable Long moduleId,
                                                 @Valid @RequestBody CreateLessonDTO dto) {
-        Lesson lesson = curriculumService.createLesson(kanbanItemId, user.getId(), moduleId, dto);
+        Lesson lesson = createLessonUseCase.execute(kanbanItemId, user.getId(), moduleId, dto);
         return ResponseEntity.ok(lesson);
     }
 
@@ -73,7 +91,7 @@ public class CurriculumController {
                                                 @PathVariable Long moduleId,
                                                 @PathVariable Long lessonId,
                                                 @RequestBody UpdateLessonDTO dto) {
-        Lesson lesson = curriculumService.updateLesson(kanbanItemId, user.getId(), moduleId, lessonId, dto);
+        Lesson lesson = updateLessonUseCase.execute(kanbanItemId, user.getId(), moduleId, lessonId, dto);
         return ResponseEntity.ok(lesson);
     }
 
@@ -82,7 +100,7 @@ public class CurriculumController {
                                               @PathVariable Long kanbanItemId,
                                               @PathVariable Long moduleId,
                                               @PathVariable Long lessonId) {
-        curriculumService.deleteLesson(kanbanItemId, user.getId(), moduleId, lessonId);
+        deleteLessonUseCase.execute(kanbanItemId, user.getId(), moduleId, lessonId);
         return ResponseEntity.noContent().build();
     }
 }
