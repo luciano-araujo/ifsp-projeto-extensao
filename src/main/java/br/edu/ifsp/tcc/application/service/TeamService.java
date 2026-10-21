@@ -71,6 +71,11 @@ public class TeamService {
         return admin;
     }
 
+    /** Deletes the team; its members, columns, cards and courses go with it (database cascade). */
+    public void deleteTeam(Team team) {
+        teamRepository.delete(team);
+    }
+
     public String personalTeamName(User user) {
         String firstName = user.getName() == null ? "" : user.getName().trim().split("\\s+")[0];
         return firstName.isEmpty() ? "Meu Estudio" : "Estúdio de " + firstName;

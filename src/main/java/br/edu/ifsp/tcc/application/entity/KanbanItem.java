@@ -35,7 +35,8 @@ public class KanbanItem {
 
     @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
+    // Author of the card; null after the author deletes the account (the card stays with the team)
+    @JoinColumn(name = "user_id")
     private User user;
 
     @JsonIgnore
