@@ -27,6 +27,7 @@ public class BoardController {
     private final CreateCardTaskUseCase createCardTaskUseCase;
     private final ToggleCardTaskUseCase toggleCardTaskUseCase;
     private final DeleteCardTaskUseCase deleteCardTaskUseCase;
+    private final ToggleIdeaVoteUseCase toggleIdeaVoteUseCase;
 
     public BoardController(GetBoardUseCase getBoardUseCase,
                            ListIdeasUseCase listIdeasUseCase,
@@ -40,7 +41,8 @@ public class BoardController {
                            DeleteColumnUseCase deleteColumnUseCase,
                            CreateCardTaskUseCase createCardTaskUseCase,
                            ToggleCardTaskUseCase toggleCardTaskUseCase,
-                           DeleteCardTaskUseCase deleteCardTaskUseCase) {
+                           DeleteCardTaskUseCase deleteCardTaskUseCase,
+                           ToggleIdeaVoteUseCase toggleIdeaVoteUseCase) {
         this.getBoardUseCase = getBoardUseCase;
         this.listIdeasUseCase = listIdeasUseCase;
         this.createIdeaUseCase = createIdeaUseCase;
@@ -54,6 +56,7 @@ public class BoardController {
         this.createCardTaskUseCase = createCardTaskUseCase;
         this.toggleCardTaskUseCase = toggleCardTaskUseCase;
         this.deleteCardTaskUseCase = deleteCardTaskUseCase;
+        this.toggleIdeaVoteUseCase = toggleIdeaVoteUseCase;
     }
 
     @GetMapping("/board")
@@ -73,6 +76,13 @@ public class BoardController {
                                                    @PathVariable Long teamId,
                                                    @Valid @RequestBody CreateCardDTO dto) {
         return ResponseEntity.ok(createIdeaUseCase.execute(teamId, user, dto));
+    }
+
+    @PostMapping("/cards/{cardId}/vote")
+    public ResponseEntity<IdeaVoteResponse> vote(@AuthenticationPrincipal User user,
+                                                 @PathVariable Long teamId,
+                                                 @PathVariable Long cardId) {
+        return ResponseEntity.ok(toggleIdeaVoteUseCase.execute(teamId, user, cardId));
     }
 
     // --- Cards ---

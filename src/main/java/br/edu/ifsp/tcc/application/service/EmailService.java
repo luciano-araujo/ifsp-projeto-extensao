@@ -27,4 +27,18 @@ public class EmailService {
         );
         mailSender.send(message);
     }
+
+    @Async
+    public void sendPasswordResetToken(String to, String name, String token) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(to);
+        message.setSubject("Creator Workbench - Recuperacao de senha");
+        message.setText(
+            "Ola " + name + ",\n\n" +
+            "Seu codigo para redefinir a senha e: " + token + "\n\n" +
+            "Este codigo expira em 10 minutos.\n\n" +
+            "Se voce nao pediu para trocar a senha, ignore este e-mail. Sua senha atual continua valendo."
+        );
+        mailSender.send(message);
+    }
 }

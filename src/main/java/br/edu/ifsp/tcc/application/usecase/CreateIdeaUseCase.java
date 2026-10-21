@@ -34,6 +34,7 @@ public class CreateIdeaUseCase {
         item.setDescription(dto.getDescription());
         item.setTargetAudience(blankToNull(dto.getTargetAudience()));
         item.setPedagogicalObjective(blankToNull(dto.getPedagogicalObjective()));
+        item.setTag(blankToNull(dto.getTag()));
         item.setState(KanbanItemState.IDEATION);
         item.setTeam(team);
         item.setUser(user);

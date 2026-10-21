@@ -41,6 +41,7 @@ class CreateIdeaUseCaseTest {
         CreateCardDTO dto = new CreateCardDTO();
         dto.setTitle(" Podcast sobre grafos ");
         dto.setTargetAudience("  ");
+        dto.setTag("Podcast");
 
         useCase.execute(10L, user(1L), dto);
 
@@ -50,6 +51,7 @@ class CreateIdeaUseCaseTest {
         assertEquals(KanbanItemState.IDEATION, saved.getValue().getState());
         assertSame(team, saved.getValue().getTeam());
         assertNull(saved.getValue().getTargetAudience());
+        assertEquals("Podcast", saved.getValue().getTag());
         assertNull(saved.getValue().getColumn());
     }
 

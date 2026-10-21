@@ -11,6 +11,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDate;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -83,6 +84,25 @@ class UpdateKanbanItemUseCaseTest {
         assertEquals("Novo titulo", result.getTitle());
         assertEquals(KanbanItemState.IN_PRODUCTION, result.getState());
         assertEquals(40, result.getProgress());
+    }
+
+    @Test
+    void execute_shouldSetAndClearDueDate() {
+        KanbanItem item = existingItem();
+        when(kanbanItemService.findByIdAndUserId(1L, 1L)).thenReturn(Optional.of(item));
+        when(kanbanItemService.save(item)).thenReturn(item);
+
+        UpdateKanbanItemDTO setDate = new UpdateKanbanItemDTO();
+        setDate.setDueDate("2026-11-30");
+        assertEquals(LocalDate.of(2026, 11, 30), useCase.execute(1L, 1L, setDate).getDueDate());
+
+        UpdateKanbanItemDTO keepDate = new UpdateKanbanItemDTO();
+        keepDate.setTitle("Outro titulo");
+        assertEquals(LocalDate.of(2026, 11, 30), useCase.execute(1L, 1L, keepDate).getDueDate());
+
+        UpdateKanbanItemDTO clearDate = new UpdateKanbanItemDTO();
+        clearDate.setDueDate("");
+        assertNull(useCase.execute(1L, 1L, clearDate).getDueDate());
     }
 
     @Test

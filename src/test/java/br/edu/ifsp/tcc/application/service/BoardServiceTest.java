@@ -6,6 +6,7 @@ import br.edu.ifsp.tcc.application.entity.KanbanItem;
 import br.edu.ifsp.tcc.application.entity.KanbanItemState;
 import br.edu.ifsp.tcc.application.repository.BoardColumnRepository;
 import br.edu.ifsp.tcc.application.repository.CardTaskRepository;
+import br.edu.ifsp.tcc.application.repository.IdeaVoteRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -25,6 +26,7 @@ class BoardServiceTest {
 
     @Mock private BoardColumnRepository boardColumnRepository;
     @Mock private CardTaskRepository cardTaskRepository;
+    @Mock private IdeaVoteRepository ideaVoteRepository;
     @Mock private KanbanItemService kanbanItemService;
     @InjectMocks private BoardService boardService;
 
@@ -59,7 +61,13 @@ class BoardServiceTest {
 
         KanbanItem idea = new KanbanItem();
         idea.setState(KanbanItemState.IDEATION);
-        assertEquals("IDEA", boardService.toCardResponse(idea, null, List.of()).getType());
+        idea.setTag("Podcast");
+        idea.setDueDate(java.time.LocalDate.of(2026, 11, 30));
+        CardResponse ideaResponse = boardService.toCardResponse(idea, null, List.of());
+        assertEquals("IDEA", ideaResponse.getType());
+        assertEquals("Podcast", ideaResponse.getTag());
+        assertEquals(java.time.LocalDate.of(2026, 11, 30), ideaResponse.getDueDate());
+        assertEquals(0, ideaResponse.getVotes());
     }
 
     @Test

@@ -5,6 +5,8 @@ import br.edu.ifsp.tcc.application.entity.KanbanItem;
 import br.edu.ifsp.tcc.application.service.KanbanItemService;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDate;
+
 @Component
 public class UpdateKanbanItemUseCase {
 
@@ -22,6 +24,9 @@ public class UpdateKanbanItemUseCase {
         if (dto.getDescription() != null) item.setDescription(dto.getDescription());
         if (dto.getTargetAudience() != null) item.setTargetAudience(dto.getTargetAudience());
         if (dto.getPedagogicalObjective() != null) item.setPedagogicalObjective(dto.getPedagogicalObjective());
+        if (dto.getDueDate() != null) {
+            item.setDueDate(dto.getDueDate().isEmpty() ? null : LocalDate.parse(dto.getDueDate()));
+        }
 
         // Team cards: position comes from the board (convert/move) and progress from the card tasks
         if (item.getTeam() == null) {

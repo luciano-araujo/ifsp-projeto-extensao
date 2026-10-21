@@ -6,12 +6,14 @@ import br.edu.ifsp.tcc.application.dto.CardTaskResponse;
 import br.edu.ifsp.tcc.application.entity.*;
 import br.edu.ifsp.tcc.application.repository.BoardColumnRepository;
 import br.edu.ifsp.tcc.application.repository.CardTaskRepository;
+import br.edu.ifsp.tcc.application.repository.IdeaVoteRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -23,13 +25,16 @@ public class BoardService {
 
     private final BoardColumnRepository boardColumnRepository;
     private final CardTaskRepository cardTaskRepository;
+    private final IdeaVoteRepository ideaVoteRepository;
     private final KanbanItemService kanbanItemService;
 
     public BoardService(BoardColumnRepository boardColumnRepository,
                         CardTaskRepository cardTaskRepository,
+                        IdeaVoteRepository ideaVoteRepository,
                         KanbanItemService kanbanItemService) {
         this.boardColumnRepository = boardColumnRepository;
         this.cardTaskRepository = cardTaskRepository;
+        this.ideaVoteRepository = ideaVoteRepository;
         this.kanbanItemService = kanbanItemService;
     }
 
@@ -112,6 +117,29 @@ public class BoardService {
         kanbanItemService.save(item);
     }
 
+    // --- Idea votes ---
+
+    public List<IdeaVote> findVotes(List<KanbanItem> items) {
+        if (items.isEmpty()) return List.of();
+        return ideaVoteRepository.findByKanbanItem_IdIn(items.stream().map(KanbanItem::getId).toList());
+    }
+
+    public Optional<IdeaVote> findVote(Long cardId, Long userId) {
+        return ideaVoteRepository.findByKanbanItem_IdAndUser_Id(cardId, userId);
+    }
+
+    public int countVotes(Long cardId) {
+        return ideaVoteRepository.countByKanbanItem_Id(cardId);
+    }
+
+    public IdeaVote saveVote(IdeaVote vote) {
+        return ideaVoteRepository.save(vote);
+    }
+
+    public void deleteVote(IdeaVote vote) {
+        ideaVoteRepository.delete(vote);
+    }
+
     public static int progressOf(List<CardTask> tasks) {
         if (tasks.isEmpty()) return 0;
         long done = tasks.stream().filter(t -> Boolean.TRUE.equals(t.getCompleted())).count();
@@ -126,7 +154,8 @@ public class BoardService {
         return new CardResponse(item.getId(), item.getTeamId(), item.getTitle(), item.getDescription(),
                 idea ? "IDEA" : "PROJECT", columnId, item.getSortOrder() != null ? item.getSortOrder() : 0,
                 progressOf(tasks), tasks.size(), done, item.getTargetAudience(), item.getPedagogicalObjective(),
-                tasks.stream().map(this::toTaskResponse).toList(), item.getCreatedAt(), item.getUpdatedAt());
+                tasks.stream().map(this::toTaskResponse).toList(), item.getTag(), item.getDueDate(), 0, false,
+                item.getCreatedAt(), item.getUpdatedAt());
     }
 
     public CardTaskResponse toTaskResponse(CardTask task) {
