@@ -1,12 +1,8 @@
 package br.edu.ifsp.tcc.application.controller;
 
 import br.edu.ifsp.tcc.application.dto.*;
-import br.edu.ifsp.tcc.application.dto.TeamResponses.BoardColumnResponse;
-import br.edu.ifsp.tcc.application.dto.TeamResponses.BoardResponse;
-import br.edu.ifsp.tcc.application.dto.TeamResponses.CardResponse;
-import br.edu.ifsp.tcc.application.dto.TeamResponses.CardTaskResponse;
 import br.edu.ifsp.tcc.application.entity.User;
-import br.edu.ifsp.tcc.application.service.BoardService;
+import br.edu.ifsp.tcc.application.usecase.*;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -18,29 +14,65 @@ import java.util.List;
 @RequestMapping("/api/v1/teams/{teamId}")
 public class BoardController {
 
-    private final BoardService boardService;
+    private final GetBoardUseCase getBoardUseCase;
+    private final ListIdeasUseCase listIdeasUseCase;
+    private final CreateIdeaUseCase createIdeaUseCase;
+    private final CreateCardUseCase createCardUseCase;
+    private final ConvertIdeaUseCase convertIdeaUseCase;
+    private final MoveCardUseCase moveCardUseCase;
+    private final DeleteCardUseCase deleteCardUseCase;
+    private final CreateColumnUseCase createColumnUseCase;
+    private final UpdateColumnUseCase updateColumnUseCase;
+    private final DeleteColumnUseCase deleteColumnUseCase;
+    private final CreateCardTaskUseCase createCardTaskUseCase;
+    private final ToggleCardTaskUseCase toggleCardTaskUseCase;
+    private final DeleteCardTaskUseCase deleteCardTaskUseCase;
 
-    public BoardController(BoardService boardService) {
-        this.boardService = boardService;
+    public BoardController(GetBoardUseCase getBoardUseCase,
+                           ListIdeasUseCase listIdeasUseCase,
+                           CreateIdeaUseCase createIdeaUseCase,
+                           CreateCardUseCase createCardUseCase,
+                           ConvertIdeaUseCase convertIdeaUseCase,
+                           MoveCardUseCase moveCardUseCase,
+                           DeleteCardUseCase deleteCardUseCase,
+                           CreateColumnUseCase createColumnUseCase,
+                           UpdateColumnUseCase updateColumnUseCase,
+                           DeleteColumnUseCase deleteColumnUseCase,
+                           CreateCardTaskUseCase createCardTaskUseCase,
+                           ToggleCardTaskUseCase toggleCardTaskUseCase,
+                           DeleteCardTaskUseCase deleteCardTaskUseCase) {
+        this.getBoardUseCase = getBoardUseCase;
+        this.listIdeasUseCase = listIdeasUseCase;
+        this.createIdeaUseCase = createIdeaUseCase;
+        this.createCardUseCase = createCardUseCase;
+        this.convertIdeaUseCase = convertIdeaUseCase;
+        this.moveCardUseCase = moveCardUseCase;
+        this.deleteCardUseCase = deleteCardUseCase;
+        this.createColumnUseCase = createColumnUseCase;
+        this.updateColumnUseCase = updateColumnUseCase;
+        this.deleteColumnUseCase = deleteColumnUseCase;
+        this.createCardTaskUseCase = createCardTaskUseCase;
+        this.toggleCardTaskUseCase = toggleCardTaskUseCase;
+        this.deleteCardTaskUseCase = deleteCardTaskUseCase;
     }
 
     @GetMapping("/board")
     public ResponseEntity<BoardResponse> board(@AuthenticationPrincipal User user, @PathVariable Long teamId) {
-        return ResponseEntity.ok(boardService.getBoard(teamId, user.getId()));
+        return ResponseEntity.ok(getBoardUseCase.execute(teamId, user.getId()));
     }
 
     // --- Ideas inbox ---
 
     @GetMapping("/ideas")
     public ResponseEntity<List<CardResponse>> ideas(@AuthenticationPrincipal User user, @PathVariable Long teamId) {
-        return ResponseEntity.ok(boardService.listIdeas(teamId, user.getId()));
+        return ResponseEntity.ok(listIdeasUseCase.execute(teamId, user.getId()));
     }
 
     @PostMapping("/ideas")
     public ResponseEntity<CardResponse> createIdea(@AuthenticationPrincipal User user,
                                                    @PathVariable Long teamId,
                                                    @Valid @RequestBody CreateCardDTO dto) {
-        return ResponseEntity.ok(boardService.createIdea(teamId, user, dto));
+        return ResponseEntity.ok(createIdeaUseCase.execute(teamId, user, dto));
     }
 
     // --- Cards ---
@@ -49,7 +81,7 @@ public class BoardController {
     public ResponseEntity<CardResponse> createCard(@AuthenticationPrincipal User user,
                                                    @PathVariable Long teamId,
                                                    @Valid @RequestBody CreateCardDTO dto) {
-        return ResponseEntity.ok(boardService.createCard(teamId, user, dto));
+        return ResponseEntity.ok(createCardUseCase.execute(teamId, user, dto));
     }
 
     @PostMapping("/cards/{cardId}/convert")
@@ -58,7 +90,7 @@ public class BoardController {
                                                 @PathVariable Long cardId,
                                                 @RequestParam(required = false) Long targetColumnId,
                                                 @RequestBody(required = false) ConvertCardDTO dto) {
-        return ResponseEntity.ok(boardService.convertIdea(teamId, user.getId(), cardId, targetColumnId, dto));
+        return ResponseEntity.ok(convertIdeaUseCase.execute(teamId, user.getId(), cardId, targetColumnId, dto));
     }
 
     @PatchMapping("/cards/{cardId}/move")
@@ -66,14 +98,14 @@ public class BoardController {
                                              @PathVariable Long teamId,
                                              @PathVariable Long cardId,
                                              @Valid @RequestBody MoveCardDTO dto) {
-        return ResponseEntity.ok(boardService.moveCard(teamId, user.getId(), cardId, dto.getColumnId(), dto.getSortOrder()));
+        return ResponseEntity.ok(moveCardUseCase.execute(teamId, user.getId(), cardId, dto));
     }
 
     @DeleteMapping("/cards/{cardId}")
     public ResponseEntity<Void> deleteCard(@AuthenticationPrincipal User user,
                                            @PathVariable Long teamId,
                                            @PathVariable Long cardId) {
-        boardService.deleteCard(teamId, user.getId(), cardId);
+        deleteCardUseCase.execute(teamId, user.getId(), cardId);
         return ResponseEntity.noContent().build();
     }
 
@@ -83,7 +115,7 @@ public class BoardController {
     public ResponseEntity<BoardColumnResponse> addColumn(@AuthenticationPrincipal User user,
                                                          @PathVariable Long teamId,
                                                          @Valid @RequestBody BoardColumnDTO dto) {
-        return ResponseEntity.ok(boardService.addColumn(teamId, user.getId(), dto));
+        return ResponseEntity.ok(createColumnUseCase.execute(teamId, user.getId(), dto));
     }
 
     @PatchMapping("/columns/{columnId}")
@@ -91,7 +123,7 @@ public class BoardController {
                                                             @PathVariable Long teamId,
                                                             @PathVariable Long columnId,
                                                             @Valid @RequestBody BoardColumnDTO dto) {
-        return ResponseEntity.ok(boardService.updateColumn(teamId, user.getId(), columnId, dto));
+        return ResponseEntity.ok(updateColumnUseCase.execute(teamId, user.getId(), columnId, dto));
     }
 
     @DeleteMapping("/columns/{columnId}")
@@ -99,7 +131,7 @@ public class BoardController {
                                              @PathVariable Long teamId,
                                              @PathVariable Long columnId,
                                              @RequestParam(required = false) Long targetColumnId) {
-        boardService.deleteColumn(teamId, user.getId(), columnId, targetColumnId);
+        deleteColumnUseCase.execute(teamId, user.getId(), columnId, targetColumnId);
         return ResponseEntity.noContent().build();
     }
 
@@ -110,7 +142,7 @@ public class BoardController {
                                                        @PathVariable Long teamId,
                                                        @PathVariable Long cardId,
                                                        @Valid @RequestBody CreateTaskDTO dto) {
-        return ResponseEntity.ok(boardService.createTask(teamId, user.getId(), cardId, dto.getTitle()));
+        return ResponseEntity.ok(createCardTaskUseCase.execute(teamId, user.getId(), cardId, dto));
     }
 
     @PatchMapping("/cards/{cardId}/tasks/{taskId}/toggle")
@@ -118,7 +150,7 @@ public class BoardController {
                                                        @PathVariable Long teamId,
                                                        @PathVariable Long cardId,
                                                        @PathVariable Long taskId) {
-        return ResponseEntity.ok(boardService.toggleTask(teamId, user.getId(), cardId, taskId));
+        return ResponseEntity.ok(toggleCardTaskUseCase.execute(teamId, user.getId(), cardId, taskId));
     }
 
     @DeleteMapping("/cards/{cardId}/tasks/{taskId}")
@@ -126,7 +158,7 @@ public class BoardController {
                                            @PathVariable Long teamId,
                                            @PathVariable Long cardId,
                                            @PathVariable Long taskId) {
-        boardService.deleteTask(teamId, user.getId(), cardId, taskId);
+        deleteCardTaskUseCase.execute(teamId, user.getId(), cardId, taskId);
         return ResponseEntity.noContent().build();
     }
 }
