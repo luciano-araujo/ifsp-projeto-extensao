@@ -13,7 +13,9 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -39,19 +41,20 @@ class ConfirmRegistrationUseCaseTest {
         return request;
     }
 
-    private RegistrationToken token(String email, LocalDateTime expiresAt) {
+    private RegistrationToken token(String email, LocalDateTime expiresAt, int attempts) {
         RegistrationToken token = new RegistrationToken();
         token.setEmail(email);
         token.setName("New User");
         token.setToken("123456");
         token.setExpiresAt(expiresAt);
+        token.setAttempts(attempts);
         return token;
     }
 
     @Test
     void execute_shouldCreateUserWithEncodedPasswordDeleteTokenAndLogIn() {
-        when(registrationTokenService.findByEmailAndToken("new@example.com", "123456"))
-                .thenReturn(Optional.of(token("new@example.com", LocalDateTime.now().plusMinutes(5))));
+        when(registrationTokenService.findLatestByEmail("new@example.com"))
+                .thenReturn(Optional.of(token("new@example.com", LocalDateTime.now().plusMinutes(5), 0)));
         when(passwordEncoder.encode("mypassword")).thenReturn("encoded");
         when(userService.save(any(User.class))).thenAnswer(inv -> {
             User u = inv.getArgument(0);
@@ -74,8 +77,8 @@ class ConfirmRegistrationUseCaseTest {
     }
 
     @Test
-    void execute_shouldThrowWhenTokenNotFound() {
-        when(registrationTokenService.findByEmailAndToken("x@x.com", "000000")).thenReturn(Optional.empty());
+    void execute_shouldThrowWhenNoCodeWasRequested() {
+        when(registrationTokenService.findLatestByEmail("x@x.com")).thenReturn(Optional.empty());
 
         RuntimeException ex = assertThrows(RuntimeException.class,
                 () -> useCase.execute(request("x@x.com", "000000", "pass")));
@@ -85,14 +88,46 @@ class ConfirmRegistrationUseCaseTest {
 
     @Test
     void execute_shouldThrowAndDeleteWhenTokenExpired() {
-        RegistrationToken expired = token("x@x.com", LocalDateTime.now().minusMinutes(1));
-        when(registrationTokenService.findByEmailAndToken("x@x.com", "123456")).thenReturn(Optional.of(expired));
+        RegistrationToken expired = token("x@x.com", LocalDateTime.now().minusMinutes(1), 0);
+        when(registrationTokenService.findLatestByEmail("x@x.com")).thenReturn(Optional.of(expired));
 
         RuntimeException ex = assertThrows(RuntimeException.class,
                 () -> useCase.execute(request("x@x.com", "123456", "pass")));
         assertTrue(ex.getMessage().contains("expirado"));
 
         verify(registrationTokenService).delete(expired);
+        verify(userService, never()).save(any());
+    }
+
+    // BE-43: wrong codes are counted and the code is discarded after MAX_ATTEMPTS
+
+    @Test
+    void execute_shouldCountWrongCodeAndNotCreateAccount() {
+        RegistrationToken current = token("x@x.com", LocalDateTime.now().plusMinutes(5), 2);
+        when(registrationTokenService.findLatestByEmail("x@x.com")).thenReturn(Optional.of(current));
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> useCase.execute(request("x@x.com", "000000", "pass")));
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        assertTrue(ex.getReason().contains("invalido"));
+        assertEquals(3, current.getAttempts());
+        verify(registrationTokenService).save(current);
+        verify(userService, never()).save(any());
+    }
+
+    @Test
+    void execute_shouldDiscardCodeAfterMaxAttempts() {
+        RegistrationToken current = token("x@x.com", LocalDateTime.now().plusMinutes(5),
+                ConfirmRegistrationUseCase.MAX_ATTEMPTS - 1);
+        when(registrationTokenService.findLatestByEmail("x@x.com")).thenReturn(Optional.of(current));
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> useCase.execute(request("x@x.com", "000000", "pass")));
+
+        assertTrue(ex.getReason().contains("Muitas tentativas"));
+        verify(registrationTokenService).deleteByEmail("x@x.com");
+        verify(registrationTokenService, never()).save(any());
         verify(userService, never()).save(any());
     }
 }

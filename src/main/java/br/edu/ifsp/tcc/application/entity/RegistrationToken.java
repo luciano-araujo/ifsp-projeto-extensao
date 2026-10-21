@@ -20,6 +20,9 @@ public class RegistrationToken {
     @Column(nullable = false, length = 6)
     private String token;
 
+    @Column(nullable = false)
+    private Integer attempts = 0;
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
@@ -46,6 +49,9 @@ public class RegistrationToken {
 
     public String getToken() { return token; }
     public void setToken(String token) { this.token = token; }
+
+    public Integer getAttempts() { return attempts; }
+    public void setAttempts(Integer attempts) { this.attempts = attempts; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
 

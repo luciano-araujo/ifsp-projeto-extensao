@@ -7,12 +7,17 @@ import br.edu.ifsp.tcc.application.entity.User;
 import br.edu.ifsp.tcc.application.service.JwtService;
 import br.edu.ifsp.tcc.application.service.RegistrationTokenService;
 import br.edu.ifsp.tcc.application.service.UserService;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 @Component
 public class ConfirmRegistrationUseCase {
+
+    /** Wrong codes allowed before the code is discarded (BE-43: protects the 6-digit code from guessing). */
+    public static final int MAX_ATTEMPTS = 5;
 
     private final RegistrationTokenService registrationTokenService;
     private final UserService userService;
@@ -30,15 +35,27 @@ public class ConfirmRegistrationUseCase {
     }
 
     /** Validates the e-mail code, creates the account with the encoded password and logs the user in. */
-    @Transactional
+    // The attempt counter must be saved even when the code is wrong, so errors do not roll back
+    @Transactional(noRollbackFor = ResponseStatusException.class)
     public LoginResponse execute(ConfirmRegistrationRequest request) {
         String email = request.getEmail();
-        RegistrationToken token = registrationTokenService.findByEmailAndToken(email, request.getToken())
-                .orElseThrow(() -> new RuntimeException("Codigo de verificacao invalido."));
+        RegistrationToken token = registrationTokenService.findLatestByEmail(email)
+                .orElseThrow(() -> invalid("Codigo de verificacao invalido."));
 
         if (token.isExpired()) {
             registrationTokenService.delete(token);
-            throw new RuntimeException("Codigo de verificacao expirado. Solicite um novo.");
+            throw invalid("Codigo de verificacao expirado. Solicite um novo.");
+        }
+
+        if (!token.getToken().equals(request.getToken())) {
+            int attempts = token.getAttempts() + 1;
+            if (attempts >= MAX_ATTEMPTS) {
+                registrationTokenService.deleteByEmail(email);
+                throw invalid("Muitas tentativas. Solicite um novo codigo de verificacao.");
+            }
+            token.setAttempts(attempts);
+            registrationTokenService.save(token);
+            throw invalid("Codigo de verificacao invalido.");
         }
 
         User user = new User();
@@ -50,5 +67,9 @@ public class ConfirmRegistrationUseCase {
         registrationTokenService.deleteByEmail(email);
 
         return new LoginResponse(jwtService.generateToken(saved), saved.getId(), saved.getName(), saved.getEmail());
+    }
+
+    private static ResponseStatusException invalid(String message) {
+        return new ResponseStatusException(HttpStatus.BAD_REQUEST, message);
     }
 }

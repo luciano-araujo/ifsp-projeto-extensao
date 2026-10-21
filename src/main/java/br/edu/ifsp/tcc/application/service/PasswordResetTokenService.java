@@ -4,6 +4,7 @@ import br.edu.ifsp.tcc.application.entity.PasswordResetToken;
 import br.edu.ifsp.tcc.application.repository.PasswordResetTokenRepository;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 @Service
@@ -25,5 +26,10 @@ public class PasswordResetTokenService {
 
     public void deleteByEmail(String email) {
         passwordResetTokenRepository.deleteByEmail(email);
+    }
+
+    /** Removes every code that expired before the given moment; returns how many were removed. */
+    public int deleteExpired(LocalDateTime now) {
+        return passwordResetTokenRepository.deleteExpired(now);
     }
 }

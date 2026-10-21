@@ -4,6 +4,7 @@ import br.edu.ifsp.tcc.application.entity.RegistrationToken;
 import br.edu.ifsp.tcc.application.repository.RegistrationTokenRepository;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 @Service
@@ -19,8 +20,8 @@ public class RegistrationTokenService {
         return registrationTokenRepository.save(token);
     }
 
-    public Optional<RegistrationToken> findByEmailAndToken(String email, String token) {
-        return registrationTokenRepository.findByEmailAndToken(email, token);
+    public Optional<RegistrationToken> findLatestByEmail(String email) {
+        return registrationTokenRepository.findFirstByEmailOrderByCreatedAtDesc(email);
     }
 
     public void deleteByEmail(String email) {
@@ -29,5 +30,10 @@ public class RegistrationTokenService {
 
     public void delete(RegistrationToken token) {
         registrationTokenRepository.delete(token);
+    }
+
+    /** Removes every code that expired before the given moment; returns how many were removed. */
+    public int deleteExpired(LocalDateTime now) {
+        return registrationTokenRepository.deleteExpired(now);
     }
 }
