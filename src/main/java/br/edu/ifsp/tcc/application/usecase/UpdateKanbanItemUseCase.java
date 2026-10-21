@@ -20,10 +20,14 @@ public class UpdateKanbanItemUseCase {
 
         if (dto.getTitle() != null) item.setTitle(dto.getTitle());
         if (dto.getDescription() != null) item.setDescription(dto.getDescription());
-        if (dto.getState() != null) item.setState(dto.getState());
         if (dto.getTargetAudience() != null) item.setTargetAudience(dto.getTargetAudience());
         if (dto.getPedagogicalObjective() != null) item.setPedagogicalObjective(dto.getPedagogicalObjective());
-        if (dto.getProgress() != null) item.setProgress(dto.getProgress());
+
+        // Team cards: position comes from the board (convert/move) and progress from the card tasks
+        if (item.getTeam() == null) {
+            if (dto.getState() != null) item.setState(dto.getState());
+            if (dto.getProgress() != null) item.setProgress(dto.getProgress());
+        }
 
         return kanbanItemService.save(item);
     }

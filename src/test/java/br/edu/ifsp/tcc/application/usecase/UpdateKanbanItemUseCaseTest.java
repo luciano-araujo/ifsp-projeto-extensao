@@ -3,6 +3,7 @@ package br.edu.ifsp.tcc.application.usecase;
 import br.edu.ifsp.tcc.application.dto.UpdateKanbanItemDTO;
 import br.edu.ifsp.tcc.application.entity.KanbanItem;
 import br.edu.ifsp.tcc.application.entity.KanbanItemState;
+import br.edu.ifsp.tcc.application.entity.Team;
 import br.edu.ifsp.tcc.application.service.KanbanItemService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -61,6 +62,27 @@ class UpdateKanbanItemUseCaseTest {
         KanbanItem result = useCase.execute(1L, 1L, dto);
 
         assertEquals(KanbanItemState.DONE, result.getState());
+    }
+
+    @Test
+    void execute_shouldIgnoreManualStateAndProgressOnTeamCard() {
+        KanbanItem item = existingItem();
+        item.setState(KanbanItemState.IN_PRODUCTION);
+        item.setProgress(40);
+        item.setTeam(new Team());
+        when(kanbanItemService.findByIdAndUserId(1L, 1L)).thenReturn(Optional.of(item));
+        when(kanbanItemService.save(item)).thenReturn(item);
+
+        UpdateKanbanItemDTO dto = new UpdateKanbanItemDTO();
+        dto.setTitle("Novo titulo");
+        dto.setState(KanbanItemState.IDEATION);
+        dto.setProgress(100);
+
+        KanbanItem result = useCase.execute(1L, 1L, dto);
+
+        assertEquals("Novo titulo", result.getTitle());
+        assertEquals(KanbanItemState.IN_PRODUCTION, result.getState());
+        assertEquals(40, result.getProgress());
     }
 
     @Test
