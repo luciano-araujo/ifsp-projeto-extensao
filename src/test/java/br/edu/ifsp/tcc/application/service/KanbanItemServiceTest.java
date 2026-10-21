@@ -62,9 +62,9 @@ class KanbanItemServiceTest {
     }
 
     @Test
-    void findByIdAndUserId_shouldReturnItemWhenOwned() {
+    void findByIdAndUserId_shouldReturnItemWhenOwnerOrTeamMember() {
         KanbanItem item = createItem();
-        when(kanbanItemRepository.findByIdAndUser_Id(1L, 1L)).thenReturn(Optional.of(item));
+        when(kanbanItemRepository.findAccessible(1L, 1L)).thenReturn(Optional.of(item));
 
         Optional<KanbanItem> result = kanbanItemService.findByIdAndUserId(1L, 1L);
 
@@ -72,8 +72,8 @@ class KanbanItemServiceTest {
     }
 
     @Test
-    void findByIdAndUserId_shouldReturnEmptyWhenNotOwned() {
-        when(kanbanItemRepository.findByIdAndUser_Id(1L, 99L)).thenReturn(Optional.empty());
+    void findByIdAndUserId_shouldReturnEmptyWhenNotOwnerNorTeamMember() {
+        when(kanbanItemRepository.findAccessible(1L, 99L)).thenReturn(Optional.empty());
 
         Optional<KanbanItem> result = kanbanItemService.findByIdAndUserId(1L, 99L);
 

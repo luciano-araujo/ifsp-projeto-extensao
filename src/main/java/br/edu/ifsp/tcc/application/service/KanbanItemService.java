@@ -29,8 +29,24 @@ public class KanbanItemService {
         return kanbanItemRepository.findByUser_IdAndState(userId, state);
     }
 
+    /**
+     * Returns the item when the user owns it or is a member of the item's team.
+     * Every kanban, script and curriculum route goes through this check.
+     */
     public Optional<KanbanItem> findByIdAndUserId(Long id, Long userId) {
-        return kanbanItemRepository.findByIdAndUser_Id(id, userId);
+        return kanbanItemRepository.findAccessible(id, userId);
+    }
+
+    public List<KanbanItem> findByTeamId(Long teamId) {
+        return kanbanItemRepository.findByTeam_IdOrderBySortOrderAscIdAsc(teamId);
+    }
+
+    public Optional<KanbanItem> findByIdAndTeamId(Long id, Long teamId) {
+        return kanbanItemRepository.findByIdAndTeam_Id(id, teamId);
+    }
+
+    public List<KanbanItem> findWithoutTeamByUserId(Long userId) {
+        return kanbanItemRepository.findByUser_IdAndTeamIsNull(userId);
     }
 
     public void deleteById(Long id) {

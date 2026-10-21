@@ -37,6 +37,19 @@ public class KanbanItem {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    @JsonIgnore
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "team_id")
+    private Team team;
+
+    @JsonIgnore
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "column_id")
+    private BoardColumn column;
+
+    @Column(name = "sort_order", nullable = false)
+    private Integer sortOrder = 0;
+
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'")
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
@@ -81,6 +94,19 @@ public class KanbanItem {
     public void setUser(User user) { this.user = user; }
 
     public Long getUserId() { return user != null ? user.getId() : null; }
+
+    public Team getTeam() { return team; }
+    public void setTeam(Team team) { this.team = team; }
+
+    public Long getTeamId() { return team != null ? team.getId() : null; }
+
+    public BoardColumn getColumn() { return column; }
+    public void setColumn(BoardColumn column) { this.column = column; }
+
+    public Long getColumnId() { return column != null ? column.getId() : null; }
+
+    public Integer getSortOrder() { return sortOrder; }
+    public void setSortOrder(Integer sortOrder) { this.sortOrder = sortOrder; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
