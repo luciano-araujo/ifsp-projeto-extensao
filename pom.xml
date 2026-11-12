@@ -167,4 +167,37 @@
 			</plugin>
 		</plugins>
 	</build>
+
+	<!--
+		Integration tests (*IT.java, tag "integration") run against the LOCAL MySQL, database db_tcc_it:
+		  .\mvnw.cmd verify -Pit        (DB_PASSWORD must be set to the MySQL root password)
+		Without -Pit nothing here runs, so the plain unit test run needs no database.
+	-->
+	<profiles>
+		<profile>
+			<id>it</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-failsafe-plugin</artifactId>
+						<configuration>
+							<includes>
+								<include>**/*IT.java</include>
+							</includes>
+							<runOrder>alphabetical</runOrder>
+						</configuration>
+						<executions>
+							<execution>
+								<goals>
+									<goal>integration-test</goal>
+									<goal>verify</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+	</profiles>
 </project>
