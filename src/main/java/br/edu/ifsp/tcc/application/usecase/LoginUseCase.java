@@ -5,8 +5,10 @@ import br.edu.ifsp.tcc.application.dto.LoginResponse;
 import br.edu.ifsp.tcc.application.entity.User;
 import br.edu.ifsp.tcc.application.service.JwtService;
 import br.edu.ifsp.tcc.application.service.UserService;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
+import org.springframework.web.server.ResponseStatusException;
 
 @Component
 public class LoginUseCase {
@@ -23,10 +25,10 @@ public class LoginUseCase {
 
     public LoginResponse execute(LoginRequest request) {
         User user = userService.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("Credenciais invalidas."));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Credenciais inválidas."));
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            throw new RuntimeException("Credenciais invalidas.");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Credenciais inválidas.");
         }
 
         return new LoginResponse(jwtService.generateToken(user), user.getId(), user.getName(), user.getEmail());

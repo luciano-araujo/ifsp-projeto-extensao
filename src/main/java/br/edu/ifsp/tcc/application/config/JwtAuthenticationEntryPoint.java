@@ -22,6 +22,6 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         objectMapper.writeValue(response.getOutputStream(),
-                Map.of("message", "Token ausente ou invalido. Faca login novamente."));
+                Map.of("message", "Token ausente ou inválido. Faça login novamente."));
     }
 }

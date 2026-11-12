@@ -11,6 +11,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -53,10 +55,25 @@ class UpdateColumnUseCaseTest {
     }
 
     @Test
-    void execute_shouldKeepNameAndOrderWhenNotGiven() {
+    void execute_shouldRejectBlankNameWhenSent() {
         BoardColumn column = column();
         BoardColumnDTO dto = new BoardColumnDTO();
         dto.setName(" ");
+        when(boardService.findColumn(10L, 5L)).thenReturn(column);
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> useCase.execute(10L, 1L, 5L, dto));
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        assertEquals("O nome da coluna não pode ficar vazio.", ex.getReason());
+        assertEquals("Roteiro", column.getName());
+        verify(boardService, never()).saveColumn(any());
+    }
+
+    @Test
+    void execute_shouldKeepNameAndOrderWhenNotGiven() {
+        BoardColumn column = column();
+        BoardColumnDTO dto = new BoardColumnDTO();
         when(boardService.findColumn(10L, 5L)).thenReturn(column);
         when(boardService.saveColumn(column)).thenReturn(column);
         when(boardService.toColumnResponse(any(BoardColumn.class), any())).thenReturn(mock(BoardColumnResponse.class));

@@ -8,10 +8,10 @@ import br.edu.ifsp.tcc.application.entity.KanbanItemState;
 import br.edu.ifsp.tcc.application.entity.TeamMember;
 import br.edu.ifsp.tcc.application.entity.TeamRole;
 import br.edu.ifsp.tcc.application.entity.User;
-import org.junit.jupiter.api.BeforeEach;
 import br.edu.ifsp.tcc.application.service.BoardService;
 import br.edu.ifsp.tcc.application.service.KanbanItemService;
 import br.edu.ifsp.tcc.application.service.TeamService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -124,5 +124,40 @@ class ConvertIdeaUseCaseTest {
 
         assertThrows(ResponseStatusException.class, () -> useCase.execute(10L, 1L, 1L, null, null));
         verify(kanbanItemService, never()).save(any());
+    }
+
+    @Test
+    void execute_shouldRejectTooShortEffectiveAudienceOrObjective() {
+        KanbanItem idea = idea();
+        idea.setTargetAudience("ab");
+        idea.setPedagogicalObjective("Entender BFS");
+        when(boardService.findCard(10L, 1L)).thenReturn(idea);
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> useCase.execute(10L, 1L, 1L, null, null));
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        assertEquals("Informe o público-alvo com pelo menos 3 caracteres.", ex.getReason());
+
+        ConvertCardDTO dto = new ConvertCardDTO();
+        dto.setTargetAudience("Iniciantes");
+        dto.setPedagogicalObjective("  curto  ");
+        ResponseStatusException ex2 = assertThrows(ResponseStatusException.class,
+                () -> useCase.execute(10L, 1L, 1L, null, dto));
+        assertEquals("Informe o objetivo pedagógico com pelo menos 10 caracteres.", ex2.getReason());
+        assertEquals(KanbanItemState.IDEATION, idea.getState());
+        verify(kanbanItemService, never()).save(any());
+    }
+
+    @Test
+    void execute_shouldRejectIdeaWithBlankStoredTitle() {
+        KanbanItem idea = idea();
+        idea.setTitle("  ");
+        idea.setTargetAudience("Iniciantes");
+        idea.setPedagogicalObjective("Entender BFS");
+        when(boardService.findCard(10L, 1L)).thenReturn(idea);
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> useCase.execute(10L, 1L, 1L, null, null));
+        assertEquals("O título não pode ficar vazio.", ex.getReason());
     }
 }

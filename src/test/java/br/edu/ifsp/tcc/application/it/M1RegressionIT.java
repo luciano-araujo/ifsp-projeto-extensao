@@ -2,7 +2,6 @@ package br.edu.ifsp.tcc.application.it;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 
 import java.util.List;
 import java.util.Map;
@@ -10,27 +9,26 @@ import java.util.Map;
 import static br.edu.ifsp.tcc.application.it.Api.map;
 import static org.junit.jupiter.api.Assertions.*;
 
-/**
- * Bugs found by QA on M1 (release/v3 @ 2f660c6), written as the EXPECTED behaviour. They fail today, so they are
- * skipped in the normal run; run them with  .\mvnw.cmd verify -Pit -Dit.knownBugs=true  and remove the condition
- * of a test when its bug is fixed.
- */
-@EnabledIfSystemProperty(named = "it.knownBugs", matches = "true")
-class KnownBugsIT extends AbstractIT {
+/** Regression tests for the bugs QA found on M1 (release/v3 @ 2f660c6); fixed on v3/be-m1-fixes. */
+class M1RegressionIT extends AbstractIT {
 
     @Test
-    @DisplayName("BUG-01 Unknown route -> 404, wrong method -> 405, wrong media type -> 415 (today all answer 401 even with a valid token)")
+    @DisplayName("BUG-01 Unknown route -> 404, wrong method -> 405, wrong media type -> 415 (used to answer 401 even with a valid token)")
     void errorDispatchIsNot401() {
         Team team = newTeam();
         assertEquals(404, api.get("/api/v1/nope", ana.token()).status());
         assertEquals(404, api.get("/api/v1/kanban", ana.token()).status(), "removed legacy list route");
         assertEquals(405, api.patch(team.path() + "/board", ana.token(), map()).status());
         assertEquals(405, api.delete(team.path() + "/tags", ana.token()).status());
-        assertEquals(415, api.send("POST", team.path() + "/tags", ana.token(), null, Map.of("Content-Type", "text/plain")).status());
+        Resp unsupported = api.send("POST", team.path() + "/tags", ana.token(), null, Map.of("Content-Type", "text/plain"));
+        assertEquals(415, unsupported.status());
+        assertEquals("Tipo de conteúdo não suportado.", unsupported.text("message"));
+        assertEquals("Rota não encontrada.", api.get("/api/v1/nope", ana.token()).text("message"));
+        assertEquals("Token ausente ou inválido. Faça login novamente.", api.get("/api/v1/teams", null).text("message"));
     }
 
     @Test
-    @DisplayName("BUG-02 Over-long title/audience/task title -> 400 validation message (today 409 'Registro duplicado')")
+    @DisplayName("BUG-02 Over-long title/audience/task title -> 400 validation message (used to be 409 'Registro duplicado')")
     void tooLongIs400() {
         Team team = newTeam();
         long card = projectId(team, "limite");
@@ -65,10 +63,35 @@ class KnownBugsIT extends AbstractIT {
         assertEquals(400, api.put("/api/v1/kanban/" + card, ana.token(), map("title", "")).status());
         assertEquals(400, api.put("/api/v1/kanban/" + card, ana.token(), map("title", "   ")).status());
         assertEquals(400, api.put("/api/v1/kanban/" + card, ana.token(), map("targetAudience", "")).status());
+        assertEquals(400, api.put("/api/v1/kanban/" + card, ana.token(), map("targetAudience", "ab")).status());
         assertEquals(400, api.put("/api/v1/kanban/" + card, ana.token(), map("pedagogicalObjective", "  ")).status());
+        assertEquals(400, api.put("/api/v1/kanban/" + card, ana.token(), map("pedagogicalObjective", "curto")).status());
+        assertEquals(200, api.put("/api/v1/kanban/" + card, ana.token(), map("description", "só a descrição")).status());
         Resp now = api.get("/api/v1/kanban/" + card, ana.token());
         assertEquals("rn01", now.text("title"));
         assertEquals("Estudantes iniciantes", now.text("targetAudience"));
+    }
+
+    @Test
+    @DisplayName("RN01 minimums (audience >= 3, objective >= 10 after trim) on create-project and convert; ideas stay optional")
+    void rn01MinimumsOnCreateAndConvert() {
+        Team team = newTeam();
+        assertEquals(400, api.post(team.path() + "/cards", ana.token(), map("title", "p",
+                "targetAudience", "ab", "pedagogicalObjective", "Objetivo longo")).status());
+        assertEquals(400, api.post(team.path() + "/cards", ana.token(), map("title", "p",
+                "targetAudience", "Alunos", "pedagogicalObjective", "  curto  ")).status());
+        assertEquals(400, api.post(team.path() + "/cards", ana.token(), map("title", "  ",
+                "targetAudience", "Alunos", "pedagogicalObjective", "Objetivo longo")).status());
+
+        Resp idea = api.post(team.path() + "/ideas", ana.token(), map("title", "ideia livre"));
+        assertEquals(200, idea.status(), idea.body());
+        long id = idea.num("id");
+        assertEquals(400, api.post(team.path() + "/cards/" + id + "/convert", ana.token(),
+                map("targetAudience", "ab", "pedagogicalObjective", "Objetivo longo")).status());
+        assertEquals(400, api.post(team.path() + "/cards/" + id + "/convert", ana.token(),
+                map("targetAudience", "Alunos", "pedagogicalObjective", "curto")).status());
+        assertEquals(200, api.post(team.path() + "/cards/" + id + "/convert", ana.token(),
+                map("targetAudience", "Alunos", "pedagogicalObjective", "Objetivo longo")).status());
     }
 
     @Test
@@ -92,7 +115,7 @@ class KnownBugsIT extends AbstractIT {
     }
 
     @Test
-    @DisplayName("BUG-06 columnSince in the move/convert/create response equals the stored history time (today up to 1 s apart)")
+    @DisplayName("BUG-06 columnSince in the move/convert/create response equals the stored history time (used to be up to 1 s apart)")
     void columnSinceMatchesHistory() throws Exception {
         Team team = newTeam();
         long card = projectId(team, "tempo");
@@ -116,5 +139,6 @@ class KnownBugsIT extends AbstractIT {
         assertEquals(400, api.patch(team.path() + "/columns/" + col, ana.token(), map("sortOrder", -1)).status());
         assertEquals(400, api.patch(team.path() + "/columns/" + col, ana.token(), map("name", "   ")).status());
         assertEquals(400, api.patch(team.path() + "/cards/" + card + "/move", ana.token(), map("columnId", col, "sortOrder", -5)).status());
+        assertEquals(200, api.patch(team.path() + "/columns/" + col, ana.token(), map("sortOrder", 0)).status());
     }
 }

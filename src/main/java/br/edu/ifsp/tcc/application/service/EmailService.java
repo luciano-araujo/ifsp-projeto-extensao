@@ -18,12 +18,12 @@ public class EmailService {
     public void sendRegistrationToken(String to, String name, String token) {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(to);
-        message.setSubject("Creator Workbench - Codigo de verificacao");
+        message.setSubject("Creator Workbench - Código de verificação");
         message.setText(
-            "Ola " + name + ",\n\n" +
-            "Seu codigo de verificacao para concluir o cadastro e: " + token + "\n\n" +
-            "Este codigo expira em 10 minutos.\n\n" +
-            "Se voce nao solicitou este cadastro, ignore este e-mail."
+            "Olá " + name + ",\n\n" +
+            "Seu código de verificação para concluir o cadastro é: " + token + "\n\n" +
+            "Este código expira em 10 minutos.\n\n" +
+            "Se você não solicitou este cadastro, ignore este e-mail."
         );
         mailSender.send(message);
     }
@@ -32,12 +32,12 @@ public class EmailService {
     public void sendPasswordResetToken(String to, String name, String token) {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(to);
-        message.setSubject("Creator Workbench - Recuperacao de senha");
+        message.setSubject("Creator Workbench - Recuperação de senha");
         message.setText(
-            "Ola " + name + ",\n\n" +
-            "Seu codigo para redefinir a senha e: " + token + "\n\n" +
-            "Este codigo expira em 10 minutos.\n\n" +
-            "Se voce nao pediu para trocar a senha, ignore este e-mail. Sua senha atual continua valendo."
+            "Olá " + name + ",\n\n" +
+            "Seu código para redefinir a senha é: " + token + "\n\n" +
+            "Este código expira em 10 minutos.\n\n" +
+            "Se você não pediu para trocar a senha, ignore este e-mail. Sua senha atual continua valendo."
         );
         mailSender.send(message);
     }

@@ -13,7 +13,9 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Optional;
 
@@ -65,9 +67,10 @@ class RequestRegistrationTokenUseCaseTest {
     void execute_shouldThrowWhenEmailAlreadyRegistered() {
         when(userService.findByEmail("existing@example.com")).thenReturn(Optional.of(new User()));
 
-        RuntimeException ex = assertThrows(RuntimeException.class,
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
                 () -> useCase.execute(request("User", "existing@example.com")));
-        assertTrue(ex.getMessage().contains("ja esta registrado"));
+        assertEquals(HttpStatus.CONFLICT, ex.getStatusCode());
+        assertEquals("Este e-mail já está registrado no sistema.", ex.getReason());
 
         verify(registrationTokenService, never()).save(any());
         verify(emailService, never()).sendRegistrationToken(any(), any(), any());

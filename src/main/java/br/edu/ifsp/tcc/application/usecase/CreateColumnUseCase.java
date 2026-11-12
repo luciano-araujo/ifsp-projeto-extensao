@@ -30,7 +30,7 @@ public class CreateColumnUseCase {
     public BoardColumnResponse execute(Long teamId, Long userId, BoardColumnDTO dto) {
         Team team = teamService.requireRole(teamId, userId, TeamRole.ADMIN).getTeam();
         if (dto.getName() == null || dto.getName().isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O nome da coluna e obrigatorio.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O nome da coluna é obrigatório.");
         }
 
         BoardColumn column = new BoardColumn();

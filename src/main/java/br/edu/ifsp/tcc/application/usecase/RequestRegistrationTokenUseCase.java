@@ -6,8 +6,10 @@ import br.edu.ifsp.tcc.application.service.EmailService;
 import br.edu.ifsp.tcc.application.service.RegistrationTokenService;
 import br.edu.ifsp.tcc.application.service.UserService;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
@@ -36,7 +38,7 @@ public class RequestRegistrationTokenUseCase {
     public void execute(RegisterTokenRequest request) {
         String email = request.getEmail();
         if (userService.findByEmail(email).isPresent()) {
-            throw new RuntimeException("Este e-mail ja esta registrado no sistema.");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Este e-mail já está registrado no sistema.");
         }
 
         registrationTokenService.deleteByEmail(email);

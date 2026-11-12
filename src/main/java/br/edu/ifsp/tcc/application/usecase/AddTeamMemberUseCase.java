@@ -29,10 +29,10 @@ public class AddTeamMemberUseCase {
 
         User newUser = userService.findByEmail(dto.getEmail().trim())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                        "Nenhum usuario cadastrado com este e-mail."));
+                        "Nenhum usuário cadastrado com este e-mail."));
 
         if (teamService.findMemberByTeamIdAndUserId(teamId, newUser.getId()).isPresent()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Este usuario ja faz parte da equipe.");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Este usuário já faz parte da equipe.");
         }
 
         TeamMember member = new TeamMember();

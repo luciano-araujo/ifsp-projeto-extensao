@@ -52,7 +52,7 @@ class CreateCourseUseCaseTest {
     @Test
     void execute_shouldBeBlockedForReviewer() {
         when(teamService.requireRole(10L, 2L, TeamRole.ADMIN, TeamRole.CREATOR))
-                .thenThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "Seu papel na equipe nao permite esta acao."));
+                .thenThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "Seu papel na equipe não permite esta ação."));
 
         assertThrows(ResponseStatusException.class, () -> useCase.execute(10L, 2L, dto("Curso")));
         verify(courseService, never()).saveCourse(any());

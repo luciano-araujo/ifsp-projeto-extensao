@@ -82,7 +82,7 @@ class ConfirmRegistrationUseCaseTest {
 
         RuntimeException ex = assertThrows(RuntimeException.class,
                 () -> useCase.execute(request("x@x.com", "000000", "pass")));
-        assertTrue(ex.getMessage().contains("invalido"));
+        assertTrue(ex.getMessage().contains("inválido"));
         verify(userService, never()).save(any());
     }
 
@@ -110,7 +110,7 @@ class ConfirmRegistrationUseCaseTest {
                 () -> useCase.execute(request("x@x.com", "000000", "pass")));
 
         assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
-        assertTrue(ex.getReason().contains("invalido"));
+        assertTrue(ex.getReason().contains("inválido"));
         assertEquals(3, current.getAttempts());
         verify(registrationTokenService).save(current);
         verify(userService, never()).save(any());
@@ -129,5 +129,15 @@ class ConfirmRegistrationUseCaseTest {
         verify(registrationTokenService).deleteByEmail("x@x.com");
         verify(registrationTokenService, never()).save(any());
         verify(userService, never()).save(any());
+    }
+
+    @Test
+    void execute_shouldRejectPasswordOver72BytesBeforeTouchingTheCode() {
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> useCase.execute(request("x@x.com", "123456", "é".repeat(37))));
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        assertEquals("A senha deve ter no máximo 72 bytes (caracteres acentuados contam mais).", ex.getReason());
+        verifyNoInteractions(registrationTokenService, userService, passwordEncoder);
     }
 }

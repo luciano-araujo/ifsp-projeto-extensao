@@ -2,6 +2,7 @@ package br.edu.ifsp.tcc.application.usecase;
 
 import br.edu.ifsp.tcc.application.dto.UpdateKanbanItemDTO;
 import br.edu.ifsp.tcc.application.entity.KanbanItem;
+import br.edu.ifsp.tcc.application.entity.KanbanItemState;
 import br.edu.ifsp.tcc.application.entity.Team;
 import br.edu.ifsp.tcc.application.entity.TeamRole;
 import br.edu.ifsp.tcc.application.service.KanbanItemService;
@@ -117,5 +118,110 @@ class UpdateKanbanItemUseCaseTest {
 
         assertEquals(HttpStatus.NOT_FOUND, ex.getStatusCode());
         verifyNoInteractions(teamService);
+    }
+
+    private KanbanItem project() {
+        KanbanItem item = existingItem();
+        item.setState(KanbanItemState.IN_PRODUCTION);
+        item.setTargetAudience("Estudantes iniciantes");
+        item.setPedagogicalObjective("Ensinar o básico de lógica");
+        return item;
+    }
+
+    private void assertBadRequest(KanbanItem item, UpdateKanbanItemDTO dto, String reason) {
+        when(kanbanItemService.findCardOfMember(1L, 1L)).thenReturn(item);
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class, () -> useCase.execute(1L, 1L, dto));
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        assertEquals(reason, ex.getReason());
+        verify(kanbanItemService, never()).save(any());
+    }
+
+    @Test
+    void execute_shouldRejectBlankTitle() {
+        KanbanItem item = project();
+        UpdateKanbanItemDTO dto = new UpdateKanbanItemDTO();
+        dto.setTitle("   ");
+        assertBadRequest(item, dto, "O título não pode ficar vazio.");
+        assertEquals("Original", item.getTitle());
+    }
+
+    @Test
+    void execute_shouldRejectShortOrEmptyAudienceOfProject() {
+        KanbanItem item = project();
+        UpdateKanbanItemDTO empty = new UpdateKanbanItemDTO();
+        empty.setTargetAudience("");
+        assertBadRequest(item, empty, "Informe o público-alvo com pelo menos 3 caracteres.");
+
+        UpdateKanbanItemDTO shortOne = new UpdateKanbanItemDTO();
+        shortOne.setTargetAudience(" ab ");
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class, () -> useCase.execute(1L, 1L, shortOne));
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        assertEquals("Estudantes iniciantes", item.getTargetAudience());
+    }
+
+    @Test
+    void execute_shouldRejectShortOrEmptyObjectiveOfProject() {
+        KanbanItem item = project();
+        UpdateKanbanItemDTO dto = new UpdateKanbanItemDTO();
+        dto.setPedagogicalObjective("curto");
+        assertBadRequest(item, dto, "Informe o objetivo pedagógico com pelo menos 10 caracteres.");
+        assertEquals("Ensinar o básico de lógica", item.getPedagogicalObjective());
+    }
+
+    @Test
+    void execute_shouldLeaveOmittedFieldsOfProjectUnchanged() {
+        KanbanItem item = project();
+        when(kanbanItemService.findCardOfMember(1L, 1L)).thenReturn(item);
+        when(kanbanItemService.save(item)).thenReturn(item);
+        UpdateKanbanItemDTO dto = new UpdateKanbanItemDTO();
+        dto.setDescription("Nova");
+
+        KanbanItem result = useCase.execute(1L, 1L, dto);
+
+        assertEquals("Estudantes iniciantes", result.getTargetAudience());
+        assertEquals("Ensinar o básico de lógica", result.getPedagogicalObjective());
+        assertEquals("Original", result.getTitle());
+    }
+
+    @Test
+    void execute_shouldTrimValidTextOfProject() {
+        KanbanItem item = project();
+        when(kanbanItemService.findCardOfMember(1L, 1L)).thenReturn(item);
+        when(kanbanItemService.save(item)).thenReturn(item);
+        UpdateKanbanItemDTO dto = new UpdateKanbanItemDTO();
+        dto.setTitle("  Novo título ");
+        dto.setTargetAudience(" Professores ");
+        dto.setPedagogicalObjective(" Mostrar boas práticas ");
+
+        KanbanItem result = useCase.execute(1L, 1L, dto);
+
+        assertEquals("Novo título", result.getTitle());
+        assertEquals("Professores", result.getTargetAudience());
+        assertEquals("Mostrar boas práticas", result.getPedagogicalObjective());
+    }
+
+    @Test
+    void execute_shouldLetAnIdeaKeepAudienceAndObjectiveEmpty() {
+        KanbanItem idea = existingItem();
+        idea.setTargetAudience("Alunos");
+        idea.setPedagogicalObjective("Ensinar algo");
+        when(kanbanItemService.findCardOfMember(1L, 1L)).thenReturn(idea);
+        when(kanbanItemService.save(idea)).thenReturn(idea);
+        UpdateKanbanItemDTO dto = new UpdateKanbanItemDTO();
+        dto.setTargetAudience("");
+        dto.setPedagogicalObjective("  ");
+
+        KanbanItem result = useCase.execute(1L, 1L, dto);
+
+        assertNull(result.getTargetAudience());
+        assertNull(result.getPedagogicalObjective());
+    }
+
+    @Test
+    void execute_shouldRejectImpossibleDueDate() {
+        KanbanItem item = project();
+        UpdateKanbanItemDTO dto = new UpdateKanbanItemDTO();
+        dto.setDueDate("2026-02-30");
+        assertBadRequest(item, dto, "Prazo inválido. Use o formato AAAA-MM-DD.");
     }
 }

@@ -115,7 +115,7 @@ public class BoardController {
                                                 @PathVariable Long teamId,
                                                 @PathVariable Long cardId,
                                                 @RequestParam(required = false) Long targetColumnId,
-                                                @RequestBody(required = false) ConvertCardDTO dto) {
+                                                @Valid @RequestBody(required = false) ConvertCardDTO dto) {
         return ResponseEntity.ok(convertIdeaUseCase.execute(teamId, user.getId(), cardId, targetColumnId, dto));
     }
 

@@ -45,10 +45,7 @@ public class ConvertIdeaUseCase {
             if (!isBlank(dto.getTargetAudience())) item.setTargetAudience(dto.getTargetAudience().trim());
             if (!isBlank(dto.getPedagogicalObjective())) item.setPedagogicalObjective(dto.getPedagogicalObjective().trim());
         }
-        if (isBlank(item.getTargetAudience()) || isBlank(item.getPedagogicalObjective())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Para virar projeto, informe o publico-alvo e o objetivo pedagogico.");
-        }
+        KanbanItemService.requireProjectFields(item.getTitle(), item.getTargetAudience(), item.getPedagogicalObjective());
 
         BoardColumn column = boardService.resolveColumn(teamId, targetColumnId);
         item.setColumn(column);

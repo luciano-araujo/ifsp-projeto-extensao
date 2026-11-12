@@ -39,7 +39,7 @@ class CreateCourseLessonUseCaseTest {
     void execute_shouldRejectProjectFromAnotherTeam() {
         when(courseService.findModule(20L, 30L)).thenReturn(new CourseModule());
         when(courseService.findProject(10L, 99L))
-                .thenThrow(new ResponseStatusException(HttpStatus.BAD_REQUEST, "O projeto vinculado nao pertence a esta equipe."));
+                .thenThrow(new ResponseStatusException(HttpStatus.BAD_REQUEST, "O projeto vinculado não pertence a esta equipe."));
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
                 () -> useCase.execute(10L, 1L, 20L, 30L, dto(99L)));

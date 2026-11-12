@@ -107,7 +107,7 @@ public class CourseController {
                                                              @PathVariable Long courseId,
                                                              @PathVariable Long moduleId,
                                                              @PathVariable Long lessonId,
-                                                             @RequestBody UpdateCourseLessonDTO dto) {
+                                                             @Valid @RequestBody UpdateCourseLessonDTO dto) {
         return ResponseEntity.ok(updateCourseLessonUseCase.execute(teamId, user.getId(), courseId, moduleId, lessonId, dto));
     }
 

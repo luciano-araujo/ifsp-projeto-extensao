@@ -7,10 +7,14 @@ import lombok.Data;
 
 @Data
 public class ResetPasswordRequest {
-    @NotBlank @Email
+    @NotBlank(message = "O e-mail é obrigatório.")
+    @Email(message = "Informe um e-mail válido.")
     private String email;
-    @NotBlank @Size(min = 6, max = 6)
+    @NotBlank(message = "O código de verificação é obrigatório.")
+    @Size(min = 6, max = 6, message = "O código de verificação deve ter 6 caracteres.")
     private String token;
-    @NotBlank @Size(min = 6)
+    @NotBlank(message = "A nova senha é obrigatória.")
+    @Size(min = 6, message = "A senha deve ter no mínimo 6 caracteres.")
+    @Size(max = 72, message = "A senha deve ter no máximo 72 caracteres.")
     private String newPassword;
 }

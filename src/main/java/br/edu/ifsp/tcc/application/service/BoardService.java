@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -55,14 +56,14 @@ public class BoardService {
 
     public BoardColumn findColumn(Long teamId, Long columnId) {
         return boardColumnRepository.findByIdAndTeam_Id(columnId, teamId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Coluna nao encontrada."));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Coluna não encontrada."));
     }
 
     /** The given column, or the first column of the board when none is given. */
     public BoardColumn resolveColumn(Long teamId, Long columnId) {
         if (columnId != null) return findColumn(teamId, columnId);
         return findColumns(teamId).stream().findFirst()
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "O quadro da equipe nao tem colunas."));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "O quadro da equipe não tem colunas."));
     }
 
     public int countColumns(Long teamId) {
@@ -105,7 +106,7 @@ public class BoardService {
 
     public CardTask findTask(Long cardId, Long taskId) {
         return cardTaskRepository.findByIdAndKanbanItem_Id(taskId, cardId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Tarefa nao encontrada."));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Tarefa não encontrada."));
     }
 
     public int countTasks(Long cardId) {
@@ -138,7 +139,8 @@ public class BoardService {
         movement.setColumn(column);
         movement.setColumnName(column.getName());
         movement.setMovedBy(movedBy);
-        movement.setEnteredAt(LocalDateTime.now());
+        // Truncated to seconds: the column has second precision, so the response equals the stored history
+        movement.setEnteredAt(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS));
         return cardMovementRepository.save(movement);
     }
 

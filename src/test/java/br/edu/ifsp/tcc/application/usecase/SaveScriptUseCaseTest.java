@@ -12,7 +12,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -91,5 +90,17 @@ class SaveScriptUseCaseTest {
         assertEquals(HttpStatus.FORBIDDEN, ex.getStatusCode());
         assertEquals(FORBIDDEN, ex.getReason());
         verifyNoInteractions(scriptService);
+    }
+
+    @Test
+    void execute_shouldStoreEmptyStringWhenContentIsNull() {
+        KanbanItem item = card();
+        when(kanbanItemService.findCardOfMember(1L, 1L)).thenReturn(item);
+        when(scriptService.findByKanbanItemId(1L)).thenReturn(Optional.empty());
+        when(scriptService.save(any(Script.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Script result = useCase.execute(1L, 1L, null);
+
+        assertEquals("", result.getContent());
     }
 }
