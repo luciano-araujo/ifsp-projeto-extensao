@@ -1,5 +1,6 @@
 package br.edu.ifsp.tcc.application.dto;
 
+import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
@@ -9,5 +10,6 @@ public class BoardColumnDTO {
     @Size(max = 80, message = "O nome da coluna deve ter no maximo 80 caracteres.")
     private String name;
 
+    @PositiveOrZero(message = "A ordem deve ser maior ou igual a zero.")
     private Integer sortOrder;
 }

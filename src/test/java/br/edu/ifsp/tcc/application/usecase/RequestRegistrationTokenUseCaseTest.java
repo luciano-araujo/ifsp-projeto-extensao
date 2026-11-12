@@ -1,5 +1,7 @@
 package br.edu.ifsp.tcc.application.usecase;
 
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
 import br.edu.ifsp.tcc.application.dto.RegisterTokenRequest;
 import br.edu.ifsp.tcc.application.entity.RegistrationToken;
 import br.edu.ifsp.tcc.application.entity.User;
@@ -65,9 +67,10 @@ class RequestRegistrationTokenUseCaseTest {
     void execute_shouldThrowWhenEmailAlreadyRegistered() {
         when(userService.findByEmail("existing@example.com")).thenReturn(Optional.of(new User()));
 
-        RuntimeException ex = assertThrows(RuntimeException.class,
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
                 () -> useCase.execute(request("User", "existing@example.com")));
-        assertTrue(ex.getMessage().contains("ja esta registrado"));
+        assertEquals(HttpStatus.CONFLICT, ex.getStatusCode());
+        assertEquals("Este e-mail já está registrado no sistema.", ex.getReason());
 
         verify(registrationTokenService, never()).save(any());
         verify(emailService, never()).sendRegistrationToken(any(), any(), any());

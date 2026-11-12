@@ -92,4 +92,16 @@ class SaveScriptUseCaseTest {
         assertEquals(FORBIDDEN, ex.getReason());
         verifyNoInteractions(scriptService);
     }
+
+    @Test
+    void execute_shouldStoreEmptyStringWhenContentIsNull() {
+        KanbanItem item = card();
+        when(kanbanItemService.findCardOfMember(1L, 1L)).thenReturn(item);
+        when(scriptService.findByKanbanItemId(1L)).thenReturn(Optional.empty());
+        when(scriptService.save(any(Script.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Script result = useCase.execute(1L, 1L, null);
+
+        assertEquals("", result.getContent());
+    }
 }

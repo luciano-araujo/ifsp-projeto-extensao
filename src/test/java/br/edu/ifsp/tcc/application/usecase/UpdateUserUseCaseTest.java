@@ -1,5 +1,6 @@
 package br.edu.ifsp.tcc.application.usecase;
 
+import org.springframework.http.HttpStatus;
 import br.edu.ifsp.tcc.application.dto.UpdateUserDTO;
 import br.edu.ifsp.tcc.application.entity.User;
 import br.edu.ifsp.tcc.application.service.UserService;
@@ -87,7 +88,10 @@ class UpdateUserUseCaseTest {
         UpdateUserDTO dto = new UpdateUserDTO();
         dto.setName("x");
 
-        assertThrows(RuntimeException.class, () -> updateUserUseCase.execute(99L, 99L, dto));
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> updateUserUseCase.execute(99L, 99L, dto));
+        assertEquals(HttpStatus.NOT_FOUND, ex.getStatusCode());
+        assertEquals("Usuário não encontrado.", ex.getReason());
     }
 
     @Test

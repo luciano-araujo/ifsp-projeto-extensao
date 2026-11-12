@@ -21,6 +21,6 @@ class JwtAuthenticationEntryPointTest {
 
         assertEquals(HttpServletResponse.SC_UNAUTHORIZED, response.getStatus());
         assertEquals("application/json", response.getContentType());
-        assertTrue(response.getContentAsString().contains("Token ausente ou invalido"));
+        assertTrue(response.getContentAsString().contains("Token ausente ou inválido. Faça login novamente."));
     }
 }

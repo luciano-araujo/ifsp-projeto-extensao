@@ -1,5 +1,7 @@
 package br.edu.ifsp.tcc.application.usecase;
 
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
 import br.edu.ifsp.tcc.application.dto.BoardColumnDTO;
 import br.edu.ifsp.tcc.application.dto.BoardColumnResponse;
 import br.edu.ifsp.tcc.application.entity.BoardColumn;
@@ -28,7 +30,12 @@ public class UpdateColumnUseCase {
         teamService.requireRole(teamId, userId, TeamRole.ADMIN);
         BoardColumn column = boardService.findColumn(teamId, columnId);
 
-        if (dto.getName() != null && !dto.getName().isBlank()) column.setName(dto.getName().trim());
+        if (dto.getName() != null) {
+            if (dto.getName().isBlank()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O nome da coluna não pode ficar vazio.");
+            }
+            column.setName(dto.getName().trim());
+        }
         if (dto.getSortOrder() != null) column.setSortOrder(dto.getSortOrder());
         return boardService.toColumnResponse(boardService.saveColumn(column), List.of());
     }

@@ -25,7 +25,7 @@ public class UpdateUserUseCase {
         }
 
         User user = userService.findById(id)
-                .orElseThrow(() -> new RuntimeException("Usuario nao encontrado."));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
 
         if (dto.getName() != null && !dto.getName().isBlank()) {
             user.setName(dto.getName());

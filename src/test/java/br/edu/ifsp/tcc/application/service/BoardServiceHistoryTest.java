@@ -71,6 +71,7 @@ class BoardServiceHistoryTest {
         assertEquals("Roteiro", saved.getColumnName());
         assertSame(author, saved.getMovedBy());
         assertNotNull(saved.getEnteredAt());
+        assertEquals(0, saved.getEnteredAt().getNano(), "stored with second precision so responses match the history");
     }
 
     @Test

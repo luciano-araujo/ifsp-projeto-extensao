@@ -35,7 +35,7 @@ public class SaveScriptUseCase {
                     return newScript;
                 });
 
-        script.setContent(content);
+        script.setContent(content == null ? "" : content);
         return scriptService.save(script);
     }
 }

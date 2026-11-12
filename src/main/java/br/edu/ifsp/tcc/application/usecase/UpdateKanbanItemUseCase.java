@@ -1,5 +1,8 @@
 package br.edu.ifsp.tcc.application.usecase;
 
+import br.edu.ifsp.tcc.application.entity.KanbanItemState;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
 import br.edu.ifsp.tcc.application.dto.UpdateKanbanItemDTO;
 import br.edu.ifsp.tcc.application.entity.KanbanItem;
 import br.edu.ifsp.tcc.application.entity.TeamRole;
@@ -8,9 +11,14 @@ import br.edu.ifsp.tcc.application.service.TeamService;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 
 @Component
 public class UpdateKanbanItemUseCase {
+
+    /** Same minimums as the inbox conversion (product decision 7). */
+    static final int MIN_AUDIENCE = 3;
+    static final int MIN_OBJECTIVE = 10;
 
     private final KanbanItemService kanbanItemService;
     private final TeamService teamService;
@@ -25,14 +33,44 @@ public class UpdateKanbanItemUseCase {
         KanbanItem item = kanbanItemService.findCardOfMember(itemId, userId);
         teamService.requireRole(item.getTeamId(), userId, TeamRole.ADMIN, TeamRole.CREATOR);
 
-        if (dto.getTitle() != null) item.setTitle(dto.getTitle());
+        boolean project = item.getState() != KanbanItemState.IDEATION;
+
+        if (dto.getTitle() != null) {
+            if (dto.getTitle().isBlank()) throw badRequest("O título não pode ficar vazio.");
+            item.setTitle(dto.getTitle().trim());
+        }
         if (dto.getDescription() != null) item.setDescription(dto.getDescription());
-        if (dto.getTargetAudience() != null) item.setTargetAudience(dto.getTargetAudience());
-        if (dto.getPedagogicalObjective() != null) item.setPedagogicalObjective(dto.getPedagogicalObjective());
+        if (dto.getTargetAudience() != null) {
+            String audience = dto.getTargetAudience().trim();
+            if (project && audience.length() < MIN_AUDIENCE) {
+                throw badRequest("Informe o público-alvo com pelo menos " + MIN_AUDIENCE + " caracteres.");
+            }
+            // An idea may keep it empty
+            item.setTargetAudience(audience.isEmpty() ? null : audience);
+        }
+        if (dto.getPedagogicalObjective() != null) {
+            String objective = dto.getPedagogicalObjective().trim();
+            if (project && objective.length() < MIN_OBJECTIVE) {
+                throw badRequest("Informe o objetivo pedagógico com pelo menos " + MIN_OBJECTIVE + " caracteres.");
+            }
+            item.setPedagogicalObjective(objective.isEmpty() ? null : objective);
+        }
         if (dto.getDueDate() != null) {
-            item.setDueDate(dto.getDueDate().isEmpty() ? null : LocalDate.parse(dto.getDueDate()));
+            item.setDueDate(dto.getDueDate().isEmpty() ? null : parseDate(dto.getDueDate()));
         }
 
         return kanbanItemService.save(item);
+    }
+
+    private static LocalDate parseDate(String value) {
+        try {
+            return LocalDate.parse(value);
+        } catch (DateTimeParseException e) {
+            throw badRequest("Prazo inválido. Use o formato AAAA-MM-DD.");
+        }
+    }
+
+    private static ResponseStatusException badRequest(String message) {
+        return new ResponseStatusException(HttpStatus.BAD_REQUEST, message);
     }
 }

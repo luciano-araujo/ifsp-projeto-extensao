@@ -1,5 +1,7 @@
 package br.edu.ifsp.tcc.application.usecase;
 
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
 import br.edu.ifsp.tcc.application.dto.LoginRequest;
 import br.edu.ifsp.tcc.application.dto.LoginResponse;
 import br.edu.ifsp.tcc.application.entity.User;
@@ -61,9 +63,10 @@ class LoginUseCaseTest {
     void execute_shouldThrowWhenEmailNotFound() {
         when(userService.findByEmail("unknown@example.com")).thenReturn(Optional.empty());
 
-        RuntimeException ex = assertThrows(RuntimeException.class,
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
                 () -> useCase.execute(request("unknown@example.com", "password")));
-        assertTrue(ex.getMessage().contains("Credenciais invalidas"));
+        assertEquals(HttpStatus.UNAUTHORIZED, ex.getStatusCode());
+        assertEquals("Credenciais inválidas.", ex.getReason());
         verify(jwtService, never()).generateToken(any());
     }
 
@@ -73,9 +76,10 @@ class LoginUseCaseTest {
         when(userService.findByEmail("test@example.com")).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("wrong-password", "encoded-password")).thenReturn(false);
 
-        RuntimeException ex = assertThrows(RuntimeException.class,
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
                 () -> useCase.execute(request("test@example.com", "wrong-password")));
-        assertTrue(ex.getMessage().contains("Credenciais invalidas"));
+        assertEquals(HttpStatus.UNAUTHORIZED, ex.getStatusCode());
+        assertEquals("Credenciais inválidas.", ex.getReason());
         verify(jwtService, never()).generateToken(any());
     }
 }

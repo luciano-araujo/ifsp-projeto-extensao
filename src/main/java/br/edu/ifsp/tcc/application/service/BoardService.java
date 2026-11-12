@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -138,7 +139,8 @@ public class BoardService {
         movement.setColumn(column);
         movement.setColumnName(column.getName());
         movement.setMovedBy(movedBy);
-        movement.setEnteredAt(LocalDateTime.now());
+        // Truncated to seconds: the column has second precision, so the response equals the stored history
+        movement.setEnteredAt(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS));
         return cardMovementRepository.save(movement);
     }
 
