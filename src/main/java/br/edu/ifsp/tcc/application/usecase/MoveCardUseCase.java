@@ -6,6 +6,7 @@ import br.edu.ifsp.tcc.application.entity.BoardColumn;
 import br.edu.ifsp.tcc.application.entity.KanbanItem;
 import br.edu.ifsp.tcc.application.entity.KanbanItemState;
 import br.edu.ifsp.tcc.application.entity.TeamRole;
+import br.edu.ifsp.tcc.application.entity.User;
 import br.edu.ifsp.tcc.application.service.BoardService;
 import br.edu.ifsp.tcc.application.service.KanbanItemService;
 import br.edu.ifsp.tcc.application.service.TeamService;
@@ -13,6 +14,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+
+import java.time.LocalDateTime;
+import java.util.List;
 
 @Component
 public class MoveCardUseCase {
@@ -29,7 +33,7 @@ public class MoveCardUseCase {
 
     @Transactional
     public CardResponse execute(Long teamId, Long userId, Long cardId, MoveCardDTO dto) {
-        teamService.requireRole(teamId, userId, TeamRole.ADMIN, TeamRole.CREATOR);
+        User user = teamService.requireRole(teamId, userId, TeamRole.ADMIN, TeamRole.CREATOR).getUser();
         KanbanItem item = boardService.findCard(teamId, cardId);
         if (item.getState() == KanbanItemState.IDEATION) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
@@ -37,9 +41,14 @@ public class MoveCardUseCase {
         }
 
         BoardColumn column = boardService.findColumn(teamId, dto.getColumnId());
+        boolean columnChanged = !column.getId().equals(item.getColumnId());
         item.setColumn(column);
         item.setSortOrder(dto.getSortOrder() != null ? dto.getSortOrder() : boardService.nextSortOrder(teamId, column.getId()));
         KanbanItem saved = kanbanItemService.save(item);
-        return boardService.toCardResponse(saved, column.getId(), boardService.findTasks(saved));
+        // The history only grows when the card changes column, not when it is reordered inside one
+        LocalDateTime columnSince = columnChanged
+                ? boardService.recordMovement(saved, column, user).getEnteredAt()
+                : boardService.findColumnSince(List.of(saved)).get(saved.getId());
+        return boardService.toCardResponse(saved, column.getId(), boardService.findTasks(saved), columnSince);
     }
 }

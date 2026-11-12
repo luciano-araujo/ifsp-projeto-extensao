@@ -38,4 +38,11 @@ public class CardResponse {
 
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'")
     private LocalDateTime updatedAt;
+
+    private Long tagId;
+    private String tagColor;
+
+    /** When the card entered its current column; null for ideas. */
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'")
+    private LocalDateTime columnSince;
 }

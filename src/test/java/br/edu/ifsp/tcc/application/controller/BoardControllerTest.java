@@ -34,6 +34,10 @@ class BoardControllerTest {
     @Mock private ToggleCardTaskUseCase toggleCardTaskUseCase;
     @Mock private DeleteCardTaskUseCase deleteCardTaskUseCase;
     @Mock private ToggleIdeaVoteUseCase toggleIdeaVoteUseCase;
+    @Mock private UpdateCardTaskUseCase updateCardTaskUseCase;
+    @Mock private ReorderCardTasksUseCase reorderCardTasksUseCase;
+    @Mock private ReorderColumnsUseCase reorderColumnsUseCase;
+    @Mock private GetCardHistoryUseCase getCardHistoryUseCase;
     @InjectMocks private BoardController controller;
 
     private User user;
@@ -58,9 +62,9 @@ class BoardControllerTest {
     @Test
     void ideas_shouldReturnIdeas() {
         List<CardResponse> ideas = List.of(mock(CardResponse.class));
-        when(listIdeasUseCase.execute(10L, 1L)).thenReturn(ideas);
+        when(listIdeasUseCase.execute(10L, 1L, "excel", 3L, "votes")).thenReturn(ideas);
 
-        ResponseEntity<List<CardResponse>> response = controller.ideas(user, 10L);
+        ResponseEntity<List<CardResponse>> response = controller.ideas(user, 10L, "excel", 3L, "votes");
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertSame(ideas, response.getBody());
@@ -194,5 +198,52 @@ class BoardControllerTest {
 
         assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
         verify(deleteCardTaskUseCase).execute(10L, 1L, 3L, 4L);
+    }
+
+    @Test
+    void updateTask_shouldReturnUpdatedTask() {
+        UpdateTaskDTO dto = new UpdateTaskDTO();
+        CardTaskResponse updated = mock(CardTaskResponse.class);
+        when(updateCardTaskUseCase.execute(10L, 1L, 3L, 4L, dto)).thenReturn(updated);
+
+        ResponseEntity<CardTaskResponse> response = controller.updateTask(user, 10L, 3L, 4L, dto);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertSame(updated, response.getBody());
+    }
+
+    @Test
+    void reorderTasks_shouldReturnOrderedTasks() {
+        ReorderTasksDTO dto = new ReorderTasksDTO();
+        List<CardTaskResponse> ordered = List.of(mock(CardTaskResponse.class));
+        when(reorderCardTasksUseCase.execute(10L, 1L, 3L, dto)).thenReturn(ordered);
+
+        ResponseEntity<List<CardTaskResponse>> response = controller.reorderTasks(user, 10L, 3L, dto);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertSame(ordered, response.getBody());
+    }
+
+    @Test
+    void reorderColumns_shouldReturnOrderedColumns() {
+        ReorderColumnsDTO dto = new ReorderColumnsDTO();
+        List<BoardColumnResponse> ordered = List.of(mock(BoardColumnResponse.class));
+        when(reorderColumnsUseCase.execute(10L, 1L, dto)).thenReturn(ordered);
+
+        ResponseEntity<List<BoardColumnResponse>> response = controller.reorderColumns(user, 10L, dto);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertSame(ordered, response.getBody());
+    }
+
+    @Test
+    void history_shouldReturnMovements() {
+        List<CardMovementResponse> history = List.of(mock(CardMovementResponse.class));
+        when(getCardHistoryUseCase.execute(10L, 1L, 3L)).thenReturn(history);
+
+        ResponseEntity<List<CardMovementResponse>> response = controller.history(user, 10L, 3L);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertSame(history, response.getBody());
     }
 }

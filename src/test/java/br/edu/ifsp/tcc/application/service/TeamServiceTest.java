@@ -25,6 +25,7 @@ class TeamServiceTest {
     @Mock private TeamRepository teamRepository;
     @Mock private TeamMemberRepository teamMemberRepository;
     @Mock private BoardColumnRepository boardColumnRepository;
+    @Mock private TagService tagService;
     @InjectMocks private TeamService teamService;
 
     private TeamMember member(TeamRole role) {
@@ -76,6 +77,17 @@ class TeamServiceTest {
         verify(boardColumnRepository, times(4)).save(columns.capture());
         assertEquals(TeamService.DEFAULT_COLUMNS, columns.getAllValues().stream().map(BoardColumn::getName).toList());
         assertEquals(3, columns.getAllValues().get(3).getSortOrder());
+        verify(tagService).createDefaultTags(saved);
+    }
+
+    @Test
+    void findMemberOfTeam_shouldReturnMemberOnlyWhenItBelongsToTheTeam() {
+        TeamMember bia = member(TeamRole.CREATOR);
+        when(teamMemberRepository.findByIdAndTeam_Id(5L, 10L)).thenReturn(Optional.of(bia));
+        when(teamMemberRepository.findByIdAndTeam_Id(6L, 10L)).thenReturn(Optional.empty());
+
+        assertSame(bia, teamService.findMemberOfTeam(10L, 5L).orElseThrow());
+        assertTrue(teamService.findMemberOfTeam(10L, 6L).isEmpty());
     }
 
     @Test

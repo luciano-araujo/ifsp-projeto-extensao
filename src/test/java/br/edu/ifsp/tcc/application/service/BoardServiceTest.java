@@ -4,6 +4,7 @@ import br.edu.ifsp.tcc.application.dto.CardResponse;
 import br.edu.ifsp.tcc.application.entity.CardTask;
 import br.edu.ifsp.tcc.application.entity.KanbanItem;
 import br.edu.ifsp.tcc.application.entity.KanbanItemState;
+import br.edu.ifsp.tcc.application.entity.Tag;
 import br.edu.ifsp.tcc.application.repository.BoardColumnRepository;
 import br.edu.ifsp.tcc.application.repository.CardTaskRepository;
 import br.edu.ifsp.tcc.application.repository.IdeaVoteRepository;
@@ -61,11 +62,19 @@ class BoardServiceTest {
 
         KanbanItem idea = new KanbanItem();
         idea.setState(KanbanItemState.IDEATION);
-        idea.setTag("Podcast");
+        Tag podcast = new Tag();
+        podcast.setId(4L);
+        podcast.setName("Podcast");
+        podcast.setColor("#1565C0");
+        idea.setTag(podcast);
         idea.setDueDate(java.time.LocalDate.of(2026, 11, 30));
         CardResponse ideaResponse = boardService.toCardResponse(idea, null, List.of());
         assertEquals("IDEA", ideaResponse.getType());
         assertEquals("Podcast", ideaResponse.getTag());
+        assertEquals(4L, ideaResponse.getTagId());
+        assertEquals("#1565C0", ideaResponse.getTagColor());
+        assertNull(ideaResponse.getColumnSince());
+        assertNull(boardService.toCardResponse(project, 100L, List.of()).getTagId());
         assertEquals(java.time.LocalDate.of(2026, 11, 30), ideaResponse.getDueDate());
         assertEquals(0, ideaResponse.getVotes());
     }

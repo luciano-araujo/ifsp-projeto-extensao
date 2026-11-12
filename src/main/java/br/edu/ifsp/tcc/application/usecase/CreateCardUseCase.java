@@ -5,6 +5,7 @@ import br.edu.ifsp.tcc.application.dto.CreateCardDTO;
 import br.edu.ifsp.tcc.application.entity.*;
 import br.edu.ifsp.tcc.application.service.BoardService;
 import br.edu.ifsp.tcc.application.service.KanbanItemService;
+import br.edu.ifsp.tcc.application.service.TagService;
 import br.edu.ifsp.tcc.application.service.TeamService;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
@@ -19,11 +20,14 @@ public class CreateCardUseCase {
     private final TeamService teamService;
     private final BoardService boardService;
     private final KanbanItemService kanbanItemService;
+    private final TagService tagService;
 
-    public CreateCardUseCase(TeamService teamService, BoardService boardService, KanbanItemService kanbanItemService) {
+    public CreateCardUseCase(TeamService teamService, BoardService boardService, KanbanItemService kanbanItemService,
+                             TagService tagService) {
         this.teamService = teamService;
         this.boardService = boardService;
         this.kanbanItemService = kanbanItemService;
+        this.tagService = tagService;
     }
 
     /** Creates a project directly on the board; RN01 applies as in a conversion. */
@@ -46,7 +50,10 @@ public class CreateCardUseCase {
         item.setUser(user);
         item.setColumn(column);
         item.setSortOrder(boardService.nextSortOrder(teamId, column.getId()));
-        return boardService.toCardResponse(kanbanItemService.save(item), column.getId(), List.of());
+        item.setTag(tagService.resolveTag(teamId, dto.getTagId(), dto.getTag()));
+        KanbanItem saved = kanbanItemService.save(item);
+        CardMovement movement = boardService.recordMovement(saved, column, user);
+        return boardService.toCardResponse(saved, column.getId(), List.of(), movement.getEnteredAt());
     }
 
     private static boolean isBlank(String value) {

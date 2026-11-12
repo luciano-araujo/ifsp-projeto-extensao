@@ -56,8 +56,10 @@ public class KanbanItem {
     @Column(name = "sort_order", nullable = false)
     private Integer sortOrder = 0;
 
-    @Column(length = 40)
-    private String tag;
+    @JsonIgnore
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "tag_id")
+    private Tag tag;
 
     @JsonFormat(pattern = "yyyy-MM-dd")
     @Column(name = "due_date")
@@ -122,8 +124,10 @@ public class KanbanItem {
     public Integer getSortOrder() { return sortOrder; }
     public void setSortOrder(Integer sortOrder) { this.sortOrder = sortOrder; }
 
-    public String getTag() { return tag; }
-    public void setTag(String tag) { this.tag = tag; }
+    public Tag getTag() { return tag; }
+    public void setTag(Tag tag) { this.tag = tag; }
+
+    public Long getTagId() { return tag != null ? tag.getId() : null; }
 
     public LocalDate getDueDate() { return dueDate; }
     public void setDueDate(LocalDate dueDate) { this.dueDate = dueDate; }

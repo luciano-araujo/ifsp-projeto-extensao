@@ -3,9 +3,11 @@ package br.edu.ifsp.tcc.application.usecase;
 import br.edu.ifsp.tcc.application.dto.CardResponse;
 import br.edu.ifsp.tcc.application.dto.ConvertCardDTO;
 import br.edu.ifsp.tcc.application.entity.BoardColumn;
+import br.edu.ifsp.tcc.application.entity.CardMovement;
 import br.edu.ifsp.tcc.application.entity.KanbanItem;
 import br.edu.ifsp.tcc.application.entity.KanbanItemState;
 import br.edu.ifsp.tcc.application.entity.TeamRole;
+import br.edu.ifsp.tcc.application.entity.User;
 import br.edu.ifsp.tcc.application.service.BoardService;
 import br.edu.ifsp.tcc.application.service.KanbanItemService;
 import br.edu.ifsp.tcc.application.service.TeamService;
@@ -32,7 +34,7 @@ public class ConvertIdeaUseCase {
     /** RN01: an idea only becomes a project with a target audience and a pedagogical objective. */
     @Transactional
     public CardResponse execute(Long teamId, Long userId, Long cardId, Long targetColumnId, ConvertCardDTO dto) {
-        teamService.requireRole(teamId, userId, TeamRole.ADMIN, TeamRole.CREATOR);
+        User user = teamService.requireRole(teamId, userId, TeamRole.ADMIN, TeamRole.CREATOR).getUser();
         KanbanItem item = boardService.findCard(teamId, cardId);
         if (item.getState() != KanbanItemState.IDEATION) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Somente ideias da Caixa de Entrada podem ser convertidas.");
@@ -52,7 +54,9 @@ public class ConvertIdeaUseCase {
         item.setColumn(column);
         item.setSortOrder(boardService.nextSortOrder(teamId, column.getId()));
         item.setState(KanbanItemState.IN_PRODUCTION);
-        return boardService.toCardResponse(kanbanItemService.save(item), column.getId(), List.of());
+        KanbanItem saved = kanbanItemService.save(item);
+        CardMovement movement = boardService.recordMovement(saved, column, user);
+        return boardService.toCardResponse(saved, column.getId(), List.of(), movement.getEnteredAt());
     }
 
     private static boolean isBlank(String value) {

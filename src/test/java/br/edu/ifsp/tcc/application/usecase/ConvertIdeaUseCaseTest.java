@@ -2,8 +2,13 @@ package br.edu.ifsp.tcc.application.usecase;
 
 import br.edu.ifsp.tcc.application.dto.ConvertCardDTO;
 import br.edu.ifsp.tcc.application.entity.BoardColumn;
+import br.edu.ifsp.tcc.application.entity.CardMovement;
 import br.edu.ifsp.tcc.application.entity.KanbanItem;
 import br.edu.ifsp.tcc.application.entity.KanbanItemState;
+import br.edu.ifsp.tcc.application.entity.TeamMember;
+import br.edu.ifsp.tcc.application.entity.TeamRole;
+import br.edu.ifsp.tcc.application.entity.User;
+import org.junit.jupiter.api.BeforeEach;
 import br.edu.ifsp.tcc.application.service.BoardService;
 import br.edu.ifsp.tcc.application.service.KanbanItemService;
 import br.edu.ifsp.tcc.application.service.TeamService;
@@ -14,6 +19,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
+
+import java.time.LocalDateTime;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -26,6 +34,23 @@ class ConvertIdeaUseCaseTest {
     @Mock private BoardService boardService;
     @Mock private KanbanItemService kanbanItemService;
     @InjectMocks private ConvertIdeaUseCase useCase;
+
+    private User user;
+
+    @BeforeEach
+    void setUp() {
+        user = new User();
+        user.setId(1L);
+        TeamMember member = new TeamMember();
+        member.setUser(user);
+        when(teamService.requireRole(10L, 1L, TeamRole.ADMIN, TeamRole.CREATOR)).thenReturn(member);
+    }
+
+    private CardMovement movementAt(LocalDateTime enteredAt) {
+        CardMovement movement = new CardMovement();
+        movement.setEnteredAt(enteredAt);
+        return movement;
+    }
 
     private KanbanItem idea() {
         KanbanItem item = new KanbanItem();
@@ -60,6 +85,8 @@ class ConvertIdeaUseCaseTest {
         when(boardService.findCard(10L, 1L)).thenReturn(idea);
         when(boardService.resolveColumn(10L, 101L)).thenReturn(roteiro);
         when(kanbanItemService.save(idea)).thenReturn(idea);
+        LocalDateTime enteredAt = LocalDateTime.of(2026, 11, 1, 14, 10);
+        when(boardService.recordMovement(idea, roteiro, user)).thenReturn(movementAt(enteredAt));
         ConvertCardDTO dto = new ConvertCardDTO();
         dto.setTargetAudience(" Iniciantes ");
         dto.setPedagogicalObjective("Entender BFS");
@@ -69,7 +96,8 @@ class ConvertIdeaUseCaseTest {
         assertEquals(KanbanItemState.IN_PRODUCTION, idea.getState());
         assertSame(roteiro, idea.getColumn());
         assertEquals("Iniciantes", idea.getTargetAudience());
-        verify(boardService).toCardResponse(any(KanbanItem.class), any(), any());
+        verify(boardService).recordMovement(idea, roteiro, user);
+        verify(boardService).toCardResponse(idea, 101L, List.of(), enteredAt);
     }
 
     @Test
@@ -81,6 +109,7 @@ class ConvertIdeaUseCaseTest {
         when(boardService.findCard(10L, 1L)).thenReturn(idea);
         when(boardService.resolveColumn(10L, null)).thenReturn(pesquisa);
         when(kanbanItemService.save(idea)).thenReturn(idea);
+        when(boardService.recordMovement(idea, pesquisa, user)).thenReturn(movementAt(LocalDateTime.now()));
 
         useCase.execute(10L, 1L, 1L, null, null);
 

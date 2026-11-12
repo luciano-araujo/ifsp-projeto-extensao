@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Data
@@ -17,4 +18,9 @@ public class CardTaskResponse {
 
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'")
     private LocalDateTime createdAt;
+
+    private TaskAssigneeResponse assignee;
+
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private LocalDate dueDate;
 }

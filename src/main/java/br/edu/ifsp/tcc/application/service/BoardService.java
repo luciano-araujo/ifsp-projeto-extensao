@@ -1,19 +1,25 @@
 package br.edu.ifsp.tcc.application.service;
 
 import br.edu.ifsp.tcc.application.dto.BoardColumnResponse;
+import br.edu.ifsp.tcc.application.dto.CardMovementResponse;
 import br.edu.ifsp.tcc.application.dto.CardResponse;
 import br.edu.ifsp.tcc.application.dto.CardTaskResponse;
+import br.edu.ifsp.tcc.application.dto.MovedByResponse;
+import br.edu.ifsp.tcc.application.dto.TaskAssigneeResponse;
 import br.edu.ifsp.tcc.application.entity.*;
 import br.edu.ifsp.tcc.application.repository.BoardColumnRepository;
+import br.edu.ifsp.tcc.application.repository.CardMovementRepository;
 import br.edu.ifsp.tcc.application.repository.CardTaskRepository;
 import br.edu.ifsp.tcc.application.repository.IdeaVoteRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -27,15 +33,18 @@ public class BoardService {
     private final CardTaskRepository cardTaskRepository;
     private final IdeaVoteRepository ideaVoteRepository;
     private final KanbanItemService kanbanItemService;
+    private final CardMovementRepository cardMovementRepository;
 
     public BoardService(BoardColumnRepository boardColumnRepository,
                         CardTaskRepository cardTaskRepository,
                         IdeaVoteRepository ideaVoteRepository,
-                        KanbanItemService kanbanItemService) {
+                        KanbanItemService kanbanItemService,
+                        CardMovementRepository cardMovementRepository) {
         this.boardColumnRepository = boardColumnRepository;
         this.cardTaskRepository = cardTaskRepository;
         this.ideaVoteRepository = ideaVoteRepository;
         this.kanbanItemService = kanbanItemService;
+        this.cardMovementRepository = cardMovementRepository;
     }
 
     // --- Columns ---
@@ -111,6 +120,41 @@ public class BoardService {
         cardTaskRepository.delete(task);
     }
 
+    // --- Reordering ---
+
+    /** A reorder request must list each existing id exactly once (no missing, extra or repeated ids). */
+    public void requireExactIds(List<Long> requested, List<Long> existing, String message) {
+        if (requested.size() != existing.size() || !Set.copyOf(requested).equals(Set.copyOf(existing))) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, message);
+        }
+    }
+
+    // --- Card history ---
+
+    /** Registers that the card entered the column now; the column name is kept as a snapshot. */
+    public CardMovement recordMovement(KanbanItem item, BoardColumn column, User movedBy) {
+        CardMovement movement = new CardMovement();
+        movement.setKanbanItem(item);
+        movement.setColumn(column);
+        movement.setColumnName(column.getName());
+        movement.setMovedBy(movedBy);
+        movement.setEnteredAt(LocalDateTime.now());
+        return cardMovementRepository.save(movement);
+    }
+
+    /** Movements of the card, newest first. */
+    public List<CardMovement> findHistory(Long cardId) {
+        return cardMovementRepository.findHistory(cardId);
+    }
+
+    /** When each card entered its current column (one query for all the cards, no N+1). */
+    public Map<Long, LocalDateTime> findColumnSince(List<KanbanItem> items) {
+        if (items.isEmpty()) return Map.of();
+        return cardMovementRepository.findColumnSince(items.stream().map(KanbanItem::getId).toList()).stream()
+                .collect(Collectors.toMap(CardMovementRepository.ColumnSince::getCardId,
+                        CardMovementRepository.ColumnSince::getEnteredAt));
+    }
+
     // --- Idea votes ---
 
     public List<IdeaVote> findVotes(List<KanbanItem> items) {
@@ -143,19 +187,34 @@ public class BoardService {
     // --- Response mapping ---
 
     public CardResponse toCardResponse(KanbanItem item, Long columnId, List<CardTask> tasks) {
+        return toCardResponse(item, columnId, tasks, null);
+    }
+
+    public CardResponse toCardResponse(KanbanItem item, Long columnId, List<CardTask> tasks, LocalDateTime columnSince) {
         int done = (int) tasks.stream().filter(t -> Boolean.TRUE.equals(t.getCompleted())).count();
         boolean idea = item.getState() == KanbanItemState.IDEATION;
+        Tag tag = item.getTag();
         return new CardResponse(item.getId(), item.getUuid(), item.getTeamId(), item.getTitle(), item.getDescription(),
                 idea ? "IDEA" : "PROJECT", columnId, item.getSortOrder() != null ? item.getSortOrder() : 0,
                 progressOf(tasks), tasks.size(), done, item.getTargetAudience(), item.getPedagogicalObjective(),
-                tasks.stream().map(this::toTaskResponse).toList(), item.getTag(), item.getDueDate(), 0, false,
-                item.getCreatedAt(), item.getUpdatedAt());
+                tasks.stream().map(this::toTaskResponse).toList(), tag != null ? tag.getName() : null,
+                item.getDueDate(), 0, false, item.getCreatedAt(), item.getUpdatedAt(),
+                tag != null ? tag.getId() : null, tag != null ? tag.getColor() : null, columnSince);
     }
 
     public CardTaskResponse toTaskResponse(CardTask task) {
+        TeamMember assignee = task.getAssignee();
+        TaskAssigneeResponse assigneeResponse = assignee == null ? null
+                : new TaskAssigneeResponse(assignee.getId(), assignee.getUser().getId(), assignee.getUser().getName());
         return new CardTaskResponse(task.getId(), task.getKanbanItemId(), task.getTitle(),
                 Boolean.TRUE.equals(task.getCompleted()), task.getSortOrder() != null ? task.getSortOrder() : 0,
-                task.getCreatedAt());
+                task.getCreatedAt(), assigneeResponse, task.getDueDate());
+    }
+
+    public CardMovementResponse toMovementResponse(CardMovement movement) {
+        User movedBy = movement.getMovedBy();
+        return new CardMovementResponse(movement.getColumnId(), movement.getColumnName(), movement.getEnteredAt(),
+                movedBy == null ? null : new MovedByResponse(movedBy.getId(), movedBy.getName()));
     }
 
     public BoardColumnResponse toColumnResponse(BoardColumn column, List<CardResponse> cards) {
