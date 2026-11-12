@@ -48,6 +48,19 @@
 <!--			<artifactId>spring-boot-starter-cache</artifactId>-->
 <!--		</dependency>-->
 
+		<!-- In-memory cache (rate limiting on /api/auth) -->
+		<dependency>
+			<groupId>com.github.ben-manes.caffeine</groupId>
+			<artifactId>caffeine</artifactId>
+		</dependency>
+
+		<!-- HTML sanitization (script content) -->
+		<dependency>
+			<groupId>org.jsoup</groupId>
+			<artifactId>jsoup</artifactId>
+			<version>1.21.2</version>
+		</dependency>
+
 		<!-- Security -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

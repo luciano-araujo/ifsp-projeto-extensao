@@ -2,7 +2,6 @@ package br.edu.ifsp.tcc.application.it;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -211,15 +210,23 @@ class SecurityIT extends AbstractIT {
     }
 
     @Test
-    @Disabled("BE-44 (rate limiting on /api/auth) is not implemented; SEC-10 stays a roadmap case")
     @DisplayName("SEC-10 Excessive login attempts are blocked with 429")
     void rateLimit() {
-        for (int i = 0; i < 30; i++) api.post("/api/auth/login", null, map("email", ana.email(), "password", "wrong"));
-        assertEquals(429, api.post("/api/auth/login", null, map("email", ana.email(), "password", "wrong")).status());
+        // own user: the limit is per IP + e-mail, so the other fixtures are not affected
+        Person victim = person("ratelimit");
+        int max = Integer.parseInt(environment.getProperty("app.rate-limit.max-attempts"));
+        Resp last = null;
+        for (int i = 0; i < max + 2; i++) last = api.post("/api/auth/login", null, map("email", victim.email(), "password", "wrong"));
+        assertEquals(429, last.status());
+        assertEquals("Muitas tentativas. Aguarde alguns minutos e tente novamente.", last.text("message"));
+        assertNotNull(last.header("Retry-After"));
+        assertTrue(Integer.parseInt(last.header("Retry-After")) > 0);
+        // even the right password is blocked in the window, but another e-mail is not
+        assertEquals(429, api.post("/api/auth/login", null, map("email", victim.email(), "password", PASSWORD)).status());
+        assertEquals(200, api.post("/api/auth/login", null, map("email", ana.email(), "password", PASSWORD)).status());
     }
 
     @Test
-    @Disabled("BE-13 (script HTML is stored unsanitized) is a known open item; SEC-07 stays a roadmap case")
     @DisplayName("SEC-07 Dangerous HTML in a script is sanitized before it is stored")
     void xssSanitized() {
         Team team = newTeam();
@@ -228,5 +235,6 @@ class SecurityIT extends AbstractIT {
         String stored = api.get("/api/v1/kanban/" + card + "/script", ana.token()).text("content");
         assertFalse(stored.contains("<script"));
         assertFalse(stored.contains("onerror"));
+        assertTrue(stored.contains("<p>ok</p>"));
     }
 }

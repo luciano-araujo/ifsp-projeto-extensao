@@ -188,4 +188,52 @@ class ScriptServiceTest {
     void toMarkdown_shouldIgnoreStrayClosingTagsAndListItemsOutsideLists() {
         assertEquals("texto\n\nfim",ScriptService.toMarkdown("<li>texto</li></blockquote></ul> fim"));
     }
+
+    // --- HTML sanitization (BE-13) ---
+
+    @Test
+    void sanitizeContent_shouldDropImgWithEventHandler() {
+        String clean = scriptService.sanitizeContent("<p>ok</p><img src=x onerror=alert(1)>");
+        assertEquals("<p>ok</p>", clean);
+    }
+
+    @Test
+    void sanitizeContent_shouldDropScriptTagAndItsBody() {
+        String clean = scriptService.sanitizeContent("<p>ok</p><script>alert(1)</script>");
+        assertEquals("<p>ok</p>", clean);
+    }
+
+    @Test
+    void sanitizeContent_shouldDropJavascriptUrlButKeepLinkText() {
+        String clean = scriptService.sanitizeContent("<a href=\"javascript:alert(1)\">click</a>");
+        assertFalse(clean.contains("javascript"));
+        assertTrue(clean.contains("click"));
+    }
+
+    @Test
+    void sanitizeContent_shouldDropEventHandlerAttributesFromAllowedTags() {
+        String clean = scriptService.sanitizeContent("<p onclick=\"alert(1)\" style=\"x\">hi</p>");
+        assertEquals("<p>hi</p>", clean);
+    }
+
+    @Test
+    void sanitizeContent_shouldKeepEditorTagsAndSafeLinks() {
+        String html = "<h1>T</h1><h2>S</h2><h3>U</h3><p><strong>b</strong> <b>b</b> <em>i</em> <i>i</i> <u>u</u> <s>s</s><br></p>"
+                + "<ul><li>a</li></ul><ol><li>b</li></ol><blockquote>q</blockquote><pre><code>c</code></pre><hr>"
+                + "<p><a href=\"https://example.com\" rel=\"noopener\" target=\"_blank\">l</a> "
+                + "<a href=\"mailto:a@b.com\">m</a> <a href=\"http://example.com\">h</a></p>";
+        String clean = scriptService.sanitizeContent(html);
+        assertEquals(html, clean);
+    }
+
+    @Test
+    void sanitizeContent_shouldKeepAccentsAndWhitespace() {
+        assertEquals("<p>Olá, mundo  ção</p>", scriptService.sanitizeContent("<p>Olá, mundo  ção</p>"));
+    }
+
+    @Test
+    void sanitizeContent_shouldReturnEmptyForNullOrEmpty() {
+        assertEquals("", scriptService.sanitizeContent(null));
+        assertEquals("", scriptService.sanitizeContent(""));
+    }
 }

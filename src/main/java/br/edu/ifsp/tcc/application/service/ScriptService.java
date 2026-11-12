@@ -6,6 +6,9 @@ import br.edu.ifsp.tcc.application.entity.Script;
 import br.edu.ifsp.tcc.application.entity.ScriptVersion;
 import br.edu.ifsp.tcc.application.repository.ScriptRepository;
 import br.edu.ifsp.tcc.application.repository.ScriptVersionRepository;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.safety.Safelist;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayDeque;
@@ -25,12 +28,25 @@ public class ScriptService {
     private static final Pattern ANY_TAG = Pattern.compile("<[^>]*>");
     private static final Pattern NUMERIC_ENTITY = Pattern.compile("&#(x?)([0-9a-fA-F]+);");
 
+    /** Tags the TipTap editor produces; everything else (scripts, event handlers, javascript: URLs) is dropped. */
+    private static final Safelist SAFELIST = Safelist.none()
+            .addTags("h1", "h2", "h3", "p", "br", "strong", "b", "em", "i", "u", "s", "ul", "ol", "li",
+                    "blockquote", "code", "pre", "hr", "a")
+            .addAttributes("a", "href", "rel", "target")
+            .addProtocols("a", "href", "http", "https", "mailto");
+
     private final ScriptRepository scriptRepository;
     private final ScriptVersionRepository scriptVersionRepository;
 
     public ScriptService(ScriptRepository scriptRepository, ScriptVersionRepository scriptVersionRepository) {
         this.scriptRepository = scriptRepository;
         this.scriptVersionRepository = scriptVersionRepository;
+    }
+
+    /** Cleans editor HTML against the safelist (applied on save and on restore). Null becomes an empty string. */
+    public String sanitizeContent(String html) {
+        if (html == null || html.isEmpty()) return "";
+        return Jsoup.clean(html, "", SAFELIST, new Document.OutputSettings().prettyPrint(false));
     }
 
     public Script save(Script script) {

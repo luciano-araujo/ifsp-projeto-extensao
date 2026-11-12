@@ -53,6 +53,7 @@ class SaveScriptUseCaseTest {
         KanbanItem item = card();
         when(kanbanItemService.findCardOfMember(1L, 1L)).thenReturn(item);
         when(scriptService.findByKanbanItemId(1L)).thenReturn(Optional.empty());
+        when(scriptService.sanitizeContent("<p>Hello</p>")).thenReturn("<p>Hello</p>");
         when(scriptService.save(any(Script.class))).thenAnswer(inv -> inv.getArgument(0));
 
         Script result = useCase.execute(1L, 1L, "<p>Hello</p>");
@@ -69,9 +70,10 @@ class SaveScriptUseCaseTest {
         existing.setContent("<p>Old</p>");
         when(kanbanItemService.findCardOfMember(1L, 1L)).thenReturn(card());
         when(scriptService.findByKanbanItemId(1L)).thenReturn(Optional.of(existing));
+        when(scriptService.sanitizeContent("<p>New</p><script>x</script>")).thenReturn("<p>New</p>");
         when(scriptService.save(existing)).thenReturn(existing);
 
-        assertEquals("<p>New</p>", useCase.execute(1L, 1L, "<p>New</p>").getContent());
+        assertEquals("<p>New</p>", useCase.execute(1L, 1L, "<p>New</p><script>x</script>").getContent());
     }
 
     @Test
@@ -97,6 +99,7 @@ class SaveScriptUseCaseTest {
         KanbanItem item = card();
         when(kanbanItemService.findCardOfMember(1L, 1L)).thenReturn(item);
         when(scriptService.findByKanbanItemId(1L)).thenReturn(Optional.empty());
+        when(scriptService.sanitizeContent(null)).thenReturn("");
         when(scriptService.save(any(Script.class))).thenAnswer(inv -> inv.getArgument(0));
 
         Script result = useCase.execute(1L, 1L, null);

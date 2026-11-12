@@ -70,6 +70,7 @@ class RestoreScriptVersionUseCaseTest {
         when(kanbanItemService.findCardOfMember(1L, 1L)).thenReturn(card());
         when(scriptService.findByKanbanItemId(1L)).thenReturn(Optional.of(script));
         when(scriptService.findVersionById(5L)).thenReturn(Optional.of(version(script)));
+        when(scriptService.sanitizeContent("<p>Old version</p>")).thenReturn("<p>Old version</p>");
         when(scriptService.save(script)).thenReturn(script);
 
         assertEquals("<p>Old version</p>", useCase.execute(1L, 1L, 5L).getContent());

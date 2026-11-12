@@ -39,7 +39,7 @@ public class RestoreScriptVersionUseCase {
                 .filter(found -> script.getId().equals(found.getScriptId()))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Versão não encontrada."));
 
-        script.setContent(version.getContent());
+        script.setContent(scriptService.sanitizeContent(version.getContent()));
         return scriptService.save(script);
     }
 }
