@@ -152,7 +152,7 @@ class MigrationUpgradeIT {
         assertEquals(one("SELECT id FROM board_columns WHERE team_id = " + personal + " AND sort_order = 0"),
                 one("SELECT column_id FROM kanban_items WHERE id = 3"));
         assertEquals("Podcast", one("SELECT t.name FROM kanban_items k JOIN tags t ON t.id = k.tag_id WHERE k.id = 3"));
-        assertNull(one("SELECT id FROM teams WHERE BINARY name = 'Meu Estudio'"), "user 3 owns no card, so no team is created");
+        assertNull(one("SELECT id FROM teams WHERE CAST(name AS BINARY) = 'Meu Estudio'"), "user 3 owns no card, so no team is created");
         assertEquals("Meu Estúdio", one("SELECT name FROM teams WHERE id = 99"), "V17 adds the accent to the old fallback name");
 
         // c2 without column goes to the first column of its team
