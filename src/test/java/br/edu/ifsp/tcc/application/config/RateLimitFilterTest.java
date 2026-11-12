@@ -27,7 +27,7 @@ class RateLimitFilterTest {
     @Mock private FilterChain chain;
 
     private RateLimitFilter filter(boolean enabled) {
-        return new RateLimitFilter(rateLimitService, enabled, 10, 30, PROXIES);
+        return new RateLimitFilter(rateLimitService, enabled, 10, 100, PROXIES);
     }
 
     private MockHttpServletRequest post(String path, String body) {
@@ -40,7 +40,7 @@ class RateLimitFilterTest {
 
     @Test
     void shouldPassThroughAndReplayBodyWhenUnderLimit() throws Exception {
-        when(rateLimitService.registerAttempt("ip|/api/auth/login|203.0.113.5", 30)).thenReturn(0L);
+        when(rateLimitService.registerAttempt("ip|/api/auth/login|203.0.113.5", 100)).thenReturn(0L);
         when(rateLimitService.registerAttempt("/api/auth/login|203.0.113.5|ana@x.com", 10)).thenReturn(0L);
         MockHttpServletRequest request = post("/api/auth/login", "{\"email\":\" Ana@X.com \",\"password\":\"p\"}");
         MockHttpServletResponse response = new MockHttpServletResponse();
@@ -123,12 +123,12 @@ class RateLimitFilterTest {
         filter(true).doFilter(request, new MockHttpServletResponse(), chain);
 
         verify(rateLimitService).registerAttempt("/api/auth/login|203.0.113.5|a@b.com", 10);
-        verify(rateLimitService).registerAttempt("ip|/api/auth/login|203.0.113.5", 30);
+        verify(rateLimitService).registerAttempt("ip|/api/auth/login|203.0.113.5", 100);
     }
 
     @Test
     void shouldBlockWhenOnlyThePerIpBucketIsExceeded() throws Exception {
-        when(rateLimitService.registerAttempt("ip|/api/auth/password/forgot|203.0.113.5", 30)).thenReturn(77L);
+        when(rateLimitService.registerAttempt("ip|/api/auth/password/forgot|203.0.113.5", 100)).thenReturn(77L);
         when(rateLimitService.registerAttempt("/api/auth/password/forgot|203.0.113.5|new@x.com", 10)).thenReturn(0L);
         MockHttpServletResponse response = new MockHttpServletResponse();
 

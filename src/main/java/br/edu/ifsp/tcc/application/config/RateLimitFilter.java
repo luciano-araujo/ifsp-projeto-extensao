@@ -58,7 +58,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
     public RateLimitFilter(RateLimitService rateLimitService,
                            @Value("${app.rate-limit.enabled:true}") boolean enabled,
                            @Value("${app.rate-limit.max-attempts:10}") int maxAttempts,
-                           @Value("${app.rate-limit.max-attempts-per-ip:30}") int maxAttemptsPerIp,
+                           @Value("${app.rate-limit.max-attempts-per-ip:100}") int maxAttemptsPerIp,
                            @Value("${app.rate-limit.trusted-proxies:127.0.0.1,0:0:0:0:0:0:0:1,::1}") String trustedProxies) {
         this.rateLimitService = rateLimitService;
         this.enabled = enabled;
