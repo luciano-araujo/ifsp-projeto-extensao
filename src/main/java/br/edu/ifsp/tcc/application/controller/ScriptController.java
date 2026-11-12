@@ -2,6 +2,7 @@ package br.edu.ifsp.tcc.application.controller;
 
 import br.edu.ifsp.tcc.application.dto.MessageResponse;
 import br.edu.ifsp.tcc.application.dto.SaveScriptDTO;
+import br.edu.ifsp.tcc.application.dto.ScriptExportResponse;
 import br.edu.ifsp.tcc.application.entity.Script;
 import br.edu.ifsp.tcc.application.entity.ScriptVersion;
 import br.edu.ifsp.tcc.application.entity.User;
@@ -21,17 +22,20 @@ public class ScriptController {
     private final CreateScriptVersionUseCase createScriptVersionUseCase;
     private final GetScriptVersionsUseCase getScriptVersionsUseCase;
     private final RestoreScriptVersionUseCase restoreScriptVersionUseCase;
+    private final ExportScriptUseCase exportScriptUseCase;
 
     public ScriptController(SaveScriptUseCase saveScriptUseCase,
                             GetScriptUseCase getScriptUseCase,
                             CreateScriptVersionUseCase createScriptVersionUseCase,
                             GetScriptVersionsUseCase getScriptVersionsUseCase,
-                            RestoreScriptVersionUseCase restoreScriptVersionUseCase) {
+                            RestoreScriptVersionUseCase restoreScriptVersionUseCase,
+                            ExportScriptUseCase exportScriptUseCase) {
         this.saveScriptUseCase = saveScriptUseCase;
         this.getScriptUseCase = getScriptUseCase;
         this.createScriptVersionUseCase = createScriptVersionUseCase;
         this.getScriptVersionsUseCase = getScriptVersionsUseCase;
         this.restoreScriptVersionUseCase = restoreScriptVersionUseCase;
+        this.exportScriptUseCase = exportScriptUseCase;
     }
 
     @PutMapping
@@ -47,6 +51,12 @@ public class ScriptController {
                                        @PathVariable Long kanbanItemId) {
         Script script = getScriptUseCase.execute(kanbanItemId, user.getId());
         return ResponseEntity.ok(script);
+    }
+
+    @GetMapping("/export")
+    public ResponseEntity<ScriptExportResponse> export(@AuthenticationPrincipal User user,
+                                                       @PathVariable Long kanbanItemId) {
+        return ResponseEntity.ok(exportScriptUseCase.execute(kanbanItemId, user.getId()));
     }
 
     @PostMapping("/versions")

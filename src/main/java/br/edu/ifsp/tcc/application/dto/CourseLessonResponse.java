@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class CourseLessonResponse {
     private Long id;
+    private String uuid;
     private Long moduleId;
     private String title;
     private LessonType type;

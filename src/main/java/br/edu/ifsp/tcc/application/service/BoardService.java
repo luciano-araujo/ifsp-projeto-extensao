@@ -72,7 +72,7 @@ public class BoardService {
 
     public KanbanItem findCard(Long teamId, Long cardId) {
         return kanbanItemService.findByIdAndTeamId(cardId, teamId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Card nao encontrado."));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Card não encontrado."));
     }
 
     public int nextSortOrder(Long teamId, Long columnId) {
@@ -111,12 +111,6 @@ public class BoardService {
         cardTaskRepository.delete(task);
     }
 
-    /** Stores the progress computed from the tasks, so the legacy /kanban routes show the same value. */
-    public void refreshProgress(KanbanItem item) {
-        item.setProgress(progressOf(findTasks(item)));
-        kanbanItemService.save(item);
-    }
-
     // --- Idea votes ---
 
     public List<IdeaVote> findVotes(List<KanbanItem> items) {
@@ -151,7 +145,7 @@ public class BoardService {
     public CardResponse toCardResponse(KanbanItem item, Long columnId, List<CardTask> tasks) {
         int done = (int) tasks.stream().filter(t -> Boolean.TRUE.equals(t.getCompleted())).count();
         boolean idea = item.getState() == KanbanItemState.IDEATION;
-        return new CardResponse(item.getId(), item.getTeamId(), item.getTitle(), item.getDescription(),
+        return new CardResponse(item.getId(), item.getUuid(), item.getTeamId(), item.getTitle(), item.getDescription(),
                 idea ? "IDEA" : "PROJECT", columnId, item.getSortOrder() != null ? item.getSortOrder() : 0,
                 progressOf(tasks), tasks.size(), done, item.getTargetAudience(), item.getPedagogicalObjective(),
                 tasks.stream().map(this::toTaskResponse).toList(), item.getTag(), item.getDueDate(), 0, false,

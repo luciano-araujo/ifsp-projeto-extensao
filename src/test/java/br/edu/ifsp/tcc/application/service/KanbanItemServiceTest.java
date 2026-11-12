@@ -8,6 +8,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Optional;
@@ -41,43 +43,22 @@ class KanbanItemServiceTest {
     }
 
     @Test
-    void findByUserId_shouldReturnUserItems() {
-        List<KanbanItem> items = List.of(createItem());
-        when(kanbanItemRepository.findByUser_Id(1L)).thenReturn(items);
-
-        List<KanbanItem> result = kanbanItemService.findByUserId(1L);
-
-        assertEquals(1, result.size());
-    }
-
-    @Test
-    void findByUserIdAndState_shouldFilterByState() {
-        List<KanbanItem> items = List.of(createItem());
-        when(kanbanItemRepository.findByUser_IdAndState(1L, KanbanItemState.IDEATION)).thenReturn(items);
-
-        List<KanbanItem> result = kanbanItemService.findByUserIdAndState(1L, KanbanItemState.IDEATION);
-
-        assertEquals(1, result.size());
-        assertEquals(KanbanItemState.IDEATION, result.get(0).getState());
-    }
-
-    @Test
-    void findByIdAndUserId_shouldReturnItemWhenOwnerOrTeamMember() {
+    void findCardOfMember_shouldReturnCardWhenUserIsTeamMember() {
         KanbanItem item = createItem();
         when(kanbanItemRepository.findAccessible(1L, 1L)).thenReturn(Optional.of(item));
 
-        Optional<KanbanItem> result = kanbanItemService.findByIdAndUserId(1L, 1L);
-
-        assertTrue(result.isPresent());
+        assertSame(item, kanbanItemService.findCardOfMember(1L, 1L));
     }
 
     @Test
-    void findByIdAndUserId_shouldReturnEmptyWhenNotOwnerNorTeamMember() {
+    void findCardOfMember_shouldThrow404WhenNotMemberOrMissing() {
         when(kanbanItemRepository.findAccessible(1L, 99L)).thenReturn(Optional.empty());
 
-        Optional<KanbanItem> result = kanbanItemService.findByIdAndUserId(1L, 99L);
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> kanbanItemService.findCardOfMember(1L, 99L));
 
-        assertTrue(result.isEmpty());
+        assertEquals(HttpStatus.NOT_FOUND, ex.getStatusCode());
+        assertEquals("Card não encontrado.", ex.getReason());
     }
 
     @Test

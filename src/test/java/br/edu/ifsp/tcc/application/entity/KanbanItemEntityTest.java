@@ -44,6 +44,22 @@ class KanbanItemEntityTest {
     }
 
     @Test
+    void onCreate_shouldGenerateUuidOnlyWhenMissing() {
+        KanbanItem item = new KanbanItem();
+        item.onCreate();
+        String generated = item.getUuid();
+        assertEquals(36, generated.length());
+
+        item.onCreate();
+        assertEquals(generated, item.getUuid());
+
+        KanbanItem withUuid = new KanbanItem();
+        withUuid.setUuid("fixo");
+        withUuid.onCreate();
+        assertEquals("fixo", withUuid.getUuid());
+    }
+
+    @Test
     void onUpdate_shouldRefreshUpdatedAt() {
         KanbanItem item = new KanbanItem();
 
@@ -57,12 +73,10 @@ class KanbanItemEntityTest {
         KanbanItem item = new KanbanItem();
         item.setTitle("Projeto");
         item.setState(KanbanItemState.IN_PRODUCTION);
-        item.setProgress(40);
         item.setTag("Aula");
 
         assertEquals("Projeto", item.getTitle());
         assertEquals(KanbanItemState.IN_PRODUCTION, item.getState());
-        assertEquals(40, item.getProgress());
         assertEquals("Aula", item.getTag());
     }
 }

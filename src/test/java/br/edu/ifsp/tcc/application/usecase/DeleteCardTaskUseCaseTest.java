@@ -31,6 +31,5 @@ class DeleteCardTaskUseCaseTest {
 
         verify(teamService).requireRole(10L, 1L, TeamRole.ADMIN, TeamRole.CREATOR);
         verify(boardService).deleteTask(task);
-        verify(boardService).refreshProgress(item);
     }
 }

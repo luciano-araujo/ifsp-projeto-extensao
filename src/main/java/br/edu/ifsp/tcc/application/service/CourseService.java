@@ -115,17 +115,17 @@ public class CourseService {
     // --- Response mapping ---
 
     public CourseResponse toCourseResponse(Course course) {
-        return new CourseResponse(course.getId(), course.getTeamId(), course.getTitle(), course.getDescription(),
+        return new CourseResponse(course.getId(), course.getUuid(), course.getTeamId(), course.getTitle(), course.getDescription(),
                 countModules(course.getId()), course.getCreatedAt());
     }
 
     public CourseModuleResponse toModuleResponse(CourseModule module, List<CourseLesson> lessons) {
-        return new CourseModuleResponse(module.getId(), module.getCourseId(), module.getTitle(), module.getSortOrder(),
+        return new CourseModuleResponse(module.getId(), module.getUuid(), module.getCourseId(), module.getTitle(), module.getSortOrder(),
                 lessons.stream().map(this::toLessonResponse).toList(), module.getCreatedAt());
     }
 
     public CourseLessonResponse toLessonResponse(CourseLesson lesson) {
-        return new CourseLessonResponse(lesson.getId(), lesson.getModuleId(), lesson.getTitle(), lesson.getType(),
+        return new CourseLessonResponse(lesson.getId(), lesson.getUuid(), lesson.getModuleId(), lesson.getTitle(), lesson.getType(),
                 Boolean.TRUE.equals(lesson.getPublished()), lesson.getSortOrder() != null ? lesson.getSortOrder() : 0,
                 lesson.getProjectId(), lesson.getCreatedAt());
     }

@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class CourseResponse {
     private Long id;
+    private String uuid;
     private Long teamId;
     private String title;
     private String description;

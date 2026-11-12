@@ -18,13 +18,12 @@ public class GetScriptVersionsUseCase {
         this.kanbanItemService = kanbanItemService;
     }
 
+    /** Versions of the card script; empty list when no script was saved yet. */
     public List<ScriptVersion> execute(Long kanbanItemId, Long userId) {
-        kanbanItemService.findByIdAndUserId(kanbanItemId, userId)
-                .orElseThrow(() -> new RuntimeException("Item nao encontrado."));
+        kanbanItemService.findCardOfMember(kanbanItemId, userId);
 
-        var script = scriptService.findByKanbanItemId(kanbanItemId)
-                .orElseThrow(() -> new RuntimeException("Script nao encontrado para este item."));
-
-        return scriptService.findVersionsByScriptId(script.getId());
+        return scriptService.findByKanbanItemId(kanbanItemId)
+                .map(script -> scriptService.findVersionsByScriptId(script.getId()))
+                .orElseGet(List::of);
     }
 }

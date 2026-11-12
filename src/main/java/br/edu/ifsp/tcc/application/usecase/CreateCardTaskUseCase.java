@@ -31,7 +31,6 @@ public class CreateCardTaskUseCase {
         task.setTitle(dto.getTitle().trim());
         task.setSortOrder(boardService.countTasks(cardId));
         CardTask saved = boardService.saveTask(task);
-        boardService.refreshProgress(item);
         return boardService.toTaskResponse(saved);
     }
 }

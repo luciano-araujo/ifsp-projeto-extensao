@@ -4,8 +4,6 @@ import br.edu.ifsp.tcc.application.entity.KanbanItem;
 import br.edu.ifsp.tcc.application.service.KanbanItemService;
 import org.springframework.stereotype.Component;
 
-import java.util.Optional;
-
 @Component
 public class GetKanbanItemByIdUseCase {
 
@@ -15,7 +13,8 @@ public class GetKanbanItemByIdUseCase {
         this.kanbanItemService = kanbanItemService;
     }
 
-    public Optional<KanbanItem> execute(Long itemId, Long userId) {
-        return kanbanItemService.findByIdAndUserId(itemId, userId);
+    /** Any member of the card's team can read it. */
+    public KanbanItem execute(Long itemId, Long userId) {
+        return kanbanItemService.findCardOfMember(itemId, userId);
     }
 }

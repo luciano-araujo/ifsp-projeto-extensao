@@ -1,5 +1,6 @@
 package br.edu.ifsp.tcc.application.usecase;
 
+import br.edu.ifsp.tcc.application.entity.KanbanItem;
 import br.edu.ifsp.tcc.application.entity.Script;
 import br.edu.ifsp.tcc.application.service.KanbanItemService;
 import br.edu.ifsp.tcc.application.service.ScriptService;
@@ -16,11 +17,11 @@ public class GetScriptUseCase {
         this.kanbanItemService = kanbanItemService;
     }
 
+    /** The script of the card, or an empty one (not persisted) when nothing was saved yet. */
     public Script execute(Long kanbanItemId, Long userId) {
-        kanbanItemService.findByIdAndUserId(kanbanItemId, userId)
-                .orElseThrow(() -> new RuntimeException("Item nao encontrado."));
+        KanbanItem item = kanbanItemService.findCardOfMember(kanbanItemId, userId);
 
         return scriptService.findByKanbanItemId(kanbanItemId)
-                .orElseThrow(() -> new RuntimeException("Script nao encontrado para este item."));
+                .orElseGet(() -> scriptService.emptyScript(item));
     }
 }

@@ -1,6 +1,7 @@
 package br.edu.ifsp.tcc.application.controller;
 
 import br.edu.ifsp.tcc.application.dto.SaveScriptDTO;
+import br.edu.ifsp.tcc.application.dto.ScriptExportResponse;
 import br.edu.ifsp.tcc.application.entity.Script;
 import br.edu.ifsp.tcc.application.entity.ScriptVersion;
 import br.edu.ifsp.tcc.application.entity.User;
@@ -27,6 +28,7 @@ class ScriptControllerTest {
     @Mock private CreateScriptVersionUseCase createScriptVersionUseCase;
     @Mock private GetScriptVersionsUseCase getScriptVersionsUseCase;
     @Mock private RestoreScriptVersionUseCase restoreScriptVersionUseCase;
+    @Mock private ExportScriptUseCase exportScriptUseCase;
     @InjectMocks private ScriptController controller;
 
     private User user;
@@ -92,5 +94,16 @@ class ScriptControllerTest {
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertSame(script, response.getBody());
+    }
+
+    @Test
+    void export_shouldReturnExportedScript() {
+        ScriptExportResponse export = new ScriptExportResponse(5L, "Titulo", "Alunos", "Ensinar", "<p>a</p>", "a", 1, 1);
+        when(exportScriptUseCase.execute(5L, 1L)).thenReturn(export);
+
+        ResponseEntity<ScriptExportResponse> response = controller.export(user, 5L);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertSame(export, response.getBody());
     }
 }

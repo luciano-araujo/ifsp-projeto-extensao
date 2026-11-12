@@ -36,7 +36,7 @@ public class GetCourseUseCase {
                 .map(module -> courseService.toModuleResponse(module, lessonsByModule.getOrDefault(module.getId(), List.of())))
                 .toList();
 
-        return new CourseDetailResponse(course.getId(), teamId, course.getTitle(), course.getDescription(),
+        return new CourseDetailResponse(course.getId(), course.getUuid(), teamId, course.getTitle(), course.getDescription(),
                 modules.size(), moduleResponses, course.getCreatedAt());
     }
 }
