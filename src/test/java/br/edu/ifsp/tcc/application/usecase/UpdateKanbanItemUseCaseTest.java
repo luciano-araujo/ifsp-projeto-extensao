@@ -2,14 +2,17 @@ package br.edu.ifsp.tcc.application.usecase;
 
 import br.edu.ifsp.tcc.application.dto.UpdateKanbanItemDTO;
 import br.edu.ifsp.tcc.application.entity.KanbanItem;
-import br.edu.ifsp.tcc.application.entity.KanbanItemState;
 import br.edu.ifsp.tcc.application.entity.Team;
+import br.edu.ifsp.tcc.application.entity.TeamRole;
 import br.edu.ifsp.tcc.application.service.KanbanItemService;
+import br.edu.ifsp.tcc.application.service.TeamService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.util.Optional;
@@ -21,15 +24,17 @@ import static org.mockito.Mockito.*;
 class UpdateKanbanItemUseCaseTest {
 
     @Mock private KanbanItemService kanbanItemService;
+    @Mock private TeamService teamService;
     @InjectMocks private UpdateKanbanItemUseCase useCase;
 
     private KanbanItem existingItem() {
+        Team team = new Team();
+        team.setId(10L);
         KanbanItem item = new KanbanItem();
         item.setId(1L);
         item.setTitle("Original");
         item.setDescription("Original desc");
-        item.setState(KanbanItemState.IDEATION);
-        item.setProgress(0);
+        item.setTeam(team);
         return item;
     }
 
@@ -41,49 +46,28 @@ class UpdateKanbanItemUseCaseTest {
 
         UpdateKanbanItemDTO dto = new UpdateKanbanItemDTO();
         dto.setTitle("Updated Title");
-        dto.setProgress(50);
+        dto.setTargetAudience("Alunos");
+        dto.setPedagogicalObjective("Ensinar o basico");
 
         KanbanItem result = useCase.execute(1L, 1L, dto);
 
         assertEquals("Updated Title", result.getTitle());
         assertEquals("Original desc", result.getDescription());
-        assertEquals(50, result.getProgress());
-        assertEquals(KanbanItemState.IDEATION, result.getState());
+        assertEquals("Alunos", result.getTargetAudience());
+        assertEquals("Ensinar o basico", result.getPedagogicalObjective());
+        verify(teamService).requireRole(10L, 1L, TeamRole.ADMIN, TeamRole.CREATOR);
     }
 
     @Test
-    void execute_shouldUpdateState() {
+    void execute_shouldUpdateDescription() {
         KanbanItem item = existingItem();
         when(kanbanItemService.findByIdAndUserId(1L, 1L)).thenReturn(Optional.of(item));
         when(kanbanItemService.save(item)).thenReturn(item);
 
         UpdateKanbanItemDTO dto = new UpdateKanbanItemDTO();
-        dto.setState(KanbanItemState.DONE);
+        dto.setDescription("Nova descricao");
 
-        KanbanItem result = useCase.execute(1L, 1L, dto);
-
-        assertEquals(KanbanItemState.DONE, result.getState());
-    }
-
-    @Test
-    void execute_shouldIgnoreManualStateAndProgressOnTeamCard() {
-        KanbanItem item = existingItem();
-        item.setState(KanbanItemState.IN_PRODUCTION);
-        item.setProgress(40);
-        item.setTeam(new Team());
-        when(kanbanItemService.findByIdAndUserId(1L, 1L)).thenReturn(Optional.of(item));
-        when(kanbanItemService.save(item)).thenReturn(item);
-
-        UpdateKanbanItemDTO dto = new UpdateKanbanItemDTO();
-        dto.setTitle("Novo titulo");
-        dto.setState(KanbanItemState.IDEATION);
-        dto.setProgress(100);
-
-        KanbanItem result = useCase.execute(1L, 1L, dto);
-
-        assertEquals("Novo titulo", result.getTitle());
-        assertEquals(KanbanItemState.IN_PRODUCTION, result.getState());
-        assertEquals(40, result.getProgress());
+        assertEquals("Nova descricao", useCase.execute(1L, 1L, dto).getDescription());
     }
 
     @Test
@@ -106,6 +90,23 @@ class UpdateKanbanItemUseCaseTest {
     }
 
     @Test
+    void execute_shouldRejectReviewer() {
+        KanbanItem item = existingItem();
+        when(kanbanItemService.findByIdAndUserId(1L, 3L)).thenReturn(Optional.of(item));
+        when(teamService.requireRole(10L, 3L, TeamRole.ADMIN, TeamRole.CREATOR))
+                .thenThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "Seu papel na equipe não permite esta ação."));
+
+        UpdateKanbanItemDTO dto = new UpdateKanbanItemDTO();
+        dto.setTitle("x");
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class, () -> useCase.execute(1L, 3L, dto));
+
+        assertEquals(HttpStatus.FORBIDDEN, ex.getStatusCode());
+        verify(kanbanItemService, never()).save(any());
+        assertEquals("Original", item.getTitle());
+    }
+
+    @Test
     void execute_shouldThrowWhenItemNotFound() {
         when(kanbanItemService.findByIdAndUserId(1L, 99L)).thenReturn(Optional.empty());
 
@@ -113,5 +114,6 @@ class UpdateKanbanItemUseCaseTest {
         dto.setTitle("x");
 
         assertThrows(RuntimeException.class, () -> useCase.execute(1L, 99L, dto));
+        verifyNoInteractions(teamService);
     }
 }

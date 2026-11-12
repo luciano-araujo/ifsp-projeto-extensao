@@ -12,6 +12,7 @@ import java.util.List;
 @AllArgsConstructor
 public class CardResponse {
     private Long id;
+    private String uuid;
     private Long teamId;
     private String title;
     private String description;

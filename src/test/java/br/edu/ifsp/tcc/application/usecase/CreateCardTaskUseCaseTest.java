@@ -40,6 +40,5 @@ class CreateCardTaskUseCaseTest {
 
         assertSame(response, result);
         verify(teamService).requireRole(10L, 1L, TeamRole.ADMIN, TeamRole.CREATOR);
-        verify(boardService).refreshProgress(item);
     }
 }

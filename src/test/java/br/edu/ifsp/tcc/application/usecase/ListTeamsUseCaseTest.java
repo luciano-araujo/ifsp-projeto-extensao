@@ -1,8 +1,10 @@
 package br.edu.ifsp.tcc.application.usecase;
 
-import br.edu.ifsp.tcc.application.entity.*;
-import br.edu.ifsp.tcc.application.service.BoardService;
-import br.edu.ifsp.tcc.application.service.KanbanItemService;
+import br.edu.ifsp.tcc.application.dto.TeamResponse;
+import br.edu.ifsp.tcc.application.entity.Team;
+import br.edu.ifsp.tcc.application.entity.TeamMember;
+import br.edu.ifsp.tcc.application.entity.TeamRole;
+import br.edu.ifsp.tcc.application.entity.User;
 import br.edu.ifsp.tcc.application.service.TeamService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -20,8 +22,6 @@ import static org.mockito.Mockito.*;
 class ListTeamsUseCaseTest {
 
     @Mock private TeamService teamService;
-    @Mock private BoardService boardService;
-    @Mock private KanbanItemService kanbanItemService;
     @InjectMocks private ListTeamsUseCase useCase;
 
     private User ana() {
@@ -47,7 +47,6 @@ class ListTeamsUseCaseTest {
                 .thenReturn(List.of())
                 .thenReturn(List.of(membership(team)));
         when(teamService.personalTeamName(ana)).thenReturn("Estúdio de Ana");
-        when(kanbanItemService.findWithoutTeamByUserId(1L)).thenReturn(List.of());
 
         useCase.execute(ana);
 
@@ -56,30 +55,17 @@ class ListTeamsUseCaseTest {
     }
 
     @Test
-    void execute_shouldMoveItemsWithoutTeamIntoFirstTeam() {
-        User ana = ana();
+    void execute_shouldListExistingTeamsWithoutCreatingAnother() {
         Team team = new Team();
         team.setId(10L);
-        BoardColumn first = new BoardColumn();
-        BoardColumn last = new BoardColumn();
-        KanbanItem idea = new KanbanItem();
-        idea.setState(KanbanItemState.IDEATION);
-        KanbanItem inProduction = new KanbanItem();
-        inProduction.setState(KanbanItemState.IN_PRODUCTION);
-        KanbanItem done = new KanbanItem();
-        done.setState(KanbanItemState.DONE);
+        TeamMember member = membership(team);
+        TeamResponse response = new TeamResponse(10L, "Estúdio de Ana", TeamRole.ADMIN, 1, null);
+        when(teamService.findMembershipsByUserId(1L)).thenReturn(List.of(member));
+        when(teamService.toTeamResponse(member)).thenReturn(response);
 
-        when(teamService.findMembershipsByUserId(1L)).thenReturn(List.of(membership(team)));
-        when(kanbanItemService.findWithoutTeamByUserId(1L)).thenReturn(List.of(idea, inProduction, done));
-        when(boardService.findColumns(10L)).thenReturn(List.of(first, last));
+        List<TeamResponse> result = useCase.execute(ana());
 
-        useCase.execute(ana);
-
-        assertSame(team, idea.getTeam());
-        assertNull(idea.getColumn(), "Ideias continuam na Caixa de Entrada");
-        assertSame(first, inProduction.getColumn());
-        assertSame(last, done.getColumn());
-        verify(kanbanItemService, times(3)).save(any(KanbanItem.class));
+        assertEquals(List.of(response), result);
         verify(teamService, never()).createTeamWithAdmin(any(), any());
     }
 }

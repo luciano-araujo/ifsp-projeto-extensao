@@ -5,6 +5,11 @@ import br.edu.ifsp.tcc.application.entity.Script;
 import br.edu.ifsp.tcc.application.entity.ScriptVersion;
 import br.edu.ifsp.tcc.application.service.KanbanItemService;
 import br.edu.ifsp.tcc.application.service.ScriptService;
+import br.edu.ifsp.tcc.application.service.TeamService;
+import br.edu.ifsp.tcc.application.entity.Team;
+import br.edu.ifsp.tcc.application.entity.TeamRole;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -23,6 +28,7 @@ class CreateScriptVersionUseCaseTest {
 
     @Mock private ScriptService scriptService;
     @Mock private KanbanItemService kanbanItemService;
+    @Mock private TeamService teamService;
     @InjectMocks private CreateScriptVersionUseCase useCase;
 
     @Test
@@ -45,5 +51,21 @@ class CreateScriptVersionUseCaseTest {
         when(kanbanItemService.findByIdAndUserId(1L, 1L)).thenReturn(Optional.of(new KanbanItem()));
         when(scriptService.findByKanbanItemId(1L)).thenReturn(Optional.empty());
         assertThrows(RuntimeException.class, () -> useCase.execute(1L, 1L));
+    }
+
+    @Test
+    void execute_shouldRejectReviewer() {
+        Team team = new Team();
+        team.setId(10L);
+        KanbanItem item = new KanbanItem();
+        item.setTeam(team);
+        when(kanbanItemService.findByIdAndUserId(1L, 3L)).thenReturn(Optional.of(item));
+        when(teamService.requireRole(10L, 3L, TeamRole.ADMIN, TeamRole.CREATOR))
+                .thenThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "Seu papel na equipe não permite esta ação."));
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class, () -> useCase.execute(1L, 3L));
+
+        assertEquals(HttpStatus.FORBIDDEN, ex.getStatusCode());
+        verifyNoInteractions(scriptService);
     }
 }

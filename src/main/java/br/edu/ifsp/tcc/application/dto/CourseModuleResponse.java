@@ -11,6 +11,7 @@ import java.util.List;
 @AllArgsConstructor
 public class CourseModuleResponse {
     private Long id;
+    private String uuid;
     private Long courseId;
     private String title;
     private Integer sortOrder;

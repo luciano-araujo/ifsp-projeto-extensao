@@ -27,7 +27,6 @@ class KanbanItemTest {
     void defaults_shouldBeCorrect() {
         KanbanItem item = new KanbanItem();
         assertEquals(KanbanItemState.IDEATION, item.getState());
-        assertEquals(0, item.getProgress());
     }
 
     @Test
@@ -36,17 +35,15 @@ class KanbanItemTest {
         item.setId(1L);
         item.setTitle("Title");
         item.setDescription("Desc");
-        item.setState(KanbanItemState.REVIEW);
+        item.setState(KanbanItemState.IN_PRODUCTION);
         item.setTargetAudience("Devs");
         item.setPedagogicalObjective("Learn stuff");
-        item.setProgress(75);
 
         assertEquals(1L, item.getId());
         assertEquals("Title", item.getTitle());
         assertEquals("Desc", item.getDescription());
-        assertEquals(KanbanItemState.REVIEW, item.getState());
+        assertEquals(KanbanItemState.IN_PRODUCTION, item.getState());
         assertEquals("Devs", item.getTargetAudience());
         assertEquals("Learn stuff", item.getPedagogicalObjective());
-        assertEquals(75, item.getProgress());
     }
 }

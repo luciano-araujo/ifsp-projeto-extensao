@@ -45,7 +45,7 @@ class ListIdeasUseCaseTest {
     }
 
     private CardResponse emptyResponse(Long id) {
-        return new CardResponse(id, 10L, "Ideia", null, "IDEA", null, 0, 0, 0, 0, null, null,
+        return new CardResponse(id, "uuid-" + id, 10L, "Ideia", null, "IDEA", null, 0, 0, 0, 0, null, null,
                 List.of(), null, null, 0, false, null, null);
     }
 

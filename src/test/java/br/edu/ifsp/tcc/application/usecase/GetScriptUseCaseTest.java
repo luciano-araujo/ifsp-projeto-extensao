@@ -40,9 +40,20 @@ class GetScriptUseCaseTest {
     }
 
     @Test
-    void execute_shouldThrowWhenNoScript() {
-        when(kanbanItemService.findByIdAndUserId(1L, 1L)).thenReturn(Optional.of(new KanbanItem()));
+    void execute_shouldReturnEmptyScriptWhenNoneSaved() {
+        KanbanItem item = new KanbanItem();
+        item.setId(1L);
+        Script empty = new Script();
+        empty.setKanbanItem(item);
+        empty.setContent("");
+        when(kanbanItemService.findByIdAndUserId(1L, 1L)).thenReturn(Optional.of(item));
         when(scriptService.findByKanbanItemId(1L)).thenReturn(Optional.empty());
-        assertThrows(RuntimeException.class, () -> useCase.execute(1L, 1L));
+        when(scriptService.emptyScript(item)).thenReturn(empty);
+
+        Script result = useCase.execute(1L, 1L);
+
+        assertSame(empty, result);
+        assertNull(result.getId());
+        assertEquals("", result.getContent());
     }
 }

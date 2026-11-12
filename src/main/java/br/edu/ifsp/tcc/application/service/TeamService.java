@@ -36,13 +36,13 @@ public class TeamService {
 
     public TeamMember requireMember(Long teamId, Long userId) {
         return teamMemberRepository.findByTeam_IdAndUser_Id(teamId, userId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Voce nao faz parte desta equipe."));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Você não faz parte desta equipe."));
     }
 
     public TeamMember requireRole(Long teamId, Long userId, TeamRole... allowed) {
         TeamMember member = requireMember(teamId, userId);
         if (!Arrays.asList(allowed).contains(member.getRole())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Seu papel na equipe nao permite esta acao.");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Seu papel na equipe não permite esta ação.");
         }
         return member;
     }

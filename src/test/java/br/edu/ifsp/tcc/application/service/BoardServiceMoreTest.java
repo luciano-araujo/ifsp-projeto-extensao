@@ -227,18 +227,6 @@ class BoardServiceMoreTest {
     }
 
     @Test
-    void refreshProgress_shouldStoreProgressAndSaveCard() {
-        KanbanItem item = card(5L);
-        when(cardTaskRepository.findByKanbanItem_IdInOrderBySortOrderAscIdAsc(List.of(5L)))
-                .thenReturn(List.of(task(6L, item, true), task(7L, item, false)));
-
-        service.refreshProgress(item);
-
-        assertEquals(50, item.getProgress());
-        verify(kanbanItemService).save(item);
-    }
-
-    @Test
     void findVotes_shouldReturnEmptyWithoutItems() {
         assertEquals(List.of(), service.findVotes(List.of()));
         verifyNoInteractions(ideaVoteRepository);

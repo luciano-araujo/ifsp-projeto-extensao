@@ -41,27 +41,6 @@ class KanbanItemServiceTest {
     }
 
     @Test
-    void findByUserId_shouldReturnUserItems() {
-        List<KanbanItem> items = List.of(createItem());
-        when(kanbanItemRepository.findByUser_Id(1L)).thenReturn(items);
-
-        List<KanbanItem> result = kanbanItemService.findByUserId(1L);
-
-        assertEquals(1, result.size());
-    }
-
-    @Test
-    void findByUserIdAndState_shouldFilterByState() {
-        List<KanbanItem> items = List.of(createItem());
-        when(kanbanItemRepository.findByUser_IdAndState(1L, KanbanItemState.IDEATION)).thenReturn(items);
-
-        List<KanbanItem> result = kanbanItemService.findByUserIdAndState(1L, KanbanItemState.IDEATION);
-
-        assertEquals(1, result.size());
-        assertEquals(KanbanItemState.IDEATION, result.get(0).getState());
-    }
-
-    @Test
     void findByIdAndUserId_shouldReturnItemWhenOwnerOrTeamMember() {
         KanbanItem item = createItem();
         when(kanbanItemRepository.findAccessible(1L, 1L)).thenReturn(Optional.of(item));

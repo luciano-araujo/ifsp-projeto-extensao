@@ -33,6 +33,5 @@ class ToggleCardTaskUseCaseTest {
 
         assertTrue(task.getCompleted());
         verify(teamService).requireMember(10L, 2L);
-        verify(boardService).refreshProgress(card);
     }
 }
