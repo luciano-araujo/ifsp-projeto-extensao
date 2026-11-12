@@ -3,7 +3,9 @@ package br.edu.ifsp.tcc.application.usecase;
 import br.edu.ifsp.tcc.application.dto.CardResponse;
 import br.edu.ifsp.tcc.application.dto.CreateCardDTO;
 import br.edu.ifsp.tcc.application.entity.BoardColumn;
+import br.edu.ifsp.tcc.application.entity.CardMovement;
 import br.edu.ifsp.tcc.application.entity.KanbanItem;
+import br.edu.ifsp.tcc.application.entity.Tag;
 import br.edu.ifsp.tcc.application.entity.KanbanItemState;
 import br.edu.ifsp.tcc.application.entity.Team;
 import br.edu.ifsp.tcc.application.entity.TeamMember;
@@ -11,6 +13,7 @@ import br.edu.ifsp.tcc.application.entity.TeamRole;
 import br.edu.ifsp.tcc.application.entity.User;
 import br.edu.ifsp.tcc.application.service.BoardService;
 import br.edu.ifsp.tcc.application.service.KanbanItemService;
+import br.edu.ifsp.tcc.application.service.TagService;
 import br.edu.ifsp.tcc.application.service.TeamService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -20,6 +23,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -32,6 +36,7 @@ class CreateCardUseCaseTest {
     @Mock private TeamService teamService;
     @Mock private BoardService boardService;
     @Mock private KanbanItemService kanbanItemService;
+    @Mock private TagService tagService;
     @InjectMocks private CreateCardUseCase useCase;
 
     private User user;
@@ -60,13 +65,21 @@ class CreateCardUseCaseTest {
         when(teamService.requireRole(10L, 1L, TeamRole.ADMIN, TeamRole.CREATOR)).thenReturn(member);
         when(boardService.resolveColumn(10L, 2L)).thenReturn(column);
         when(boardService.nextSortOrder(10L, 2L)).thenReturn(3);
+        Tag tutorial = new Tag();
+        CardMovement movement = new CardMovement();
+        movement.setEnteredAt(LocalDateTime.of(2026, 11, 1, 14, 10));
         when(kanbanItemService.save(any(KanbanItem.class))).thenReturn(saved);
-        when(boardService.toCardResponse(saved, 2L, List.of())).thenReturn(response);
+        when(tagService.resolveTag(10L, 3L, null)).thenReturn(tutorial);
+        when(boardService.recordMovement(saved, column, user)).thenReturn(movement);
+        when(boardService.toCardResponse(saved, 2L, List.of(), movement.getEnteredAt())).thenReturn(response);
+        CreateCardDTO dto = dto();
+        dto.setTagId(3L);
 
-        CardResponse result = useCase.execute(10L, user, dto());
+        CardResponse result = useCase.execute(10L, user, dto);
 
         assertSame(response, result);
         verify(kanbanItemService).save(argThatProject(team, column));
+        verify(boardService).recordMovement(saved, column, user);
     }
 
     @Test

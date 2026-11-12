@@ -11,6 +11,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -58,15 +59,19 @@ class GetBoardUseCaseTest {
         when(boardService.findColumns(10L)).thenReturn(List.of(pesquisa, roteiro));
         when(kanbanItemService.findByTeamId(10L)).thenReturn(List.of(idea, inPesquisa, withoutColumn, inRoteiro));
         when(boardService.findTasksByCard(anyList())).thenReturn(Map.of());
+        LocalDateTime since = LocalDateTime.of(2026, 11, 1, 14, 10);
+        when(boardService.findColumnSince(List.of(inPesquisa, withoutColumn, inRoteiro))).thenReturn(Map.of(2L, since));
 
         BoardResponse board = useCase.execute(10L, 1L);
 
         assertEquals("Equipe", board.getTeamName());
-        // Projects without a column fall into the first column; the idea is not on the board
-        verify(boardService).toCardResponse(inPesquisa, 100L, List.of());
-        verify(boardService).toCardResponse(withoutColumn, 100L, List.of());
-        verify(boardService).toCardResponse(inRoteiro, 101L, List.of());
-        verify(boardService, never()).toCardResponse(eq(idea), any(), any());
+        // Projects without a column fall into the first column; the idea is not on the board.
+        // columnSince comes from one batch query, null for a card with no movement yet.
+        verify(boardService).toCardResponse(inPesquisa, 100L, List.of(), since);
+        verify(boardService).toCardResponse(withoutColumn, 100L, List.of(), null);
+        verify(boardService).toCardResponse(inRoteiro, 101L, List.of(), null);
+        verify(boardService, never()).toCardResponse(eq(idea), any(), any(), any());
+        verify(boardService, times(1)).findColumnSince(anyList());
         verify(boardService, times(2)).toColumnResponse(any(BoardColumn.class), anyList());
     }
 }

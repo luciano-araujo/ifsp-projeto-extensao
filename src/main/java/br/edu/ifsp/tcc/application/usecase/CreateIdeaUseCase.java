@@ -5,6 +5,7 @@ import br.edu.ifsp.tcc.application.dto.CreateCardDTO;
 import br.edu.ifsp.tcc.application.entity.*;
 import br.edu.ifsp.tcc.application.service.BoardService;
 import br.edu.ifsp.tcc.application.service.KanbanItemService;
+import br.edu.ifsp.tcc.application.service.TagService;
 import br.edu.ifsp.tcc.application.service.TeamService;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,11 +18,14 @@ public class CreateIdeaUseCase {
     private final TeamService teamService;
     private final BoardService boardService;
     private final KanbanItemService kanbanItemService;
+    private final TagService tagService;
 
-    public CreateIdeaUseCase(TeamService teamService, BoardService boardService, KanbanItemService kanbanItemService) {
+    public CreateIdeaUseCase(TeamService teamService, BoardService boardService, KanbanItemService kanbanItemService,
+                             TagService tagService) {
         this.teamService = teamService;
         this.boardService = boardService;
         this.kanbanItemService = kanbanItemService;
+        this.tagService = tagService;
     }
 
     /** Saves an idea in the team inbox; audience and objective are optional until conversion. */
@@ -34,7 +38,7 @@ public class CreateIdeaUseCase {
         item.setDescription(dto.getDescription());
         item.setTargetAudience(blankToNull(dto.getTargetAudience()));
         item.setPedagogicalObjective(blankToNull(dto.getPedagogicalObjective()));
-        item.setTag(blankToNull(dto.getTag()));
+        item.setTag(tagService.resolveTag(teamId, dto.getTagId(), dto.getTag()));
         item.setState(KanbanItemState.IDEATION);
         item.setTeam(team);
         item.setUser(user);

@@ -28,6 +28,10 @@ public class BoardController {
     private final ToggleCardTaskUseCase toggleCardTaskUseCase;
     private final DeleteCardTaskUseCase deleteCardTaskUseCase;
     private final ToggleIdeaVoteUseCase toggleIdeaVoteUseCase;
+    private final UpdateCardTaskUseCase updateCardTaskUseCase;
+    private final ReorderCardTasksUseCase reorderCardTasksUseCase;
+    private final ReorderColumnsUseCase reorderColumnsUseCase;
+    private final GetCardHistoryUseCase getCardHistoryUseCase;
 
     public BoardController(GetBoardUseCase getBoardUseCase,
                            ListIdeasUseCase listIdeasUseCase,
@@ -42,7 +46,11 @@ public class BoardController {
                            CreateCardTaskUseCase createCardTaskUseCase,
                            ToggleCardTaskUseCase toggleCardTaskUseCase,
                            DeleteCardTaskUseCase deleteCardTaskUseCase,
-                           ToggleIdeaVoteUseCase toggleIdeaVoteUseCase) {
+                           ToggleIdeaVoteUseCase toggleIdeaVoteUseCase,
+                           UpdateCardTaskUseCase updateCardTaskUseCase,
+                           ReorderCardTasksUseCase reorderCardTasksUseCase,
+                           ReorderColumnsUseCase reorderColumnsUseCase,
+                           GetCardHistoryUseCase getCardHistoryUseCase) {
         this.getBoardUseCase = getBoardUseCase;
         this.listIdeasUseCase = listIdeasUseCase;
         this.createIdeaUseCase = createIdeaUseCase;
@@ -57,6 +65,10 @@ public class BoardController {
         this.toggleCardTaskUseCase = toggleCardTaskUseCase;
         this.deleteCardTaskUseCase = deleteCardTaskUseCase;
         this.toggleIdeaVoteUseCase = toggleIdeaVoteUseCase;
+        this.updateCardTaskUseCase = updateCardTaskUseCase;
+        this.reorderCardTasksUseCase = reorderCardTasksUseCase;
+        this.reorderColumnsUseCase = reorderColumnsUseCase;
+        this.getCardHistoryUseCase = getCardHistoryUseCase;
     }
 
     @GetMapping("/board")
@@ -67,8 +79,12 @@ public class BoardController {
     // --- Ideas inbox ---
 
     @GetMapping("/ideas")
-    public ResponseEntity<List<CardResponse>> ideas(@AuthenticationPrincipal User user, @PathVariable Long teamId) {
-        return ResponseEntity.ok(listIdeasUseCase.execute(teamId, user.getId()));
+    public ResponseEntity<List<CardResponse>> ideas(@AuthenticationPrincipal User user,
+                                                    @PathVariable Long teamId,
+                                                    @RequestParam(required = false) String q,
+                                                    @RequestParam(required = false) Long tagId,
+                                                    @RequestParam(required = false) String sort) {
+        return ResponseEntity.ok(listIdeasUseCase.execute(teamId, user.getId(), q, tagId, sort));
     }
 
     @PostMapping("/ideas")
@@ -119,7 +135,21 @@ public class BoardController {
         return ResponseEntity.noContent().build();
     }
 
+    @GetMapping("/cards/{cardId}/history")
+    public ResponseEntity<List<CardMovementResponse>> history(@AuthenticationPrincipal User user,
+                                                              @PathVariable Long teamId,
+                                                              @PathVariable Long cardId) {
+        return ResponseEntity.ok(getCardHistoryUseCase.execute(teamId, user.getId(), cardId));
+    }
+
     // --- Columns ---
+
+    @PutMapping("/columns/order")
+    public ResponseEntity<List<BoardColumnResponse>> reorderColumns(@AuthenticationPrincipal User user,
+                                                                    @PathVariable Long teamId,
+                                                                    @Valid @RequestBody ReorderColumnsDTO dto) {
+        return ResponseEntity.ok(reorderColumnsUseCase.execute(teamId, user.getId(), dto));
+    }
 
     @PostMapping("/columns")
     public ResponseEntity<BoardColumnResponse> addColumn(@AuthenticationPrincipal User user,
@@ -153,6 +183,23 @@ public class BoardController {
                                                        @PathVariable Long cardId,
                                                        @Valid @RequestBody CreateTaskDTO dto) {
         return ResponseEntity.ok(createCardTaskUseCase.execute(teamId, user.getId(), cardId, dto));
+    }
+
+    @PatchMapping("/cards/{cardId}/tasks/{taskId}")
+    public ResponseEntity<CardTaskResponse> updateTask(@AuthenticationPrincipal User user,
+                                                       @PathVariable Long teamId,
+                                                       @PathVariable Long cardId,
+                                                       @PathVariable Long taskId,
+                                                       @Valid @RequestBody UpdateTaskDTO dto) {
+        return ResponseEntity.ok(updateCardTaskUseCase.execute(teamId, user.getId(), cardId, taskId, dto));
+    }
+
+    @PutMapping("/cards/{cardId}/tasks/order")
+    public ResponseEntity<List<CardTaskResponse>> reorderTasks(@AuthenticationPrincipal User user,
+                                                               @PathVariable Long teamId,
+                                                               @PathVariable Long cardId,
+                                                               @Valid @RequestBody ReorderTasksDTO dto) {
+        return ResponseEntity.ok(reorderCardTasksUseCase.execute(teamId, user.getId(), cardId, dto));
     }
 
     @PatchMapping("/cards/{cardId}/tasks/{taskId}/toggle")

@@ -34,6 +34,20 @@ class CardTaskTest {
     }
 
     @Test
+    void assigneeAndDueDate_shouldBeOptional() {
+        CardTask task = new CardTask();
+        assertNull(task.getAssignee());
+        assertNull(task.getDueDate());
+
+        TeamMember member = new TeamMember();
+        task.setAssignee(member);
+        task.setDueDate(java.time.LocalDate.of(2026, 11, 5));
+
+        assertSame(member, task.getAssignee());
+        assertEquals(java.time.LocalDate.of(2026, 11, 5), task.getDueDate());
+    }
+
+    @Test
     void setters_shouldExposeValues() {
         CardTask task = new CardTask();
         task.setId(1L);

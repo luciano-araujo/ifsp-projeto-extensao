@@ -1,6 +1,7 @@
 package br.edu.ifsp.tcc.application.entity;
 
 import jakarta.persistence.*;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -23,6 +24,14 @@ public class CardTask {
 
     @Column(name = "sort_order", nullable = false)
     private Integer sortOrder = 0;
+
+    // Null when nobody is responsible (or after the member leaves the team)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "assignee_member_id")
+    private TeamMember assignee;
+
+    @Column(name = "due_date")
+    private LocalDate dueDate;
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
@@ -48,6 +57,12 @@ public class CardTask {
 
     public Integer getSortOrder() { return sortOrder; }
     public void setSortOrder(Integer sortOrder) { this.sortOrder = sortOrder; }
+
+    public TeamMember getAssignee() { return assignee; }
+    public void setAssignee(TeamMember assignee) { this.assignee = assignee; }
+
+    public LocalDate getDueDate() { return dueDate; }
+    public void setDueDate(LocalDate dueDate) { this.dueDate = dueDate; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
 }

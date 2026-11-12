@@ -10,6 +10,7 @@ import br.edu.ifsp.tcc.application.service.TeamService;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -37,6 +38,7 @@ public class GetBoardUseCase {
                 .filter(item -> item.getState() != KanbanItemState.IDEATION)
                 .toList();
         Map<Long, List<CardTask>> tasksByCard = boardService.findTasksByCard(projects);
+        Map<Long, LocalDateTime> columnSinceByCard = boardService.findColumnSince(projects);
 
         Long firstColumnId = columns.isEmpty() ? null : columns.get(0).getId();
         Map<Long, List<CardResponse>> cardsByColumn = new HashMap<>();
@@ -45,7 +47,8 @@ public class GetBoardUseCase {
             Long columnId = item.getColumnId() != null ? item.getColumnId() : firstColumnId;
             if (columnId == null) continue;
             cardsByColumn.computeIfAbsent(columnId, id -> new ArrayList<>())
-                    .add(boardService.toCardResponse(item, columnId, tasksByCard.getOrDefault(item.getId(), List.of())));
+                    .add(boardService.toCardResponse(item, columnId, tasksByCard.getOrDefault(item.getId(), List.of()),
+                            columnSinceByCard.get(item.getId())));
         }
 
         List<BoardColumnResponse> columnResponses = columns.stream()

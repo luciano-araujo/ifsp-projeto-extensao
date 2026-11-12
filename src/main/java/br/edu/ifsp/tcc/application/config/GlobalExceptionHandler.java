@@ -1,6 +1,7 @@
 package br.edu.ifsp.tcc.application.config;
 
 import br.edu.ifsp.tcc.application.dto.MessageResponse;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -19,6 +20,13 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<MessageResponse> handleResponseStatusException(ResponseStatusException ex) {
         return ResponseEntity.status(ex.getStatusCode()).body(new MessageResponse(ex.getReason()));
+    }
+
+    /** Unique/foreign key violations (e.g. two requests creating the same tag): 409 without leaking SQL text. */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<MessageResponse> handleDataIntegrity(DataIntegrityViolationException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new MessageResponse("Registro duplicado ou em conflito com dados existentes."));
     }
 
     @ExceptionHandler(RuntimeException.class)

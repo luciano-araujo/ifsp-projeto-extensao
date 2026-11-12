@@ -73,10 +73,16 @@ class KanbanItemEntityTest {
         KanbanItem item = new KanbanItem();
         item.setTitle("Projeto");
         item.setState(KanbanItemState.IN_PRODUCTION);
-        item.setTag("Aula");
+        Tag aula = new Tag();
+        aula.setId(7L);
+        aula.setName("Aula");
+        item.setTag(aula);
 
         assertEquals("Projeto", item.getTitle());
         assertEquals(KanbanItemState.IN_PRODUCTION, item.getState());
-        assertEquals("Aula", item.getTag());
+        assertSame(aula, item.getTag());
+        assertEquals(7L, item.getTagId());
+        item.setTag(null);
+        assertNull(item.getTagId());
     }
 }

@@ -24,12 +24,16 @@ public class TeamService {
     private final TeamMemberRepository teamMemberRepository;
     private final BoardColumnRepository boardColumnRepository;
 
+    private final TagService tagService;
+
     public TeamService(TeamRepository teamRepository,
                        TeamMemberRepository teamMemberRepository,
-                       BoardColumnRepository boardColumnRepository) {
+                       BoardColumnRepository boardColumnRepository,
+                       TagService tagService) {
         this.teamRepository = teamRepository;
         this.teamMemberRepository = teamMemberRepository;
         this.boardColumnRepository = boardColumnRepository;
+        this.tagService = tagService;
     }
 
     // --- Access verification ---
@@ -68,6 +72,7 @@ public class TeamService {
             column.setSortOrder(i);
             boardColumnRepository.save(column);
         }
+        tagService.createDefaultTags(team);
         return admin;
     }
 
@@ -98,6 +103,11 @@ public class TeamService {
     public TeamMember findMember(Long teamId, Long memberId) {
         return teamMemberRepository.findByIdAndTeam_Id(memberId, teamId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Membro nao encontrado."));
+    }
+
+    /** The member of the team, or empty when the id does not belong to it. */
+    public Optional<TeamMember> findMemberOfTeam(Long teamId, Long memberId) {
+        return teamMemberRepository.findByIdAndTeam_Id(memberId, teamId);
     }
 
     public int countMembers(Long teamId) {

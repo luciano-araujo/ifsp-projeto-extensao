@@ -16,4 +16,7 @@ public class CreateCardDTO {
 
     @Size(max = 40, message = "A etiqueta deve ter no maximo 40 caracteres.")
     private String tag;
+
+    /** Preferred way to set the tag; when sent, it wins over the tag name. */
+    private Long tagId;
 }

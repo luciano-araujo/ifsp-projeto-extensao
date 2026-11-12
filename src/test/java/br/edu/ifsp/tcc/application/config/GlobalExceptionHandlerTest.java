@@ -3,6 +3,7 @@ package br.edu.ifsp.tcc.application.config;
 import br.edu.ifsp.tcc.application.dto.MessageResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -31,6 +32,17 @@ class GlobalExceptionHandlerTest {
 
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
         assertEquals("Something went wrong", response.getBody().getMessage());
+    }
+
+    @Test
+    void handleDataIntegrity_shouldReturn409WithoutLeakingSql() {
+        DataIntegrityViolationException ex = new DataIntegrityViolationException(
+                "Duplicate entry 'x' for key 'uk_tags_team_name' [insert into tags ...]");
+
+        ResponseEntity<MessageResponse> response = handler.handleDataIntegrity(ex);
+
+        assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+        assertEquals("Registro duplicado ou em conflito com dados existentes.", response.getBody().getMessage());
     }
 
     @Test

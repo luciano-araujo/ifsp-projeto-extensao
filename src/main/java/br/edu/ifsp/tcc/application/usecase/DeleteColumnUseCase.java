@@ -3,6 +3,7 @@ package br.edu.ifsp.tcc.application.usecase;
 import br.edu.ifsp.tcc.application.entity.BoardColumn;
 import br.edu.ifsp.tcc.application.entity.KanbanItem;
 import br.edu.ifsp.tcc.application.entity.TeamRole;
+import br.edu.ifsp.tcc.application.entity.User;
 import br.edu.ifsp.tcc.application.service.BoardService;
 import br.edu.ifsp.tcc.application.service.KanbanItemService;
 import br.edu.ifsp.tcc.application.service.TeamService;
@@ -29,7 +30,7 @@ public class DeleteColumnUseCase {
     /** Deletes a column; its cards go to targetColumnId, or to the first remaining column. */
     @Transactional
     public void execute(Long teamId, Long userId, Long columnId, Long targetColumnId) {
-        teamService.requireRole(teamId, userId, TeamRole.ADMIN);
+        User admin = teamService.requireRole(teamId, userId, TeamRole.ADMIN).getUser();
         BoardColumn column = boardService.findColumn(teamId, columnId);
 
         List<BoardColumn> others = boardService.findColumns(teamId).stream()
@@ -47,6 +48,7 @@ public class DeleteColumnUseCase {
             if (columnId.equals(item.getColumnId())) {
                 item.setColumn(target);
                 kanbanItemService.save(item);
+                boardService.recordMovement(item, target, admin);
             }
         }
         boardService.deleteColumn(column);
