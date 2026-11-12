@@ -34,9 +34,11 @@ ALTER TABLE kanban_items
     ADD COLUMN tag_id BIGINT NULL,
     ADD CONSTRAINT fk_kanban_items_tag FOREIGN KEY (tag_id) REFERENCES tags (id) ON DELETE SET NULL;
 
+-- updated_at is assigned to itself so the ON UPDATE CURRENT_TIMESTAMP default does not touch it
+-- (V16 seeds the card history from it)
 UPDATE kanban_items k
     JOIN tags g ON g.team_id = k.team_id AND g.name = TRIM(k.tag)
-SET k.tag_id = g.id
+SET k.tag_id = g.id, k.updated_at = k.updated_at
 WHERE k.tag IS NOT NULL;
 
 ALTER TABLE kanban_items DROP COLUMN tag;
