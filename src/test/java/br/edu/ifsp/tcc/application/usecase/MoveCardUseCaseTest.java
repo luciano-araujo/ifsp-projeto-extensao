@@ -112,11 +112,45 @@ class MoveCardUseCaseTest {
     }
 
     @Test
-    void execute_shouldRecordMovementForProjectThatHadNoColumn() {
+    void execute_shouldNotRecordMovementWhenProjectWithoutColumnIsMovedToTheFirstColumn() {
+        KanbanItem project = card(KanbanItemState.IN_PRODUCTION);
+        BoardColumn pesquisa = column(100L);
+        LocalDateTime since = LocalDateTime.of(2026, 10, 28, 18, 0);
+        when(boardService.findCard(10L, 1L)).thenReturn(project);
+        when(boardService.findColumn(10L, 100L)).thenReturn(pesquisa);
+        when(boardService.findColumns(10L)).thenReturn(List.of(pesquisa, column(101L)));
+        when(kanbanItemService.save(project)).thenReturn(project);
+        when(boardService.findColumnSince(List.of(project))).thenReturn(Map.of(1L, since));
+
+        useCase.execute(10L, 1L, 1L, dto(100L));
+
+        verify(boardService, never()).recordMovement(any(), any(), any());
+        verify(boardService).toCardResponse(project, 100L, List.of(), since);
+    }
+
+    @Test
+    void execute_shouldRecordMovementForProjectWithoutColumnMovedToAnotherColumn() {
+        KanbanItem project = card(KanbanItemState.IN_PRODUCTION);
+        BoardColumn pesquisa = column(100L);
+        BoardColumn roteiro = column(101L);
+        when(boardService.findCard(10L, 1L)).thenReturn(project);
+        when(boardService.findColumn(10L, 101L)).thenReturn(roteiro);
+        when(boardService.findColumns(10L)).thenReturn(List.of(pesquisa, roteiro));
+        when(kanbanItemService.save(project)).thenReturn(project);
+        when(boardService.recordMovement(project, roteiro, user)).thenReturn(new CardMovement());
+
+        useCase.execute(10L, 1L, 1L, dto(101L));
+
+        verify(boardService).recordMovement(project, roteiro, user);
+    }
+
+    @Test
+    void execute_shouldRecordMovementForProjectWithoutColumnWhenTheBoardHasNoColumns() {
         KanbanItem project = card(KanbanItemState.IN_PRODUCTION);
         BoardColumn pesquisa = column(100L);
         when(boardService.findCard(10L, 1L)).thenReturn(project);
         when(boardService.findColumn(10L, 100L)).thenReturn(pesquisa);
+        when(boardService.findColumns(10L)).thenReturn(List.of());
         when(kanbanItemService.save(project)).thenReturn(project);
         when(boardService.recordMovement(project, pesquisa, user)).thenReturn(new CardMovement());
 

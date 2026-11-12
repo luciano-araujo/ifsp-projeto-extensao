@@ -41,7 +41,10 @@ public class MoveCardUseCase {
         }
 
         BoardColumn column = boardService.findColumn(teamId, dto.getColumnId());
-        boolean columnChanged = !column.getId().equals(item.getColumnId());
+        // A project without a column is shown (and has its history) in the first column of the board
+        Long currentColumnId = item.getColumnId() != null ? item.getColumnId()
+                : boardService.findColumns(teamId).stream().map(BoardColumn::getId).findFirst().orElse(null);
+        boolean columnChanged = !column.getId().equals(currentColumnId);
         item.setColumn(column);
         item.setSortOrder(dto.getSortOrder() != null ? dto.getSortOrder() : boardService.nextSortOrder(teamId, column.getId()));
         KanbanItem saved = kanbanItemService.save(item);
