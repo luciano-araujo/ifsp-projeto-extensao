@@ -28,9 +28,7 @@ public class KanbanItemController {
     @GetMapping("/{id}")
     public ResponseEntity<KanbanItem> getById(@AuthenticationPrincipal User user,
                                                @PathVariable Long id) {
-        return getKanbanItemByIdUseCase.execute(id, user.getId())
-                .map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
+        return ResponseEntity.ok(getKanbanItemByIdUseCase.execute(id, user.getId()));
     }
 
     @PutMapping("/{id}")

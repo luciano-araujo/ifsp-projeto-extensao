@@ -72,7 +72,7 @@ public class BoardService {
 
     public KanbanItem findCard(Long teamId, Long cardId) {
         return kanbanItemService.findByIdAndTeamId(cardId, teamId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Card nao encontrado."));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Card não encontrado."));
     }
 
     public int nextSortOrder(Long teamId, Long columnId) {

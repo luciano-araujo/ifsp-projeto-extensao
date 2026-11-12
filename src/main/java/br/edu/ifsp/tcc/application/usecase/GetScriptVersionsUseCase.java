@@ -3,7 +3,9 @@ package br.edu.ifsp.tcc.application.usecase;
 import br.edu.ifsp.tcc.application.entity.ScriptVersion;
 import br.edu.ifsp.tcc.application.service.KanbanItemService;
 import br.edu.ifsp.tcc.application.service.ScriptService;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -19,11 +21,11 @@ public class GetScriptVersionsUseCase {
     }
 
     public List<ScriptVersion> execute(Long kanbanItemId, Long userId) {
-        kanbanItemService.findByIdAndUserId(kanbanItemId, userId)
-                .orElseThrow(() -> new RuntimeException("Item nao encontrado."));
+        kanbanItemService.findCardOfMember(kanbanItemId, userId);
 
         var script = scriptService.findByKanbanItemId(kanbanItemId)
-                .orElseThrow(() -> new RuntimeException("Script nao encontrado para este item."));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Script não encontrado para este item."));
 
         return scriptService.findVersionsByScriptId(script.getId());
     }

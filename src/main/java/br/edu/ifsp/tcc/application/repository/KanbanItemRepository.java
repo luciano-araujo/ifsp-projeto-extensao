@@ -14,8 +14,8 @@ public interface KanbanItemRepository extends JpaRepository<KanbanItem, Long> {
     List<KanbanItem> findByTeam_IdOrderBySortOrderAscIdAsc(Long teamId);
     Optional<KanbanItem> findByIdAndTeam_Id(Long id, Long teamId);
 
-    // Owner of the item, or member of the item's team
-    @Query("SELECT k FROM KanbanItem k WHERE k.id = :id AND (k.user.id = :userId OR k.team.id IN "
-            + "(SELECT m.team.id FROM TeamMember m WHERE m.user.id = :userId))")
+    // The item, only when the user is a member of the item's team
+    @Query("SELECT k FROM KanbanItem k WHERE k.id = :id AND k.team.id IN "
+            + "(SELECT m.team.id FROM TeamMember m WHERE m.user.id = :userId)")
     Optional<KanbanItem> findAccessible(@Param("id") Long id, @Param("userId") Long userId);
 }

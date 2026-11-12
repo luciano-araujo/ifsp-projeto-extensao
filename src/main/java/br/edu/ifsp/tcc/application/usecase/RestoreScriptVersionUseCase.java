@@ -3,11 +3,14 @@ package br.edu.ifsp.tcc.application.usecase;
 import br.edu.ifsp.tcc.application.entity.KanbanItem;
 import br.edu.ifsp.tcc.application.entity.Script;
 import br.edu.ifsp.tcc.application.entity.ScriptVersion;
-import br.edu.ifsp.tcc.application.service.KanbanItemService;
 import br.edu.ifsp.tcc.application.entity.TeamRole;
+import br.edu.ifsp.tcc.application.service.KanbanItemService;
 import br.edu.ifsp.tcc.application.service.ScriptService;
 import br.edu.ifsp.tcc.application.service.TeamService;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 @Component
 public class RestoreScriptVersionUseCase {
@@ -17,26 +20,24 @@ public class RestoreScriptVersionUseCase {
     private final TeamService teamService;
 
     public RestoreScriptVersionUseCase(ScriptService scriptService, KanbanItemService kanbanItemService,
-            TeamService teamService) {
+                                       TeamService teamService) {
         this.scriptService = scriptService;
         this.kanbanItemService = kanbanItemService;
         this.teamService = teamService;
     }
 
+    @Transactional
     public Script execute(Long kanbanItemId, Long userId, Long versionId) {
-        KanbanItem item = kanbanItemService.findByIdAndUserId(kanbanItemId, userId)
-                .orElseThrow(() -> new RuntimeException("Item nao encontrado."));
+        KanbanItem item = kanbanItemService.findCardOfMember(kanbanItemId, userId);
         teamService.requireRole(item.getTeamId(), userId, TeamRole.ADMIN, TeamRole.CREATOR);
 
         Script script = scriptService.findByKanbanItemId(kanbanItemId)
-                .orElseThrow(() -> new RuntimeException("Script nao encontrado para este item."));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Script não encontrado para este item."));
 
         ScriptVersion version = scriptService.findVersionById(versionId)
-                .orElseThrow(() -> new RuntimeException("Versao nao encontrada."));
-
-        if (!version.getScriptId().equals(script.getId())) {
-            throw new RuntimeException("Esta versao nao pertence a este script.");
-        }
+                .filter(found -> script.getId().equals(found.getScriptId()))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Versão não encontrada."));
 
         script.setContent(version.getContent());
         return scriptService.save(script);

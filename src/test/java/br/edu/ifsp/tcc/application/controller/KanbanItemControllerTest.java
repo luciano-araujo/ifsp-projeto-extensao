@@ -13,7 +13,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
-import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -37,22 +36,12 @@ class KanbanItemControllerTest {
     @Test
     void getById_shouldReturnItemWhenFound() {
         KanbanItem item = new KanbanItem();
-        when(getKanbanItemByIdUseCase.execute(2L, 1L)).thenReturn(Optional.of(item));
+        when(getKanbanItemByIdUseCase.execute(2L, 1L)).thenReturn(item);
 
         ResponseEntity<KanbanItem> response = controller.getById(user, 2L);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertSame(item, response.getBody());
-    }
-
-    @Test
-    void getById_shouldReturnNotFoundWhenMissing() {
-        when(getKanbanItemByIdUseCase.execute(2L, 1L)).thenReturn(Optional.empty());
-
-        ResponseEntity<KanbanItem> response = controller.getById(user, 2L);
-
-        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
-        assertNull(response.getBody());
     }
 
     @Test

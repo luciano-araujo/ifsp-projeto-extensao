@@ -22,8 +22,7 @@ public class UpdateKanbanItemUseCase {
 
     /** Editors (ADMIN and CREATOR of the card's team) only; position and progress come from the board. */
     public KanbanItem execute(Long itemId, Long userId, UpdateKanbanItemDTO dto) {
-        KanbanItem item = kanbanItemService.findByIdAndUserId(itemId, userId)
-                .orElseThrow(() -> new RuntimeException("Item nao encontrado."));
+        KanbanItem item = kanbanItemService.findCardOfMember(itemId, userId);
         teamService.requireRole(item.getTeamId(), userId, TeamRole.ADMIN, TeamRole.CREATOR);
 
         if (dto.getTitle() != null) item.setTitle(dto.getTitle());

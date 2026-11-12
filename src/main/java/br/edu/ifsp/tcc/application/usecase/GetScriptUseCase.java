@@ -19,8 +19,7 @@ public class GetScriptUseCase {
 
     /** The script of the card, or an empty one (not persisted) when nothing was saved yet. */
     public Script execute(Long kanbanItemId, Long userId) {
-        KanbanItem item = kanbanItemService.findByIdAndUserId(kanbanItemId, userId)
-                .orElseThrow(() -> new RuntimeException("Item nao encontrado."));
+        KanbanItem item = kanbanItemService.findCardOfMember(kanbanItemId, userId);
 
         return scriptService.findByKanbanItemId(kanbanItemId)
                 .orElseGet(() -> scriptService.emptyScript(item));

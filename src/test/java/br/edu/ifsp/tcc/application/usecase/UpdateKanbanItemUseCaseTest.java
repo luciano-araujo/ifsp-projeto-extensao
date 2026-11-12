@@ -15,7 +15,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
-import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -41,7 +40,7 @@ class UpdateKanbanItemUseCaseTest {
     @Test
     void execute_shouldUpdateOnlyProvidedFields() {
         KanbanItem item = existingItem();
-        when(kanbanItemService.findByIdAndUserId(1L, 1L)).thenReturn(Optional.of(item));
+        when(kanbanItemService.findCardOfMember(1L, 1L)).thenReturn(item);
         when(kanbanItemService.save(item)).thenReturn(item);
 
         UpdateKanbanItemDTO dto = new UpdateKanbanItemDTO();
@@ -61,7 +60,7 @@ class UpdateKanbanItemUseCaseTest {
     @Test
     void execute_shouldUpdateDescription() {
         KanbanItem item = existingItem();
-        when(kanbanItemService.findByIdAndUserId(1L, 1L)).thenReturn(Optional.of(item));
+        when(kanbanItemService.findCardOfMember(1L, 1L)).thenReturn(item);
         when(kanbanItemService.save(item)).thenReturn(item);
 
         UpdateKanbanItemDTO dto = new UpdateKanbanItemDTO();
@@ -73,7 +72,7 @@ class UpdateKanbanItemUseCaseTest {
     @Test
     void execute_shouldSetAndClearDueDate() {
         KanbanItem item = existingItem();
-        when(kanbanItemService.findByIdAndUserId(1L, 1L)).thenReturn(Optional.of(item));
+        when(kanbanItemService.findCardOfMember(1L, 1L)).thenReturn(item);
         when(kanbanItemService.save(item)).thenReturn(item);
 
         UpdateKanbanItemDTO setDate = new UpdateKanbanItemDTO();
@@ -92,7 +91,7 @@ class UpdateKanbanItemUseCaseTest {
     @Test
     void execute_shouldRejectReviewer() {
         KanbanItem item = existingItem();
-        when(kanbanItemService.findByIdAndUserId(1L, 3L)).thenReturn(Optional.of(item));
+        when(kanbanItemService.findCardOfMember(1L, 3L)).thenReturn(item);
         when(teamService.requireRole(10L, 3L, TeamRole.ADMIN, TeamRole.CREATOR))
                 .thenThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "Seu papel na equipe não permite esta ação."));
 
@@ -107,13 +106,16 @@ class UpdateKanbanItemUseCaseTest {
     }
 
     @Test
-    void execute_shouldThrowWhenItemNotFound() {
-        when(kanbanItemService.findByIdAndUserId(1L, 99L)).thenReturn(Optional.empty());
+    void execute_shouldReturn404ForMissingCardOrOtherTeam() {
+        when(kanbanItemService.findCardOfMember(1L, 99L))
+                .thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Card não encontrado."));
 
         UpdateKanbanItemDTO dto = new UpdateKanbanItemDTO();
         dto.setTitle("x");
 
-        assertThrows(RuntimeException.class, () -> useCase.execute(1L, 99L, dto));
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class, () -> useCase.execute(1L, 99L, dto));
+
+        assertEquals(HttpStatus.NOT_FOUND, ex.getStatusCode());
         verifyNoInteractions(teamService);
     }
 }
