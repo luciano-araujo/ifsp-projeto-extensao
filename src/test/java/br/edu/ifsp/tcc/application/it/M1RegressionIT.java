@@ -73,6 +73,28 @@ class M1RegressionIT extends AbstractIT {
     }
 
     @Test
+    @DisplayName("RN01 minimums (audience >= 3, objective >= 10 after trim) on create-project and convert; ideas stay optional")
+    void rn01MinimumsOnCreateAndConvert() {
+        Team team = newTeam();
+        assertEquals(400, api.post(team.path() + "/cards", ana.token(), map("title", "p",
+                "targetAudience", "ab", "pedagogicalObjective", "Objetivo longo")).status());
+        assertEquals(400, api.post(team.path() + "/cards", ana.token(), map("title", "p",
+                "targetAudience", "Alunos", "pedagogicalObjective", "  curto  ")).status());
+        assertEquals(400, api.post(team.path() + "/cards", ana.token(), map("title", "  ",
+                "targetAudience", "Alunos", "pedagogicalObjective", "Objetivo longo")).status());
+
+        Resp idea = api.post(team.path() + "/ideas", ana.token(), map("title", "ideia livre"));
+        assertEquals(200, idea.status(), idea.body());
+        long id = idea.num("id");
+        assertEquals(400, api.post(team.path() + "/cards/" + id + "/convert", ana.token(),
+                map("targetAudience", "ab", "pedagogicalObjective", "Objetivo longo")).status());
+        assertEquals(400, api.post(team.path() + "/cards/" + id + "/convert", ana.token(),
+                map("targetAudience", "Alunos", "pedagogicalObjective", "curto")).status());
+        assertEquals(200, api.post(team.path() + "/cards/" + id + "/convert", ana.token(),
+                map("targetAudience", "Alunos", "pedagogicalObjective", "Objetivo longo")).status());
+    }
+
+    @Test
     @DisplayName("BUG-05 Error bodies must not leak Java types, controller signatures or English parser messages")
     void errorBodiesDoNotLeak() {
         Team team = newTeam();

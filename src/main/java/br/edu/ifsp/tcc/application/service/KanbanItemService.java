@@ -12,6 +12,29 @@ import java.util.Optional;
 @Service
 public class KanbanItemService {
 
+    /** RN01 minimums (product decision 7), shared by create, convert and edit. */
+    public static final int MIN_AUDIENCE = 3;
+    public static final int MIN_OBJECTIVE = 10;
+
+    public static ResponseStatusException invalidAudience() {
+        return new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                "Informe o público-alvo com pelo menos " + MIN_AUDIENCE + " caracteres.");
+    }
+
+    public static ResponseStatusException invalidObjective() {
+        return new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                "Informe o objetivo pedagógico com pelo menos " + MIN_OBJECTIVE + " caracteres.");
+    }
+
+    /** RN01 for a card that becomes (or is created as) a project: effective values, after trim. */
+    public static void requireProjectFields(String title, String audience, String objective) {
+        if (title == null || title.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O título não pode ficar vazio.");
+        }
+        if (audience == null || audience.trim().length() < MIN_AUDIENCE) throw invalidAudience();
+        if (objective == null || objective.trim().length() < MIN_OBJECTIVE) throw invalidObjective();
+    }
+
     private final KanbanItemRepository kanbanItemRepository;
 
     public KanbanItemService(KanbanItemRepository kanbanItemRepository) {

@@ -34,10 +34,7 @@ public class CreateCardUseCase {
     @Transactional
     public CardResponse execute(Long teamId, User user, CreateCardDTO dto) {
         Team team = teamService.requireRole(teamId, user.getId(), TeamRole.ADMIN, TeamRole.CREATOR).getTeam();
-        if (isBlank(dto.getTargetAudience()) || isBlank(dto.getPedagogicalObjective())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Para virar projeto, informe o publico-alvo e o objetivo pedagogico.");
-        }
+        KanbanItemService.requireProjectFields(dto.getTitle(), dto.getTargetAudience(), dto.getPedagogicalObjective());
         BoardColumn column = boardService.resolveColumn(teamId, dto.getColumnId());
 
         KanbanItem item = new KanbanItem();
@@ -54,9 +51,5 @@ public class CreateCardUseCase {
         KanbanItem saved = kanbanItemService.save(item);
         CardMovement movement = boardService.recordMovement(saved, column, user);
         return boardService.toCardResponse(saved, column.getId(), List.of(), movement.getEnteredAt());
-    }
-
-    private static boolean isBlank(String value) {
-        return value == null || value.isBlank();
     }
 }

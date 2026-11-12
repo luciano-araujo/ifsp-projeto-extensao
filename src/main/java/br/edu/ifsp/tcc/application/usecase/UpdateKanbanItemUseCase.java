@@ -16,10 +16,6 @@ import java.time.format.DateTimeParseException;
 @Component
 public class UpdateKanbanItemUseCase {
 
-    /** Same minimums as the inbox conversion (product decision 7). */
-    static final int MIN_AUDIENCE = 3;
-    static final int MIN_OBJECTIVE = 10;
-
     private final KanbanItemService kanbanItemService;
     private final TeamService teamService;
 
@@ -42,17 +38,13 @@ public class UpdateKanbanItemUseCase {
         if (dto.getDescription() != null) item.setDescription(dto.getDescription());
         if (dto.getTargetAudience() != null) {
             String audience = dto.getTargetAudience().trim();
-            if (project && audience.length() < MIN_AUDIENCE) {
-                throw badRequest("Informe o público-alvo com pelo menos " + MIN_AUDIENCE + " caracteres.");
-            }
+            if (project && audience.length() < KanbanItemService.MIN_AUDIENCE) throw KanbanItemService.invalidAudience();
             // An idea may keep it empty
             item.setTargetAudience(audience.isEmpty() ? null : audience);
         }
         if (dto.getPedagogicalObjective() != null) {
             String objective = dto.getPedagogicalObjective().trim();
-            if (project && objective.length() < MIN_OBJECTIVE) {
-                throw badRequest("Informe o objetivo pedagógico com pelo menos " + MIN_OBJECTIVE + " caracteres.");
-            }
+            if (project && objective.length() < KanbanItemService.MIN_OBJECTIVE) throw KanbanItemService.invalidObjective();
             item.setPedagogicalObjective(objective.isEmpty() ? null : objective);
         }
         if (dto.getDueDate() != null) {

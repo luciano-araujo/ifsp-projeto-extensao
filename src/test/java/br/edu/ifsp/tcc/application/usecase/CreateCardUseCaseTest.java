@@ -105,4 +105,28 @@ class CreateCardUseCaseTest {
                         && "Alunos".equals(item.getTargetAudience())
                         && "Entender o tema".equals(item.getPedagogicalObjective()));
     }
+
+    @Test
+    void execute_shouldApplyRn01MinimumsAfterTrim() {
+        user = new User();
+        user.setId(1L);
+        when(teamService.requireRole(10L, 1L, TeamRole.ADMIN, TeamRole.CREATOR)).thenReturn(new TeamMember());
+
+        CreateCardDTO blankTitle = dto();
+        blankTitle.setTitle("   ");
+        CreateCardDTO shortAudience = dto();
+        shortAudience.setTargetAudience(" ab ");
+        CreateCardDTO shortObjective = dto();
+        shortObjective.setPedagogicalObjective("  curto   ");
+
+        assertEquals("O título não pode ficar vazio.", assertThrows(ResponseStatusException.class,
+                () -> useCase.execute(10L, user, blankTitle)).getReason());
+        assertEquals("Informe o público-alvo com pelo menos 3 caracteres.", assertThrows(ResponseStatusException.class,
+                () -> useCase.execute(10L, user, shortAudience)).getReason());
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> useCase.execute(10L, user, shortObjective));
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        assertEquals("Informe o objetivo pedagógico com pelo menos 10 caracteres.", ex.getReason());
+        verify(kanbanItemService, never()).save(any());
+    }
 }
