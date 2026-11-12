@@ -18,19 +18,16 @@ public class RateLimitService {
 
     private record Window(long startMillis, int count) { }
 
-    private final int maxAttempts;
     private final long windowMillis;
     private final LongSupplier clock;
     private final Cache<String, Window> windows;
 
     @Autowired
-    public RateLimitService(@Value("${app.rate-limit.max-attempts:10}") int maxAttempts,
-                            @Value("${app.rate-limit.window-minutes:10}") long windowMinutes) {
-        this(maxAttempts, windowMinutes, System::currentTimeMillis);
+    public RateLimitService(@Value("${app.rate-limit.window-minutes:10}") long windowMinutes) {
+        this(windowMinutes, System::currentTimeMillis);
     }
 
-    RateLimitService(int maxAttempts, long windowMinutes, LongSupplier clock) {
-        this.maxAttempts = maxAttempts;
+    RateLimitService(long windowMinutes, LongSupplier clock) {
         this.windowMillis = Duration.ofMinutes(windowMinutes).toMillis();
         this.clock = clock;
         this.windows = Caffeine.newBuilder()
@@ -40,11 +37,11 @@ public class RateLimitService {
     }
 
     /**
-     * Registers one attempt for the key.
+     * Registers one attempt for the key; allowed while the window holds at most maxAttempts attempts.
      *
      * @return 0 when the attempt is allowed, otherwise the seconds left until the window ends
      */
-    public long registerAttempt(String key) {
+    public long registerAttempt(String key, int maxAttempts) {
         long now = clock.getAsLong();
         long[] retryAfter = {0};
         windows.asMap().compute(key, (k, current) -> {

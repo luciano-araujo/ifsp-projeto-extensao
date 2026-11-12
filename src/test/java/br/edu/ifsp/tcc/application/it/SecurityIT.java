@@ -227,6 +227,23 @@ class SecurityIT extends AbstractIT {
     }
 
     @Test
+    @DisplayName("SEC-10b Encoded path (/api/auth/%6Cogin) shares the login limit; the 429 carries CORS headers")
+    void rateLimitEncodedPathAndCors() {
+        Person victim = person("ratelimit2");
+        int max = Integer.parseInt(environment.getProperty("app.rate-limit.max-attempts"));
+        for (int i = 0; i < max; i++) {
+            api.post("/api/auth/login", null, map("email", victim.email(), "password", "wrong"));
+        }
+        Map<String, String> origin = Map.of("Origin", "http://localhost:3000");
+        Resp encoded = api.send("POST", "/api/auth/%6Cogin", null,
+                map("email", victim.email(), "password", "wrong"), origin);
+        assertEquals(429, encoded.status(), encoded.body());
+        assertEquals("http://localhost:3000", encoded.header("Access-Control-Allow-Origin"));
+        assertNotNull(encoded.header("Retry-After"));
+        assertTrue(encoded.header("Access-Control-Expose-Headers").contains("Retry-After"));
+    }
+
+    @Test
     @DisplayName("SEC-07 Dangerous HTML in a script is sanitized before it is stored")
     void xssSanitized() {
         Team team = newTeam();

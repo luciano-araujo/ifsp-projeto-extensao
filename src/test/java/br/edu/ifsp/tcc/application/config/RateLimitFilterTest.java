@@ -14,6 +14,7 @@ import org.springframework.mock.web.MockHttpServletResponse;
 import java.nio.charset.StandardCharsets;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
@@ -26,19 +27,21 @@ class RateLimitFilterTest {
     @Mock private FilterChain chain;
 
     private RateLimitFilter filter(boolean enabled) {
-        return new RateLimitFilter(rateLimitService, enabled, PROXIES);
+        return new RateLimitFilter(rateLimitService, enabled, 10, 30, PROXIES);
     }
 
     private MockHttpServletRequest post(String path, String body) {
         MockHttpServletRequest request = new MockHttpServletRequest("POST", path);
         request.setRemoteAddr("203.0.113.5");
+        request.setServletPath(path);
         request.setContent(body.getBytes(StandardCharsets.UTF_8));
         return request;
     }
 
     @Test
     void shouldPassThroughAndReplayBodyWhenUnderLimit() throws Exception {
-        when(rateLimitService.registerAttempt("/api/auth/login|203.0.113.5|ana@x.com")).thenReturn(0L);
+        when(rateLimitService.registerAttempt("ip|/api/auth/login|203.0.113.5", 30)).thenReturn(0L);
+        when(rateLimitService.registerAttempt("/api/auth/login|203.0.113.5|ana@x.com", 10)).thenReturn(0L);
         MockHttpServletRequest request = post("/api/auth/login", "{\"email\":\" Ana@X.com \",\"password\":\"p\"}");
         MockHttpServletResponse response = new MockHttpServletResponse();
 
@@ -54,7 +57,7 @@ class RateLimitFilterTest {
 
     @Test
     void shouldAnswer429WithRetryAfterWhenOverLimit() throws Exception {
-        when(rateLimitService.registerAttempt(anyString())).thenReturn(321L);
+        when(rateLimitService.registerAttempt(anyString(), anyInt())).thenReturn(0L, 321L);
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         filter(true).doFilter(post("/api/auth/password/forgot", "{\"email\":\"a@b.com\"}"), response, chain);
@@ -69,35 +72,35 @@ class RateLimitFilterTest {
 
     @Test
     void shouldKeyByEmptyEmailWhenBodyIsNotJsonOrHasNoEmail() throws Exception {
-        when(rateLimitService.registerAttempt("/api/auth/login|203.0.113.5|")).thenReturn(0L);
+        when(rateLimitService.registerAttempt(anyString(), anyInt())).thenReturn(0L);
 
         filter(true).doFilter(post("/api/auth/login", "not json"), new MockHttpServletResponse(), chain);
         filter(true).doFilter(post("/api/auth/login", "{\"email\":5}"), new MockHttpServletResponse(), chain);
         filter(true).doFilter(post("/api/auth/login", ""), new MockHttpServletResponse(), chain);
 
-        verify(rateLimitService, times(3)).registerAttempt("/api/auth/login|203.0.113.5|");
+        verify(rateLimitService, times(3)).registerAttempt("/api/auth/login|203.0.113.5|", 10);
         verify(chain, times(3)).doFilter(any(), any());
     }
 
     @Test
     void shouldTrustForwardedForOnlyFromLocalProxy() throws Exception {
-        when(rateLimitService.registerAttempt(anyString())).thenReturn(0L);
+        when(rateLimitService.registerAttempt(anyString(), anyInt())).thenReturn(0L);
 
         MockHttpServletRequest viaNginx = post("/api/auth/login", "{\"email\":\"a@b.com\"}");
         viaNginx.setRemoteAddr("127.0.0.1");
         viaNginx.addHeader("X-Forwarded-For", "6.6.6.6, 198.51.100.7");
         filter(true).doFilter(viaNginx, new MockHttpServletResponse(), chain);
-        verify(rateLimitService).registerAttempt("/api/auth/login|198.51.100.7|a@b.com");
+        verify(rateLimitService).registerAttempt("/api/auth/login|198.51.100.7|a@b.com", 10);
 
         MockHttpServletRequest spoofed = post("/api/auth/login", "{\"email\":\"a@b.com\"}");
         spoofed.addHeader("X-Forwarded-For", "6.6.6.6");
         filter(true).doFilter(spoofed, new MockHttpServletResponse(), chain);
-        verify(rateLimitService).registerAttempt("/api/auth/login|203.0.113.5|a@b.com");
+        verify(rateLimitService).registerAttempt("/api/auth/login|203.0.113.5|a@b.com", 10);
 
         MockHttpServletRequest noHeader = post("/api/auth/login", "{\"email\":\"a@b.com\"}");
         noHeader.setRemoteAddr("127.0.0.1");
         filter(true).doFilter(noHeader, new MockHttpServletResponse(), chain);
-        verify(rateLimitService).registerAttempt("/api/auth/login|127.0.0.1|a@b.com");
+        verify(rateLimitService).registerAttempt("/api/auth/login|127.0.0.1|a@b.com", 10);
     }
 
     @Test
@@ -109,6 +112,82 @@ class RateLimitFilterTest {
 
         verify(chain, times(3)).doFilter(any(), any());
         verifyNoInteractions(rateLimitService);
+    }
+
+    @Test
+    void shouldMatchTheDecodedPathSoEncodedLoginIsLimitedToo() throws Exception {
+        when(rateLimitService.registerAttempt(anyString(), anyInt())).thenReturn(0L);
+        MockHttpServletRequest request = post("/api/auth/login", "{\"email\":\"a@b.com\"}");
+        request.setRequestURI("/api/auth/%6Cogin");   // raw URI is encoded, the servlet path is decoded
+
+        filter(true).doFilter(request, new MockHttpServletResponse(), chain);
+
+        verify(rateLimitService).registerAttempt("/api/auth/login|203.0.113.5|a@b.com", 10);
+        verify(rateLimitService).registerAttempt("ip|/api/auth/login|203.0.113.5", 30);
+    }
+
+    @Test
+    void shouldBlockWhenOnlyThePerIpBucketIsExceeded() throws Exception {
+        when(rateLimitService.registerAttempt("ip|/api/auth/password/forgot|203.0.113.5", 30)).thenReturn(77L);
+        when(rateLimitService.registerAttempt("/api/auth/password/forgot|203.0.113.5|new@x.com", 10)).thenReturn(0L);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        filter(true).doFilter(post("/api/auth/password/forgot", "{\"email\":\"new@x.com\"}"), response, chain);
+
+        assertEquals(429, response.getStatus());
+        assertEquals("77", response.getHeader("Retry-After"));
+        verifyNoInteractions(chain);
+    }
+
+    @Test
+    void shouldAnswer413AboveBodyCapWithoutCountingTheAttempt() throws Exception {
+        String big = "{\"email\":\"" + "a".repeat(RateLimitFilter.MAX_BODY_BYTES) + "\"}";
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        filter(true).doFilter(post("/api/auth/login", big), response, chain);
+
+        assertEquals(413, response.getStatus());
+        assertEquals("{\"message\":\"Requisição muito grande.\"}", response.getContentAsString(StandardCharsets.UTF_8));
+        verifyNoInteractions(chain, rateLimitService);
+    }
+
+    @Test
+    void shouldAcceptBodyExactlyAtTheCap() throws Exception {
+        when(rateLimitService.registerAttempt(anyString(), anyInt())).thenReturn(0L);
+        String json = "{\"p\":\"";
+        String body = json + "a".repeat(RateLimitFilter.MAX_BODY_BYTES - json.length() - 2) + "\"}";
+        assertEquals(RateLimitFilter.MAX_BODY_BYTES, body.length());
+
+        filter(true).doFilter(post("/api/auth/login", body), new MockHttpServletResponse(), chain);
+
+        verify(chain).doFilter(any(), any());
+    }
+
+    @Test
+    void shouldCapTheEmailUsedInTheKey() throws Exception {
+        when(rateLimitService.registerAttempt(anyString(), anyInt())).thenReturn(0L);
+        String longEmail = "x".repeat(300) + "@b.com";
+
+        filter(true).doFilter(post("/api/auth/login", "{\"email\":\"" + longEmail + "\"}"),
+                new MockHttpServletResponse(), chain);
+
+        verify(rateLimitService).registerAttempt("/api/auth/login|203.0.113.5|" + "x".repeat(254), 10);
+    }
+
+    @Test
+    void shouldFallBackToRemoteAddressWhenForwardedForHasNoUsableHop() throws Exception {
+        when(rateLimitService.registerAttempt(anyString(), anyInt())).thenReturn(0L);
+        for (String header : new String[]{",", " , ", "  "}) {
+            MockHttpServletRequest request = post("/api/auth/login", "{\"email\":\"a@b.com\"}");
+            request.setRemoteAddr("127.0.0.1");
+            request.addHeader("X-Forwarded-For", header);
+            MockHttpServletResponse response = new MockHttpServletResponse();
+
+            filter(true).doFilter(request, response, chain);
+
+            assertEquals(200, response.getStatus());
+        }
+        verify(rateLimitService, times(3)).registerAttempt("/api/auth/login|127.0.0.1|a@b.com", 10);
     }
 
     @Test

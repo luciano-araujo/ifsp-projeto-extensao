@@ -24,6 +24,6 @@ public class ExportScriptUseCase {
         String content = scriptService.findByKanbanItemId(kanbanItemId)
                 .map(script -> script.getContent())
                 .orElse("");
-        return scriptService.toExportResponse(item, content);
+        return scriptService.toExportResponse(item, scriptService.sanitizeContent(content));
     }
 }

@@ -11,6 +11,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletRequestWrapper;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -30,6 +31,9 @@ import java.util.Set;
  * Answers 429 with Retry-After once the limit is exceeded.
  */
 @Component
+// Order 0 runs after the Spring Security chain (-100), so the CORS headers are already on the response
+// when a 429 or 413 is written here: the browser can read the error and Retry-After.
+@Order(0)
 public class RateLimitFilter extends OncePerRequestFilter {
 
     static final Set<String> LIMITED_PATHS = Set.of(
@@ -39,18 +43,27 @@ public class RateLimitFilter extends OncePerRequestFilter {
             "/api/auth/password/forgot",
             "/api/auth/password/reset");
 
+    static final int MAX_BODY_BYTES = 16 * 1024;
+    static final int MAX_EMAIL_LENGTH = 254;
+    static final String TOO_LARGE_MESSAGE = "Requisição muito grande.";
     static final String MESSAGE = "Muitas tentativas. Aguarde alguns minutos e tente novamente.";
 
     private final RateLimitService rateLimitService;
     private final boolean enabled;
+    private final int maxAttempts;
+    private final int maxAttemptsPerIp;
     private final Set<String> trustedProxies;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public RateLimitFilter(RateLimitService rateLimitService,
                            @Value("${app.rate-limit.enabled:true}") boolean enabled,
+                           @Value("${app.rate-limit.max-attempts:10}") int maxAttempts,
+                           @Value("${app.rate-limit.max-attempts-per-ip:30}") int maxAttemptsPerIp,
                            @Value("${app.rate-limit.trusted-proxies:127.0.0.1,0:0:0:0:0:0:0:1,::1}") String trustedProxies) {
         this.rateLimitService = rateLimitService;
         this.enabled = enabled;
+        this.maxAttempts = maxAttempts;
+        this.maxAttemptsPerIp = maxAttemptsPerIp;
         this.trustedProxies = Set.copyOf(Arrays.stream(trustedProxies.split(","))
                 .map(String::trim).filter(s -> !s.isEmpty()).toList());
     }
@@ -58,25 +71,44 @@ public class RateLimitFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         return !enabled || !"POST".equalsIgnoreCase(request.getMethod())
-                || !LIMITED_PATHS.contains(request.getRequestURI());
+                || !LIMITED_PATHS.contains(pathOf(request));
+    }
+
+    /** Decoded and normalized path (so /api/auth/%6Cogin is the login route), not the raw request URI. */
+    private static String pathOf(HttpServletRequest request) {
+        String servletPath = request.getServletPath() == null ? "" : request.getServletPath();
+        String pathInfo = request.getPathInfo() == null ? "" : request.getPathInfo();
+        return servletPath + pathInfo;
     }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
-        byte[] body = request.getInputStream().readAllBytes();
-        String key = request.getRequestURI() + "|" + clientIp(request) + "|" + extractEmail(body);
+        byte[] body = request.getInputStream().readNBytes(MAX_BODY_BYTES + 1);
+        if (body.length > MAX_BODY_BYTES) {
+            writeError(response, HttpServletResponse.SC_REQUEST_ENTITY_TOO_LARGE, TOO_LARGE_MESSAGE);
+            return;
+        }
+        String path = pathOf(request);
+        String ip = clientIp(request);
 
-        long retryAfter = rateLimitService.registerAttempt(key);
+        // per route + IP (stops rotating e-mails) and per route + IP + e-mail
+        long retryAfter = Math.max(
+                rateLimitService.registerAttempt("ip|" + path + "|" + ip, maxAttemptsPerIp),
+                rateLimitService.registerAttempt(path + "|" + ip + "|" + extractEmail(body), maxAttempts));
         if (retryAfter > 0) {
-            response.setStatus(429);
             response.setHeader("Retry-After", String.valueOf(retryAfter));
-            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-            response.setCharacterEncoding(StandardCharsets.UTF_8.name());
-            objectMapper.writeValue(response.getOutputStream(), Map.of("message", MESSAGE));
+            writeError(response, 429, MESSAGE);
             return;
         }
         filterChain.doFilter(new CachedBodyRequest(request, body), response);
+    }
+
+    private void writeError(HttpServletResponse response, int status, String message) throws IOException {
+        response.setStatus(status);
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+        objectMapper.writeValue(response.getOutputStream(), Map.of("message", message));
     }
 
     /** X-Forwarded-For is honoured only when the direct peer is a trusted proxy (local nginx). */
@@ -84,9 +116,11 @@ public class RateLimitFilter extends OncePerRequestFilter {
         String remote = request.getRemoteAddr();
         String forwarded = request.getHeader("X-Forwarded-For");
         if (remote != null && trustedProxies.contains(remote) && forwarded != null && !forwarded.isBlank()) {
+            // the last non-blank hop is the one appended by our own proxy; earlier ones can be forged
             String[] hops = forwarded.split(",");
-            // the last hop is the one appended by our own proxy; earlier ones can be forged by the client
-            return hops[hops.length - 1].trim();
+            for (int i = hops.length - 1; i >= 0; i--) {
+                if (!hops[i].isBlank()) return hops[i].trim();
+            }
         }
         return remote == null ? "unknown" : remote;
     }
@@ -94,7 +128,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private String extractEmail(byte[] body) {
         try {
             JsonNode email = objectMapper.readTree(body).path("email");
-            return email.isTextual() ? email.asText().trim().toLowerCase(Locale.ROOT) : "";
+            if (!email.isTextual()) return "";
+            String value = email.asText().trim().toLowerCase(Locale.ROOT);
+            return value.length() > MAX_EMAIL_LENGTH ? value.substring(0, MAX_EMAIL_LENGTH) : value;
         } catch (IOException | RuntimeException e) {
             return "";
         }

@@ -55,6 +55,7 @@ class GetScriptUseCaseTest {
         script.setContent("<p>Test</p>");
         when(kanbanItemService.findCardOfMember(1L, 3L)).thenReturn(card());
         when(scriptService.findByKanbanItemId(1L)).thenReturn(Optional.of(script));
+        when(scriptService.sanitizeForRead(script)).thenReturn(script);
 
         assertSame(script, useCase.execute(1L, 3L));
         verifyNoInteractions(teamService);
@@ -68,6 +69,7 @@ class GetScriptUseCaseTest {
         when(kanbanItemService.findCardOfMember(1L, 1L)).thenReturn(item);
         when(scriptService.findByKanbanItemId(1L)).thenReturn(Optional.empty());
         when(scriptService.emptyScript(item)).thenReturn(empty);
+        when(scriptService.sanitizeForRead(empty)).thenReturn(empty);
 
         assertSame(empty, useCase.execute(1L, 1L));
     }
