@@ -1,7 +1,7 @@
 package br.edu.ifsp.tcc.application.dto;
 
-import jakarta.validation.constraints.Size;
 import br.edu.ifsp.tcc.application.entity.LessonType;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 @Data

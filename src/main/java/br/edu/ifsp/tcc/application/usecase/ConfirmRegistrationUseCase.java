@@ -5,6 +5,7 @@ import br.edu.ifsp.tcc.application.dto.LoginResponse;
 import br.edu.ifsp.tcc.application.entity.RegistrationToken;
 import br.edu.ifsp.tcc.application.entity.User;
 import br.edu.ifsp.tcc.application.service.JwtService;
+import br.edu.ifsp.tcc.application.service.PasswordPolicy;
 import br.edu.ifsp.tcc.application.service.RegistrationTokenService;
 import br.edu.ifsp.tcc.application.service.UserService;
 import org.springframework.http.HttpStatus;
@@ -38,24 +39,25 @@ public class ConfirmRegistrationUseCase {
     // The attempt counter must be saved even when the code is wrong, so errors do not roll back
     @Transactional(noRollbackFor = ResponseStatusException.class)
     public LoginResponse execute(ConfirmRegistrationRequest request) {
+        PasswordPolicy.requireEncodable(request.getPassword());
         String email = request.getEmail();
         RegistrationToken token = registrationTokenService.findLatestByEmail(email)
-                .orElseThrow(() -> invalid("Codigo de verificacao invalido."));
+                .orElseThrow(() -> invalid("Código de verificação inválido."));
 
         if (token.isExpired()) {
             registrationTokenService.delete(token);
-            throw invalid("Codigo de verificacao expirado. Solicite um novo.");
+            throw invalid("Código de verificação expirado. Solicite um novo.");
         }
 
         if (!token.getToken().equals(request.getToken())) {
             int attempts = token.getAttempts() + 1;
             if (attempts >= MAX_ATTEMPTS) {
                 registrationTokenService.deleteByEmail(email);
-                throw invalid("Muitas tentativas. Solicite um novo codigo de verificacao.");
+                throw invalid("Muitas tentativas. Solicite um novo código de verificação.");
             }
             token.setAttempts(attempts);
             registrationTokenService.save(token);
-            throw invalid("Codigo de verificacao invalido.");
+            throw invalid("Código de verificação inválido.");
         }
 
         User user = new User();

@@ -86,7 +86,7 @@ class AddTeamMemberUseCaseTest {
     @Test
     void execute_shouldBeBlockedForNonAdmin() {
         when(teamService.requireRole(10L, 2L, TeamRole.ADMIN))
-                .thenThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "Seu papel na equipe nao permite esta acao."));
+                .thenThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "Seu papel na equipe não permite esta ação."));
 
         assertThrows(ResponseStatusException.class, () -> useCase.execute(10L, 2L, dto("x@test.com", TeamRole.CREATOR)));
         verifyNoInteractions(userService);

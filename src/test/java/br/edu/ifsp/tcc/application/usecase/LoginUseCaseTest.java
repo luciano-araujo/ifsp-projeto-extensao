@@ -1,7 +1,5 @@
 package br.edu.ifsp.tcc.application.usecase;
 
-import org.springframework.web.server.ResponseStatusException;
-import org.springframework.http.HttpStatus;
 import br.edu.ifsp.tcc.application.dto.LoginRequest;
 import br.edu.ifsp.tcc.application.dto.LoginResponse;
 import br.edu.ifsp.tcc.application.entity.User;
@@ -12,7 +10,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Optional;
 

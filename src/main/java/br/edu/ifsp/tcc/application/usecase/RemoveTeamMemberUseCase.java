@@ -25,7 +25,7 @@ public class RemoveTeamMemberUseCase {
 
         boolean leaving = member.getId().equals(requester.getId());
         if (!leaving && requester.getRole() != TeamRole.ADMIN) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Seu papel na equipe nao permite esta acao.");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Seu papel na equipe não permite esta ação.");
         }
         if (member.getRole() == TeamRole.ADMIN && teamService.countAdmins(teamId) <= 1) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A equipe precisa de pelo menos um administrador.");

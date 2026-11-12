@@ -1,8 +1,8 @@
 package br.edu.ifsp.tcc.application.usecase;
 
-import br.edu.ifsp.tcc.application.entity.KanbanItemState;
 import br.edu.ifsp.tcc.application.dto.UpdateKanbanItemDTO;
 import br.edu.ifsp.tcc.application.entity.KanbanItem;
+import br.edu.ifsp.tcc.application.entity.KanbanItemState;
 import br.edu.ifsp.tcc.application.entity.Team;
 import br.edu.ifsp.tcc.application.entity.TeamRole;
 import br.edu.ifsp.tcc.application.service.KanbanItemService;

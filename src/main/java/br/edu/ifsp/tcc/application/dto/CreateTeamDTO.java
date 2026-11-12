@@ -6,7 +6,7 @@ import lombok.Data;
 
 @Data
 public class CreateTeamDTO {
-    @NotBlank(message = "O nome da equipe e obrigatorio.")
-    @Size(max = 120, message = "O nome da equipe deve ter no maximo 120 caracteres.")
+    @NotBlank(message = "O nome da equipe é obrigatório.")
+    @Size(max = 120, message = "O nome da equipe deve ter no máximo 120 caracteres.")
     private String name;
 }

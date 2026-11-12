@@ -105,4 +105,16 @@ class ResetPasswordUseCaseTest {
         assertThrows(ResponseStatusException.class, () -> useCase.execute(request("123456")));
         verify(userService, never()).update(any());
     }
+
+    @Test
+    void execute_shouldRejectNewPasswordOver72Bytes() {
+        ResetPasswordRequest request = request("123456");
+        request.setNewPassword("é".repeat(37));
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class, () -> useCase.execute(request));
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        assertEquals("A senha deve ter no máximo 72 bytes (caracteres acentuados contam mais).", ex.getReason());
+        verifyNoInteractions(passwordResetTokenService, userService, passwordEncoder);
+    }
 }

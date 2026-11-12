@@ -77,7 +77,7 @@ class CreateIdeaUseCaseTest {
     @Test
     void execute_shouldBeBlockedForReviewer() {
         when(teamService.requireRole(10L, 2L, TeamRole.ADMIN, TeamRole.CREATOR))
-                .thenThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "Seu papel na equipe nao permite esta acao."));
+                .thenThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "Seu papel na equipe não permite esta ação."));
         CreateCardDTO dto = new CreateCardDTO();
         dto.setTitle("Ideia");
 

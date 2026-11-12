@@ -1,6 +1,5 @@
 package br.edu.ifsp.tcc.application.usecase;
 
-import org.springframework.http.HttpStatus;
 import br.edu.ifsp.tcc.application.dto.UpdateUserDTO;
 import br.edu.ifsp.tcc.application.entity.User;
 import br.edu.ifsp.tcc.application.service.UserService;
@@ -9,6 +8,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -100,5 +100,20 @@ class UpdateUserUseCaseTest {
         dto.setName("x");
 
         assertThrows(ResponseStatusException.class, () -> updateUserUseCase.execute(1L, 2L, dto));
+    }
+
+    @Test
+    void execute_shouldRejectPasswordOver72Bytes() {
+        when(userService.findById(1L)).thenReturn(Optional.of(existingUser()));
+        UpdateUserDTO dto = new UpdateUserDTO();
+        dto.setPassword("é".repeat(37));
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> updateUserUseCase.execute(1L, 1L, dto));
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        assertEquals("A senha deve ter no máximo 72 bytes (caracteres acentuados contam mais).", ex.getReason());
+        verifyNoInteractions(passwordEncoder);
+        verify(userService, never()).update(any());
     }
 }

@@ -40,7 +40,7 @@ public class AuthController {
     @PostMapping("/register/request-token")
     public ResponseEntity<MessageResponse> requestToken(@Valid @RequestBody RegisterTokenRequest request) {
         requestRegistrationTokenUseCase.execute(request);
-        return ResponseEntity.ok(new MessageResponse("Codigo de verificacao enviado para " + request.getEmail()));
+        return ResponseEntity.ok(new MessageResponse("Código de verificação enviado para " + request.getEmail()));
     }
 
     @PostMapping("/register/confirm")
@@ -52,7 +52,7 @@ public class AuthController {
     public ResponseEntity<MessageResponse> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
         requestPasswordResetUseCase.execute(request);
         // Same answer for every e-mail, so the route does not reveal which accounts exist
-        return ResponseEntity.ok(new MessageResponse("Se o e-mail estiver cadastrado, enviaremos um codigo de recuperacao."));
+        return ResponseEntity.ok(new MessageResponse("Se o e-mail estiver cadastrado, enviaremos um código de recuperação."));
     }
 
     @PostMapping("/password/reset")

@@ -1,7 +1,5 @@
 package br.edu.ifsp.tcc.application.usecase;
 
-import org.springframework.web.server.ResponseStatusException;
-import org.springframework.http.HttpStatus;
 import br.edu.ifsp.tcc.application.dto.BoardColumnDTO;
 import br.edu.ifsp.tcc.application.dto.BoardColumnResponse;
 import br.edu.ifsp.tcc.application.entity.BoardColumn;
@@ -13,6 +11,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 

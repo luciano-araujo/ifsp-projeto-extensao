@@ -67,4 +67,39 @@ class KanbanItemServiceTest {
 
         verify(kanbanItemRepository).deleteById(1L);
     }
+
+    @Test
+    void requireAudience_shouldApplyMinimumAfterTrim() {
+        assertDoesNotThrow(() -> KanbanItemService.requireAudience(" abc "));
+        for (String bad : new String[]{null, "", "  ", " ab "}) {
+            ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                    () -> KanbanItemService.requireAudience(bad));
+            assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+            assertEquals("Informe o público-alvo com pelo menos 3 caracteres.", ex.getReason());
+        }
+    }
+
+    @Test
+    void requireObjective_shouldApplyMinimumAfterTrim() {
+        assertDoesNotThrow(() -> KanbanItemService.requireObjective(" 1234567890 "));
+        for (String bad : new String[]{null, "", "   ", " 123456789 "}) {
+            ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                    () -> KanbanItemService.requireObjective(bad));
+            assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+            assertEquals("Informe o objetivo pedagógico com pelo menos 10 caracteres.", ex.getReason());
+        }
+    }
+
+    @Test
+    void requireProjectFields_shouldCheckTitleAudienceAndObjective() {
+        assertDoesNotThrow(() -> KanbanItemService.requireProjectFields("Título", "Alunos", "Ensinar algo útil"));
+        assertEquals("O título não pode ficar vazio.", assertThrows(ResponseStatusException.class,
+                () -> KanbanItemService.requireProjectFields(" ", "Alunos", "Ensinar algo útil")).getReason());
+        assertEquals("O título não pode ficar vazio.", assertThrows(ResponseStatusException.class,
+                () -> KanbanItemService.requireProjectFields(null, "Alunos", "Ensinar algo útil")).getReason());
+        assertThrows(ResponseStatusException.class,
+                () -> KanbanItemService.requireProjectFields("T", "ab", "Ensinar algo útil"));
+        assertThrows(ResponseStatusException.class,
+                () -> KanbanItemService.requireProjectFields("T", "Alunos", "curto"));
+    }
 }

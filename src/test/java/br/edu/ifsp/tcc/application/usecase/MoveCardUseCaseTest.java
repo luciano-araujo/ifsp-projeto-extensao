@@ -81,7 +81,7 @@ class MoveCardUseCaseTest {
         KanbanItem project = card(KanbanItemState.IN_PRODUCTION);
         when(boardService.findCard(10L, 1L)).thenReturn(project);
         when(boardService.findColumn(10L, 999L))
-                .thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Coluna nao encontrada."));
+                .thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Coluna não encontrada."));
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
                 () -> useCase.execute(10L, 1L, 1L, dto(999L)));

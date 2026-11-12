@@ -27,7 +27,7 @@ class EmailServiceTest {
 
         SimpleMailMessage message = captor.getValue();
         assertEquals("user@example.com", message.getTo()[0]);
-        assertTrue(message.getSubject().contains("verificacao"));
+        assertTrue(message.getSubject().contains("verificação"));
         assertTrue(message.getText().contains("User Name"));
         assertTrue(message.getText().contains("123456"));
         assertTrue(message.getText().contains("10 minutos"));

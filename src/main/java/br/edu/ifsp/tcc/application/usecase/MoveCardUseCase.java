@@ -37,7 +37,7 @@ public class MoveCardUseCase {
         KanbanItem item = boardService.findCard(teamId, cardId);
         if (item.getState() == KanbanItemState.IDEATION) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Converta a ideia em projeto antes de move-la no quadro.");
+                    "Converta a ideia em projeto antes de movê-la no quadro.");
         }
 
         BoardColumn column = boardService.findColumn(teamId, dto.getColumnId());

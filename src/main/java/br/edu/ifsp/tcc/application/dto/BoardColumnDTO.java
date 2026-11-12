@@ -7,7 +7,7 @@ import lombok.Data;
 /** Used to create (name required) and to rename or reorder (all fields optional) a column. */
 @Data
 public class BoardColumnDTO {
-    @Size(max = 80, message = "O nome da coluna deve ter no maximo 80 caracteres.")
+    @Size(max = 80, message = "O nome da coluna deve ter no máximo 80 caracteres.")
     private String name;
 
     @PositiveOrZero(message = "A ordem deve ser maior ou igual a zero.")

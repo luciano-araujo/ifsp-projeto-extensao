@@ -3,6 +3,7 @@ package br.edu.ifsp.tcc.application.usecase;
 import br.edu.ifsp.tcc.application.dto.ResetPasswordRequest;
 import br.edu.ifsp.tcc.application.entity.PasswordResetToken;
 import br.edu.ifsp.tcc.application.entity.User;
+import br.edu.ifsp.tcc.application.service.PasswordPolicy;
 import br.edu.ifsp.tcc.application.service.PasswordResetTokenService;
 import br.edu.ifsp.tcc.application.service.UserService;
 import org.springframework.http.HttpStatus;
@@ -32,28 +33,29 @@ public class ResetPasswordUseCase {
     // The attempt counter must be saved even when the code is wrong, so errors do not roll back
     @Transactional(noRollbackFor = ResponseStatusException.class)
     public void execute(ResetPasswordRequest request) {
+        PasswordPolicy.requireEncodable(request.getNewPassword());
         String email = request.getEmail().trim();
         PasswordResetToken token = passwordResetTokenService.findLatestByEmail(email)
-                .orElseThrow(() -> invalid("Codigo invalido ou expirado. Solicite um novo."));
+                .orElseThrow(() -> invalid("Código inválido ou expirado. Solicite um novo."));
 
         if (token.isExpired()) {
             passwordResetTokenService.deleteByEmail(email);
-            throw invalid("Codigo invalido ou expirado. Solicite um novo.");
+            throw invalid("Código inválido ou expirado. Solicite um novo.");
         }
 
         if (!token.getToken().equals(request.getToken())) {
             int attempts = token.getAttempts() + 1;
             if (attempts >= MAX_ATTEMPTS) {
                 passwordResetTokenService.deleteByEmail(email);
-                throw invalid("Muitas tentativas. Solicite um novo codigo.");
+                throw invalid("Muitas tentativas. Solicite um novo código.");
             }
             token.setAttempts(attempts);
             passwordResetTokenService.save(token);
-            throw invalid("Codigo invalido.");
+            throw invalid("Código inválido.");
         }
 
         User user = userService.findByEmail(email)
-                .orElseThrow(() -> invalid("Codigo invalido ou expirado. Solicite um novo."));
+                .orElseThrow(() -> invalid("Código inválido ou expirado. Solicite um novo."));
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         userService.update(user);
         passwordResetTokenService.deleteByEmail(email);

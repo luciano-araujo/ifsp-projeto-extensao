@@ -1,15 +1,15 @@
 package br.edu.ifsp.tcc.application.usecase;
 
-import org.springframework.web.server.ResponseStatusException;
-import org.springframework.http.HttpStatus;
 import br.edu.ifsp.tcc.application.dto.BoardColumnDTO;
 import br.edu.ifsp.tcc.application.dto.BoardColumnResponse;
 import br.edu.ifsp.tcc.application.entity.BoardColumn;
 import br.edu.ifsp.tcc.application.entity.TeamRole;
 import br.edu.ifsp.tcc.application.service.BoardService;
 import br.edu.ifsp.tcc.application.service.TeamService;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 

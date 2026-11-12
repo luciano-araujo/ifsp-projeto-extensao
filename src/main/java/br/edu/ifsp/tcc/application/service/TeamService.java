@@ -102,7 +102,7 @@ public class TeamService {
 
     public TeamMember findMember(Long teamId, Long memberId) {
         return teamMemberRepository.findByIdAndTeam_Id(memberId, teamId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Membro nao encontrado."));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Membro não encontrado."));
     }
 
     /** The member of the team, or empty when the id does not belong to it. */

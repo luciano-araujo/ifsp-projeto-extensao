@@ -37,7 +37,7 @@ class DeleteCourseUseCaseTest {
     @Test
     void execute_shouldReturnNotFoundForCourseOfAnotherTeam() {
         when(courseService.findCourse(10L, 20L))
-                .thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Curso nao encontrado."));
+                .thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Curso não encontrado."));
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class, () -> useCase.execute(10L, 1L, 20L));
         assertEquals(HttpStatus.NOT_FOUND, ex.getStatusCode());

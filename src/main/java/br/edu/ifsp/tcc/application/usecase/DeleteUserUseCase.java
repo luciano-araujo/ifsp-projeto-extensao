@@ -41,7 +41,7 @@ public class DeleteUserUseCase {
             boolean sharedTeam = teamService.countMembers(teamId) > 1;
             if (sharedTeam && membership.getRole() == TeamRole.ADMIN && teamService.countAdmins(teamId) <= 1) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT,
-                        "Voce e o unico administrador da equipe \"" + membership.getTeam().getName()
+                        "Você é o único administrador da equipe \"" + membership.getTeam().getName()
                                 + "\". Promova outro membro a administrador antes de excluir a conta.");
             }
         }

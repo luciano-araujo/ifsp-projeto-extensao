@@ -56,14 +56,14 @@ public class BoardService {
 
     public BoardColumn findColumn(Long teamId, Long columnId) {
         return boardColumnRepository.findByIdAndTeam_Id(columnId, teamId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Coluna nao encontrada."));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Coluna não encontrada."));
     }
 
     /** The given column, or the first column of the board when none is given. */
     public BoardColumn resolveColumn(Long teamId, Long columnId) {
         if (columnId != null) return findColumn(teamId, columnId);
         return findColumns(teamId).stream().findFirst()
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "O quadro da equipe nao tem colunas."));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "O quadro da equipe não tem colunas."));
     }
 
     public int countColumns(Long teamId) {
@@ -106,7 +106,7 @@ public class BoardService {
 
     public CardTask findTask(Long cardId, Long taskId) {
         return cardTaskRepository.findByIdAndKanbanItem_Id(taskId, cardId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Tarefa nao encontrada."));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Tarefa não encontrada."));
     }
 
     public int countTasks(Long cardId) {

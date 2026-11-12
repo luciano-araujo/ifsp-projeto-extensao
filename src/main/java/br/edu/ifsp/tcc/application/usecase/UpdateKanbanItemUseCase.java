@@ -1,14 +1,15 @@
 package br.edu.ifsp.tcc.application.usecase;
 
-import br.edu.ifsp.tcc.application.entity.KanbanItemState;
-import org.springframework.web.server.ResponseStatusException;
-import org.springframework.http.HttpStatus;
 import br.edu.ifsp.tcc.application.dto.UpdateKanbanItemDTO;
 import br.edu.ifsp.tcc.application.entity.KanbanItem;
+import br.edu.ifsp.tcc.application.entity.KanbanItemState;
 import br.edu.ifsp.tcc.application.entity.TeamRole;
 import br.edu.ifsp.tcc.application.service.KanbanItemService;
 import br.edu.ifsp.tcc.application.service.TeamService;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
@@ -25,6 +26,7 @@ public class UpdateKanbanItemUseCase {
     }
 
     /** Editors (ADMIN and CREATOR of the card's team) only; position and progress come from the board. */
+    @Transactional
     public KanbanItem execute(Long itemId, Long userId, UpdateKanbanItemDTO dto) {
         KanbanItem item = kanbanItemService.findCardOfMember(itemId, userId);
         teamService.requireRole(item.getTeamId(), userId, TeamRole.ADMIN, TeamRole.CREATOR);
@@ -38,13 +40,13 @@ public class UpdateKanbanItemUseCase {
         if (dto.getDescription() != null) item.setDescription(dto.getDescription());
         if (dto.getTargetAudience() != null) {
             String audience = dto.getTargetAudience().trim();
-            if (project && audience.length() < KanbanItemService.MIN_AUDIENCE) throw KanbanItemService.invalidAudience();
+            if (project) KanbanItemService.requireAudience(audience);
             // An idea may keep it empty
             item.setTargetAudience(audience.isEmpty() ? null : audience);
         }
         if (dto.getPedagogicalObjective() != null) {
             String objective = dto.getPedagogicalObjective().trim();
-            if (project && objective.length() < KanbanItemService.MIN_OBJECTIVE) throw KanbanItemService.invalidObjective();
+            if (project) KanbanItemService.requireObjective(objective);
             item.setPedagogicalObjective(objective.isEmpty() ? null : objective);
         }
         if (dto.getDueDate() != null) {

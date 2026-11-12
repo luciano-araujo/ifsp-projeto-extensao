@@ -6,6 +6,6 @@ import lombok.Data;
 
 @Data
 public class UpdateTeamMemberDTO {
-    @NotNull(message = "O papel do membro e obrigatorio.")
+    @NotNull(message = "O papel do membro é obrigatório.")
     private TeamRole role;
 }

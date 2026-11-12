@@ -1,13 +1,13 @@
 package br.edu.ifsp.tcc.application.dto;
 
-import jakarta.validation.constraints.Size;
 import br.edu.ifsp.tcc.application.entity.LessonType;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 @Data
 public class CreateCourseLessonDTO {
-    @NotBlank(message = "O titulo da aula e obrigatorio.")
+    @NotBlank(message = "O título da aula é obrigatório.")
     @Size(max = 255, message = "O título da aula deve ter no máximo 255 caracteres.")
     private String title;
 

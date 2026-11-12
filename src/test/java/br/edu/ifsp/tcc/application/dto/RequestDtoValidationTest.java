@@ -109,4 +109,39 @@ class RequestDtoValidationTest {
         assertTrue(VALIDATOR.validate(column).isEmpty());
         assertTrue(VALIDATOR.validate(move).isEmpty());
     }
+
+    @Test
+    void passwordFields_shouldHaveLengthLimitsWithPortugueseMessages() {
+        ConfirmRegistrationRequest confirm = new ConfirmRegistrationRequest();
+        confirm.setEmail("a@b.com");
+        confirm.setToken("123456");
+        confirm.setPassword("a".repeat(73));
+        ResetPasswordRequest reset = new ResetPasswordRequest();
+        reset.setEmail("a@b.com");
+        reset.setToken("123456");
+        reset.setNewPassword("a".repeat(73));
+        UpdateUserDTO update = new UpdateUserDTO();
+        update.setPassword("a".repeat(73));
+
+        assertEquals("A senha deve ter no máximo 72 caracteres.", VALIDATOR.validate(confirm).iterator().next().getMessage());
+        assertEquals("A senha deve ter no máximo 72 caracteres.", VALIDATOR.validate(reset).iterator().next().getMessage());
+        assertEquals("A senha deve ter no máximo 72 caracteres.", VALIDATOR.validate(update).iterator().next().getMessage());
+    }
+
+    @Test
+    void requiredFields_shouldNeverFallBackToTheDefaultEnglishMessage() {
+        java.util.List<Object> empties = java.util.List.of(new LoginRequest(), new ForgotPasswordRequest(),
+                new RegisterTokenRequest(), new ConfirmRegistrationRequest(), new ResetPasswordRequest(),
+                new CreateModuleDTO(), new CreateCardDTO(), new CreateTaskDTO(), new CreateTeamDTO(),
+                new CreateCourseDTO(), new CreateCourseLessonDTO(), new AddTeamMemberDTO(), new UpdateTeamMemberDTO(),
+                new MoveCardDTO());
+        for (Object dto : empties) {
+            VALIDATOR.validate(dto).forEach(v -> {
+                assertFalse(v.getMessage().contains("must ") || v.getMessage().contains("size must"),
+                        dto.getClass().getSimpleName() + "." + v.getPropertyPath() + ": " + v.getMessage());
+                assertTrue(v.getMessage().matches(".*[áéíóúãõçÁÉÍÓÚ].*") || v.getMessage().contains("e-mail"),
+                        "message without accents: " + v.getMessage());
+            });
+        }
+    }
 }

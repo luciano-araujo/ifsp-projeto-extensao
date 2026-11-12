@@ -2,6 +2,7 @@ package br.edu.ifsp.tcc.application.usecase;
 
 import br.edu.ifsp.tcc.application.dto.UpdateUserDTO;
 import br.edu.ifsp.tcc.application.entity.User;
+import br.edu.ifsp.tcc.application.service.PasswordPolicy;
 import br.edu.ifsp.tcc.application.service.UserService;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -34,6 +35,7 @@ public class UpdateUserUseCase {
             user.setEmail(dto.getEmail());
         }
         if (dto.getPassword() != null && !dto.getPassword().isBlank()) {
+            PasswordPolicy.requireEncodable(dto.getPassword());
             user.setPassword(passwordEncoder.encode(dto.getPassword()));
         }
 

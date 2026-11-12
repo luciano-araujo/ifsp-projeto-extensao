@@ -9,5 +9,6 @@ public class UpdateUserDTO {
     private String name;
     @Size(max = 255, message = "O e-mail deve ter no máximo 255 caracteres.")
     private String email;
+    @Size(max = 72, message = "A senha deve ter no máximo 72 caracteres.")
     private String password;
 }

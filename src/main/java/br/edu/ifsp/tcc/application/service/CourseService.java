@@ -45,7 +45,7 @@ public class CourseService {
 
     public Course findCourse(Long teamId, Long courseId) {
         return courseRepository.findByIdAndTeam_Id(courseId, teamId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Curso nao encontrado."));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Curso não encontrado."));
     }
 
     public Course saveCourse(Course course) {
@@ -64,7 +64,7 @@ public class CourseService {
 
     public CourseModule findModule(Long courseId, Long moduleId) {
         return moduleRepository.findByIdAndCourse_Id(moduleId, courseId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Modulo nao encontrado."));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Módulo não encontrado."));
     }
 
     public int countModules(Long courseId) {
@@ -89,7 +89,7 @@ public class CourseService {
 
     public CourseLesson findLesson(Long moduleId, Long lessonId) {
         return lessonRepository.findByIdAndModule_Id(lessonId, moduleId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Aula nao encontrada."));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Aula não encontrada."));
     }
 
     public int countLessons(Long moduleId) {
@@ -109,7 +109,7 @@ public class CourseService {
         if (projectId == null) return null;
         return kanbanItemService.findByIdAndTeamId(projectId, teamId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                        "O projeto vinculado nao pertence a esta equipe."));
+                        "O projeto vinculado não pertence a esta equipe."));
     }
 
     // --- Response mapping ---

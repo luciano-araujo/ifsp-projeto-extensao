@@ -16,14 +16,18 @@ public class KanbanItemService {
     public static final int MIN_AUDIENCE = 3;
     public static final int MIN_OBJECTIVE = 10;
 
-    public static ResponseStatusException invalidAudience() {
-        return new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                "Informe o público-alvo com pelo menos " + MIN_AUDIENCE + " caracteres.");
+    public static void requireAudience(String audience) {
+        if (audience == null || audience.trim().length() < MIN_AUDIENCE) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Informe o público-alvo com pelo menos " + MIN_AUDIENCE + " caracteres.");
+        }
     }
 
-    public static ResponseStatusException invalidObjective() {
-        return new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                "Informe o objetivo pedagógico com pelo menos " + MIN_OBJECTIVE + " caracteres.");
+    public static void requireObjective(String objective) {
+        if (objective == null || objective.trim().length() < MIN_OBJECTIVE) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Informe o objetivo pedagógico com pelo menos " + MIN_OBJECTIVE + " caracteres.");
+        }
     }
 
     /** RN01 for a card that becomes (or is created as) a project: effective values, after trim. */
@@ -31,8 +35,8 @@ public class KanbanItemService {
         if (title == null || title.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O título não pode ficar vazio.");
         }
-        if (audience == null || audience.trim().length() < MIN_AUDIENCE) throw invalidAudience();
-        if (objective == null || objective.trim().length() < MIN_OBJECTIVE) throw invalidObjective();
+        requireAudience(audience);
+        requireObjective(objective);
     }
 
     private final KanbanItemRepository kanbanItemRepository;
