@@ -6,6 +6,8 @@ import br.edu.ifsp.tcc.application.entity.KanbanItemState;
 import br.edu.ifsp.tcc.application.entity.Team;
 import br.edu.ifsp.tcc.application.entity.TeamRole;
 import br.edu.ifsp.tcc.application.service.KanbanItemService;
+import br.edu.ifsp.tcc.application.entity.Tag;
+import br.edu.ifsp.tcc.application.service.TagService;
 import br.edu.ifsp.tcc.application.service.TeamService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -25,6 +27,7 @@ class UpdateKanbanItemUseCaseTest {
 
     @Mock private KanbanItemService kanbanItemService;
     @Mock private TeamService teamService;
+    @Mock private TagService tagService;
     @InjectMocks private UpdateKanbanItemUseCase useCase;
 
     private KanbanItem existingItem() {
@@ -90,6 +93,86 @@ class UpdateKanbanItemUseCaseTest {
     }
 
     @Test
+    void execute_shouldRejectTitleShorterThanThreeCharacters() {
+        KanbanItem idea = existingItem();
+        idea.setState(KanbanItemState.IDEATION);
+        UpdateKanbanItemDTO dto = new UpdateKanbanItemDTO();
+        dto.setTitle(" ab ");
+        assertBadRequest(idea, dto, "O título deve ter pelo menos 3 caracteres.");
+        assertEquals("Original", idea.getTitle());
+    }
+
+    @Test
+    void execute_shouldEditIdeaWithEmptyAudienceAndObjectiveStoredAsNull() {
+        KanbanItem idea = existingItem();
+        idea.setState(KanbanItemState.IDEATION);
+        idea.setTargetAudience("Antigo");
+        idea.setPedagogicalObjective("Objetivo antigo");
+        when(kanbanItemService.findCardOfMember(1L, 1L)).thenReturn(idea);
+        when(kanbanItemService.save(idea)).thenReturn(idea);
+
+        UpdateKanbanItemDTO dto = new UpdateKanbanItemDTO();
+        dto.setTitle("  Ideia nova ");
+        dto.setDescription("Outra descricao");
+        dto.setTargetAudience("   ");
+        dto.setPedagogicalObjective("");
+
+        KanbanItem result = useCase.execute(1L, 1L, dto);
+
+        assertEquals("Ideia nova", result.getTitle());
+        assertEquals("Outra descricao", result.getDescription());
+        assertNull(result.getTargetAudience());
+        assertNull(result.getPedagogicalObjective());
+        verify(teamService).requireRole(10L, 1L, TeamRole.ADMIN, TeamRole.CREATOR);
+    }
+
+    @Test
+    void execute_shouldChangeKeepAndRemoveTag() {
+        KanbanItem item = existingItem();
+        Tag old = new Tag();
+        old.setId(5L);
+        item.setTag(old);
+        Tag podcast = new Tag();
+        podcast.setId(7L);
+        when(kanbanItemService.findCardOfMember(1L, 1L)).thenReturn(item);
+        when(kanbanItemService.save(item)).thenReturn(item);
+        when(tagService.resolveTag(10L, 7L, null)).thenReturn(podcast);
+
+        UpdateKanbanItemDTO keep = new UpdateKanbanItemDTO();
+        keep.setTitle("Mesmo titulo");
+        assertSame(old, useCase.execute(1L, 1L, keep).getTag());
+        verifyNoInteractions(tagService);
+
+        UpdateKanbanItemDTO change = new UpdateKanbanItemDTO();
+        change.setTagId(7L);
+        KanbanItem changed = useCase.execute(1L, 1L, change);
+        assertSame(podcast, changed.getTag());
+        assertEquals(7L, changed.getTagId());
+
+        UpdateKanbanItemDTO remove = new UpdateKanbanItemDTO();
+        remove.setTagId(0L);
+        assertNull(useCase.execute(1L, 1L, remove).getTag());
+        verify(tagService, times(1)).resolveTag(anyLong(), anyLong(), any());
+    }
+
+    @Test
+    void execute_shouldRejectTagOfAnotherTeam() {
+        KanbanItem item = existingItem();
+        when(kanbanItemService.findCardOfMember(1L, 1L)).thenReturn(item);
+        when(tagService.resolveTag(10L, 99L, null))
+                .thenThrow(new ResponseStatusException(HttpStatus.BAD_REQUEST, "Etiqueta inválida para esta equipe."));
+
+        UpdateKanbanItemDTO dto = new UpdateKanbanItemDTO();
+        dto.setTagId(99L);
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class, () -> useCase.execute(1L, 1L, dto));
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        verify(kanbanItemService, never()).save(any());
+        assertNull(item.getTag());
+    }
+
+    @Test
     void execute_shouldRejectReviewer() {
         KanbanItem item = existingItem();
         when(kanbanItemService.findCardOfMember(1L, 3L)).thenReturn(item);
@@ -141,7 +224,7 @@ class UpdateKanbanItemUseCaseTest {
         KanbanItem item = project();
         UpdateKanbanItemDTO dto = new UpdateKanbanItemDTO();
         dto.setTitle("   ");
-        assertBadRequest(item, dto, "O título não pode ficar vazio.");
+        assertBadRequest(item, dto, "O título deve ter pelo menos 3 caracteres.");
         assertEquals("Original", item.getTitle());
     }
 

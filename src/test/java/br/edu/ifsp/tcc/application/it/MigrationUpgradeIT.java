@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * DB-05 (new): upgrade of an existing database. V1..V10 are applied, legacy data is inserted (manual progress, REVIEW/DONE
- * states, free-text tags, team-less cards, orphan card, legacy modules), then V11..V16 run and the backfills are checked.
+ * states, free-text tags, team-less cards, orphan card, legacy modules), then V11..V17 run and the backfills are checked.
  * Uses its own scratch database (db_tcc_it_upgrade), no Spring context.
  */
 @Tag("integration")
@@ -87,13 +87,13 @@ class MigrationUpgradeIT {
     }
 
     @Test
-    @DisplayName("DB-05 V11..V16 upgrade a populated V10 database: uuids, states, progress, orphan cards, tags, history")
+    @DisplayName("DB-05 V11..V17 upgrade a populated V10 database: uuids, states, progress, orphan cards, tags, history")
     void upgradeKeepsData() throws SQLException {
         assertEquals(10, flyway("10").migrate().migrationsExecuted);
 
         exec("INSERT INTO users (id, email, password, name) VALUES (1, 'u1@creatorworkbench.test', 'x', 'Uma Pessoa'), "
                 + "(2, 'u2@creatorworkbench.test', 'x', 'Dois Teste'), (3, 'u3@creatorworkbench.test', 'x', '   ')");
-        exec("INSERT INTO teams (id, name) VALUES (1, 'Equipe Um')");
+        exec("INSERT INTO teams (id, name) VALUES (1, 'Equipe Um'), (99, 'Meu Estudio')");
         exec("INSERT INTO team_members (team_id, user_id, role) VALUES (1, 1, 'ADMIN')");
         exec("INSERT INTO board_columns (id, team_id, name, sort_order) VALUES (1, 1, 'Pesquisa', 0), (2, 1, 'Roteiro', 1)");
 
@@ -120,8 +120,8 @@ class MigrationUpgradeIT {
         exec("INSERT INTO modules (id, kanban_item_id, title) VALUES (1, 1, 'modulo legado')");
         exec("INSERT INTO lessons (module_id, title) VALUES (1, 'aula legada')");
 
-        assertEquals(6, flyway("16").migrate().migrationsExecuted);
-        assertEquals("16", one("SELECT MAX(CAST(version AS UNSIGNED)) FROM flyway_schema_history"));
+        assertEquals(7, flyway("17").migrate().migrationsExecuted);
+        assertEquals("17", one("SELECT MAX(CAST(version AS UNSIGNED)) FROM flyway_schema_history"));
 
         // RN05: every row has a distinct uuid
         assertEquals("0", one("SELECT COUNT(*) FROM kanban_items WHERE uuid IS NULL OR uuid = ''"));
@@ -152,7 +152,8 @@ class MigrationUpgradeIT {
         assertEquals(one("SELECT id FROM board_columns WHERE team_id = " + personal + " AND sort_order = 0"),
                 one("SELECT column_id FROM kanban_items WHERE id = 3"));
         assertEquals("Podcast", one("SELECT t.name FROM kanban_items k JOIN tags t ON t.id = k.tag_id WHERE k.id = 3"));
-        assertNull(one("SELECT id FROM teams WHERE name = 'Meu Estudio'"), "user 3 owns no card, so no team is created");
+        assertNull(one("SELECT id FROM teams WHERE BINARY name = 'Meu Estudio'"), "user 3 owns no card, so no team is created");
+        assertEquals("Meu Estúdio", one("SELECT name FROM teams WHERE id = 99"), "V17 adds the accent to the old fallback name");
 
         // c2 without column goes to the first column of its team
         assertEquals("1", one("SELECT column_id FROM kanban_items WHERE id = 2"));

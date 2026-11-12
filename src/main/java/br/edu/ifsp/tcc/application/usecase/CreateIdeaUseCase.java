@@ -33,6 +33,7 @@ public class CreateIdeaUseCase {
     public CardResponse execute(Long teamId, User user, CreateCardDTO dto) {
         Team team = teamService.requireRole(teamId, user.getId(), TeamRole.ADMIN, TeamRole.CREATOR).getTeam();
 
+        KanbanItemService.requireTitle(dto.getTitle());
         KanbanItem item = new KanbanItem();
         item.setTitle(dto.getTitle().trim());
         item.setDescription(dto.getDescription());

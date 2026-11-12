@@ -18,4 +18,7 @@ public class UpdateKanbanItemDTO {
     /** Due date as yyyy-MM-dd; an empty string clears it and null leaves it unchanged. */
     @Pattern(regexp = "^$|^\\d{4}-\\d{2}-\\d{2}$", message = "Prazo inválido. Use o formato AAAA-MM-DD.")
     private String dueDate;
+
+    /** Absent leaves the tag unchanged, 0 removes it, any other value must be a tag of the card's team. */
+    private Long tagId;
 }

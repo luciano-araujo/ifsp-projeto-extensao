@@ -15,6 +15,15 @@ public class KanbanItemService {
     /** RN01 minimums (product decision 7), shared by create, convert and edit. */
     public static final int MIN_AUDIENCE = 3;
     public static final int MIN_OBJECTIVE = 10;
+    public static final int MIN_TITLE = 3;
+
+    /** RN01 (doc 08 4.5): the title needs at least 3 characters after trim, on every create and edit. */
+    public static void requireTitle(String title) {
+        if (title == null || title.trim().length() < MIN_TITLE) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "O título deve ter pelo menos " + MIN_TITLE + " caracteres.");
+        }
+    }
 
     public static void requireAudience(String audience) {
         if (audience == null || audience.trim().length() < MIN_AUDIENCE) {
@@ -32,9 +41,7 @@ public class KanbanItemService {
 
     /** RN01 for a card that becomes (or is created as) a project: effective values, after trim. */
     public static void requireProjectFields(String title, String audience, String objective) {
-        if (title == null || title.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O título não pode ficar vazio.");
-        }
+        requireTitle(title);
         requireAudience(audience);
         requireObjective(objective);
     }

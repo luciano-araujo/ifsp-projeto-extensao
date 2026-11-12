@@ -119,7 +119,7 @@ class CreateCardUseCaseTest {
         CreateCardDTO shortObjective = dto();
         shortObjective.setPedagogicalObjective("  curto   ");
 
-        assertEquals("O título não pode ficar vazio.", assertThrows(ResponseStatusException.class,
+        assertEquals("O título deve ter pelo menos 3 caracteres.", assertThrows(ResponseStatusException.class,
                 () -> useCase.execute(10L, user, blankTitle)).getReason());
         assertEquals("Informe o público-alvo com pelo menos 3 caracteres.", assertThrows(ResponseStatusException.class,
                 () -> useCase.execute(10L, user, shortAudience)).getReason());

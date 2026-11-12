@@ -91,11 +91,21 @@ class KanbanItemServiceTest {
     }
 
     @Test
+    void requireTitle_shouldNeedThreeCharactersAfterTrim() {
+        assertDoesNotThrow(() -> KanbanItemService.requireTitle(" abc "));
+        for (String bad : new String[]{null, "", "   ", "ab", "  ab  "}) {
+            ResponseStatusException ex = assertThrows(ResponseStatusException.class, () -> KanbanItemService.requireTitle(bad));
+            assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+            assertEquals("O título deve ter pelo menos 3 caracteres.", ex.getReason());
+        }
+    }
+
+    @Test
     void requireProjectFields_shouldCheckTitleAudienceAndObjective() {
         assertDoesNotThrow(() -> KanbanItemService.requireProjectFields("Título", "Alunos", "Ensinar algo útil"));
-        assertEquals("O título não pode ficar vazio.", assertThrows(ResponseStatusException.class,
+        assertEquals("O título deve ter pelo menos 3 caracteres.", assertThrows(ResponseStatusException.class,
                 () -> KanbanItemService.requireProjectFields(" ", "Alunos", "Ensinar algo útil")).getReason());
-        assertEquals("O título não pode ficar vazio.", assertThrows(ResponseStatusException.class,
+        assertEquals("O título deve ter pelo menos 3 caracteres.", assertThrows(ResponseStatusException.class,
                 () -> KanbanItemService.requireProjectFields(null, "Alunos", "Ensinar algo útil")).getReason());
         assertThrows(ResponseStatusException.class,
                 () -> KanbanItemService.requireProjectFields("T", "ab", "Ensinar algo útil"));

@@ -83,7 +83,7 @@ public class TeamService {
 
     public String personalTeamName(User user) {
         String firstName = user.getName() == null ? "" : user.getName().trim().split("\\s+")[0];
-        return firstName.isEmpty() ? "Meu Estudio" : "Estúdio de " + firstName;
+        return firstName.isEmpty() ? "Meu Estúdio" : "Estúdio de " + firstName;
     }
 
     // --- Members ---

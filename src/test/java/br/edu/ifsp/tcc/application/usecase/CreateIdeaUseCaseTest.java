@@ -61,6 +61,22 @@ class CreateIdeaUseCaseTest {
     }
 
     @Test
+    void execute_shouldRejectTitleShorterThanThreeCharacters() {
+        Team team = new Team();
+        TeamMember creator = new TeamMember();
+        creator.setTeam(team);
+        when(teamService.requireRole(10L, 1L, TeamRole.ADMIN, TeamRole.CREATOR)).thenReturn(creator);
+        CreateCardDTO dto = new CreateCardDTO();
+        dto.setTitle("  ab ");
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class, () -> useCase.execute(10L, user(1L), dto));
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        assertEquals("O título deve ter pelo menos 3 caracteres.", ex.getReason());
+        verify(kanbanItemService, never()).save(any());
+    }
+
+    @Test
     void execute_shouldRejectUnknownTagName() {
         when(teamService.requireRole(10L, 1L, TeamRole.ADMIN, TeamRole.CREATOR)).thenReturn(new TeamMember());
         when(tagService.resolveTag(10L, null, "Inexistente"))

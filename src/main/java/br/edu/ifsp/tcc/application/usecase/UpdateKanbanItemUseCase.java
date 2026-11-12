@@ -5,6 +5,7 @@ import br.edu.ifsp.tcc.application.entity.KanbanItem;
 import br.edu.ifsp.tcc.application.entity.KanbanItemState;
 import br.edu.ifsp.tcc.application.entity.TeamRole;
 import br.edu.ifsp.tcc.application.service.KanbanItemService;
+import br.edu.ifsp.tcc.application.service.TagService;
 import br.edu.ifsp.tcc.application.service.TeamService;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
@@ -19,10 +20,13 @@ public class UpdateKanbanItemUseCase {
 
     private final KanbanItemService kanbanItemService;
     private final TeamService teamService;
+    private final TagService tagService;
 
-    public UpdateKanbanItemUseCase(KanbanItemService kanbanItemService, TeamService teamService) {
+    public UpdateKanbanItemUseCase(KanbanItemService kanbanItemService, TeamService teamService,
+                                  TagService tagService) {
         this.kanbanItemService = kanbanItemService;
         this.teamService = teamService;
+        this.tagService = tagService;
     }
 
     /** Editors (ADMIN and CREATOR of the card's team) only; position and progress come from the board. */
@@ -34,7 +38,7 @@ public class UpdateKanbanItemUseCase {
         boolean project = item.getState() != KanbanItemState.IDEATION;
 
         if (dto.getTitle() != null) {
-            if (dto.getTitle().isBlank()) throw badRequest("O título não pode ficar vazio.");
+            KanbanItemService.requireTitle(dto.getTitle());
             item.setTitle(dto.getTitle().trim());
         }
         if (dto.getDescription() != null) item.setDescription(dto.getDescription());
@@ -51,6 +55,10 @@ public class UpdateKanbanItemUseCase {
         }
         if (dto.getDueDate() != null) {
             item.setDueDate(dto.getDueDate().isEmpty() ? null : parseDate(dto.getDueDate()));
+        }
+
+        if (dto.getTagId() != null) {
+            item.setTag(dto.getTagId() == 0L ? null : tagService.resolveTag(item.getTeamId(), dto.getTagId(), null));
         }
 
         return kanbanItemService.save(item);
