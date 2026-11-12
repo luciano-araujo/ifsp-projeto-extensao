@@ -61,13 +61,12 @@ class GetScriptVersionsUseCaseTest {
     }
 
     @Test
-    void execute_shouldReturn404WhenThereIsNoScript() {
+    void execute_shouldReturnEmptyListWhenThereIsNoScript() {
         when(kanbanItemService.findCardOfMember(1L, 1L)).thenReturn(card());
         when(scriptService.findByKanbanItemId(1L)).thenReturn(Optional.empty());
 
-        ResponseStatusException ex = assertThrows(ResponseStatusException.class, () -> useCase.execute(1L, 1L));
-        assertEquals(HttpStatus.NOT_FOUND, ex.getStatusCode());
-        assertEquals("Script não encontrado para este item.", ex.getReason());
+        assertEquals(List.of(), useCase.execute(1L, 1L));
+        verify(scriptService, never()).findVersionsByScriptId(any());
     }
 
     @Test
