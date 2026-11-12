@@ -235,9 +235,10 @@ class KanbanScriptIT extends AbstractIT {
         Team team = newTeam();
         long id = projectId(team, "Export markdown");
         String html = "<h1>Titulo</h1><h2>Sub</h2><p>Texto <strong>forte</strong> e <em>enfase</em>.</p>"
-                + "<ul><li>a</li><li>b</li></ul><ol><li>um</li><li>dois</li></ol><blockquote><p>citacao</p></blockquote>"
-                + "<script>alert(1)</script>";
-        api.put("/api/v1/kanban/" + id + "/script", ana.token(), map("content", html));
+                + "<ul><li>a</li><li>b</li></ul><ol><li>um</li><li>dois</li></ol><blockquote><p>citacao</p></blockquote>";
+
+        // BE-13: the script tag is dropped on save, the rest is kept as is
+        api.put("/api/v1/kanban/" + id + "/script", ana.token(), map("content", html + "<script>alert(1)</script>"));
         Resp r = api.get("/api/v1/kanban/" + id + "/script/export", ana.token());
         assertEquals(html, r.text("rawContent"));
         String md = r.text("markdownFormatted");

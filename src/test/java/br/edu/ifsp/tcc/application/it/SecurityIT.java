@@ -2,7 +2,6 @@ package br.edu.ifsp.tcc.application.it;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -211,15 +210,40 @@ class SecurityIT extends AbstractIT {
     }
 
     @Test
-    @Disabled("BE-44 (rate limiting on /api/auth) is not implemented; SEC-10 stays a roadmap case")
     @DisplayName("SEC-10 Excessive login attempts are blocked with 429")
     void rateLimit() {
-        for (int i = 0; i < 30; i++) api.post("/api/auth/login", null, map("email", ana.email(), "password", "wrong"));
-        assertEquals(429, api.post("/api/auth/login", null, map("email", ana.email(), "password", "wrong")).status());
+        // own user: the limit is per IP + e-mail, so the other fixtures are not affected
+        Person victim = person("ratelimit");
+        int max = Integer.parseInt(environment.getProperty("app.rate-limit.max-attempts"));
+        Resp last = null;
+        for (int i = 0; i < max + 2; i++) last = api.post("/api/auth/login", null, map("email", victim.email(), "password", "wrong"));
+        assertEquals(429, last.status());
+        assertEquals("Muitas tentativas. Aguarde alguns minutos e tente novamente.", last.text("message"));
+        assertNotNull(last.header("Retry-After"));
+        assertTrue(Integer.parseInt(last.header("Retry-After")) > 0);
+        // even the right password is blocked in the window, but another e-mail is not
+        assertEquals(429, api.post("/api/auth/login", null, map("email", victim.email(), "password", PASSWORD)).status());
+        assertEquals(200, api.post("/api/auth/login", null, map("email", ana.email(), "password", PASSWORD)).status());
     }
 
     @Test
-    @Disabled("BE-13 (script HTML is stored unsanitized) is a known open item; SEC-07 stays a roadmap case")
+    @DisplayName("SEC-10b Encoded path (/api/auth/%6Cogin) shares the login limit; the 429 carries CORS headers")
+    void rateLimitEncodedPathAndCors() {
+        Person victim = person("ratelimit2");
+        int max = Integer.parseInt(environment.getProperty("app.rate-limit.max-attempts"));
+        for (int i = 0; i < max; i++) {
+            api.post("/api/auth/login", null, map("email", victim.email(), "password", "wrong"));
+        }
+        Map<String, String> origin = Map.of("Origin", "http://localhost:3000");
+        Resp encoded = api.send("POST", "/api/auth/%6Cogin", null,
+                map("email", victim.email(), "password", "wrong"), origin);
+        assertEquals(429, encoded.status(), encoded.body());
+        assertEquals("http://localhost:3000", encoded.header("Access-Control-Allow-Origin"));
+        assertNotNull(encoded.header("Retry-After"));
+        assertTrue(encoded.header("Access-Control-Expose-Headers").contains("Retry-After"));
+    }
+
+    @Test
     @DisplayName("SEC-07 Dangerous HTML in a script is sanitized before it is stored")
     void xssSanitized() {
         Team team = newTeam();
@@ -228,5 +252,6 @@ class SecurityIT extends AbstractIT {
         String stored = api.get("/api/v1/kanban/" + card + "/script", ana.token()).text("content");
         assertFalse(stored.contains("<script"));
         assertFalse(stored.contains("onerror"));
+        assertTrue(stored.contains("<p>ok</p>"));
     }
 }

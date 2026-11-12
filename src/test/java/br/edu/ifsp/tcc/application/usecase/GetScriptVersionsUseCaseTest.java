@@ -55,7 +55,9 @@ class GetScriptVersionsUseCaseTest {
         script.setId(10L);
         when(kanbanItemService.findCardOfMember(1L, 3L)).thenReturn(card());
         when(scriptService.findByKanbanItemId(1L)).thenReturn(Optional.of(script));
-        when(scriptService.findVersionsByScriptId(10L)).thenReturn(List.of(new ScriptVersion(), new ScriptVersion()));
+        List<ScriptVersion> versions = List.of(new ScriptVersion(), new ScriptVersion());
+        when(scriptService.findVersionsByScriptId(10L)).thenReturn(versions);
+        when(scriptService.sanitizeForRead(versions)).thenReturn(versions);
 
         assertEquals(2, useCase.execute(1L, 3L).size());
     }

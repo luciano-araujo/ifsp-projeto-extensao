@@ -6,14 +6,20 @@ import br.edu.ifsp.tcc.application.entity.Script;
 import br.edu.ifsp.tcc.application.entity.ScriptVersion;
 import br.edu.ifsp.tcc.application.repository.ScriptRepository;
 import br.edu.ifsp.tcc.application.repository.ScriptVersionRepository;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.safety.Safelist;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayDeque;
+import java.util.Arrays;
 import java.util.Deque;
 import java.util.List;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @Service
 public class ScriptService {
@@ -25,12 +31,57 @@ public class ScriptService {
     private static final Pattern ANY_TAG = Pattern.compile("<[^>]*>");
     private static final Pattern NUMERIC_ENTITY = Pattern.compile("&#(x?)([0-9a-fA-F]+);");
 
+    /** Tags the TipTap editor produces; everything else (scripts, event handlers, javascript: URLs) is dropped. */
+    private static final Safelist SAFELIST = Safelist.none()
+            .addTags("h1", "h2", "h3", "h4", "h5", "h6", "p", "br", "strong", "b", "em", "i", "u", "s", "ul", "ol", "li",
+                    "blockquote", "code", "pre", "hr", "a")
+            .addAttributes("a", "href", "target")
+            .addEnforcedAttribute("a", "rel", "noopener noreferrer nofollow")
+            .addAttributes("ol", "start")
+            .addAttributes("code", "class")
+            .addProtocols("a", "href", "http", "https", "mailto");
+
+    /** The only class values kept on code blocks (syntax highlighting language). */
+    private static final Pattern CODE_CLASS = Pattern.compile("language-[A-Za-z0-9_+#-]{1,32}");
+
     private final ScriptRepository scriptRepository;
     private final ScriptVersionRepository scriptVersionRepository;
 
     public ScriptService(ScriptRepository scriptRepository, ScriptVersionRepository scriptVersionRepository) {
         this.scriptRepository = scriptRepository;
         this.scriptVersionRepository = scriptVersionRepository;
+    }
+
+    /** Cleans editor HTML against the safelist (applied on save and on restore). Null becomes an empty string. */
+    public String sanitizeContent(String html) {
+        if (html == null || html.isEmpty()) return "";
+        Document.OutputSettings output = new Document.OutputSettings().prettyPrint(false);
+        String clean = Jsoup.clean(html, "", SAFELIST, output);
+        if (!clean.contains("class=")) return clean;
+
+        // class is allowed on code only, and only as language-*: drop any other class token
+        Document fragment = Jsoup.parseBodyFragment(clean);
+        fragment.outputSettings(output);
+        for (Element code : fragment.select("code[class]")) {
+            String kept = Arrays.stream(code.className().split("\s+")).filter(c -> CODE_CLASS.matcher(c).matches())
+                    .collect(Collectors.joining(" "));
+            if (kept.isEmpty()) code.removeAttr("class"); else code.attr("class", kept);
+        }
+        return fragment.body().html();
+    }
+
+    /**
+     * Cleans the content of a script about to be returned, so rows stored before sanitization existed are safe.
+     * Call it inside a read-only transaction: the entity must not be flushed.
+     */
+    public Script sanitizeForRead(Script script) {
+        script.setContent(sanitizeContent(script.getContent()));
+        return script;
+    }
+
+    public List<ScriptVersion> sanitizeForRead(List<ScriptVersion> versions) {
+        versions.forEach(version -> version.setContent(sanitizeContent(version.getContent())));
+        return versions;
     }
 
     public Script save(Script script) {

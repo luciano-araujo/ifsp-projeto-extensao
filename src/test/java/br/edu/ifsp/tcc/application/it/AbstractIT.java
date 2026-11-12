@@ -39,6 +39,8 @@ public abstract class AbstractIT {
     public static final String PASSWORD = "Teste@123";
 
     static {
+        // Same as Application.main: UTC must be set before the first JDBC connection (the driver caches the zone)
+        java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("UTC"));
         resetDatabase();
     }
 
