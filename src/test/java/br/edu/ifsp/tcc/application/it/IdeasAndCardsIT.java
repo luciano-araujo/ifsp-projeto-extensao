@@ -39,6 +39,63 @@ class IdeasAndCardsIT extends AbstractIT {
     }
 
     @Test
+    @DisplayName("IT-IDEA-04 Editors edit an idea (title, description, tag) with audience/objective optional; RN01 title >= 3; reviewer 403")
+    void editIdeaAndTag() {
+        Team team = newTeam();
+        long idea = ideaId(team, "Ideia original");
+        long podcast = team.tagIds().get(1);
+        long curso = team.tagIds().get(2);
+        String path = "/api/v1/kanban/" + idea;
+
+        Resp edited = api.put(path, carlos.token(), map("title", "  Ideia editada ", "description", "Nova", "tagId", podcast));
+        assertEquals(200, edited.status(), edited.body());
+        assertEquals("Ideia editada", edited.text("title"));
+        assertEquals(podcast, edited.num("tagId"));
+        assertNull(edited.text("targetAudience"));
+
+        Resp keep = api.put(path, ana.token(), map("description", "Outra"));
+        assertEquals(podcast, keep.num("tagId"), "absent tagId leaves the tag unchanged");
+        assertEquals(curso, api.put(path, ana.token(), map("tagId", curso)).num("tagId"));
+        assertEquals(200, api.put(path, ana.token(), map("targetAudience", "", "pedagogicalObjective", "")).status());
+
+        Resp removed = api.put(path, ana.token(), map("tagId", 0));
+        assertEquals(200, removed.status(), removed.body());
+        assertNull(removed.text("tagId"));
+
+        Resp invalid = api.put(path, ana.token(), map("tagId", 999999999));
+        assertEquals(400, invalid.status(), invalid.body());
+        assertTrue(invalid.text("message").startsWith("Etiqueta inválida"));
+        Team other = newTeam();
+        assertEquals(400, api.put(path, ana.token(), map("tagId", other.tagIds().get(0))).status(), "tag of another team");
+
+        for (String shortTitle : new String[]{"ab", "   ", " a "}) {
+            Resp r = api.put(path, ana.token(), map("title", shortTitle));
+            assertEquals(400, r.status(), r.body());
+            assertEquals("O título deve ter pelo menos 3 caracteres.", r.text("message"));
+        }
+        assertEquals(403, api.put(path, rui.token(), map("tagId", podcast)).status());
+        assertEquals("Ideia editada", api.get(team.path() + "/ideas", ana.token()).json().get(0).path("title").asString());
+    }
+
+    @Test
+    @DisplayName("IT-RN01-TITLE Title needs >= 3 characters on POST ideas, POST cards and convert")
+    void titleMinimum() {
+        Team team = newTeam();
+        String msg = "O título deve ter pelo menos 3 caracteres.";
+        Resp idea = api.post(team.path() + "/ideas", ana.token(), map("title", " ab "));
+        assertEquals(400, idea.status(), idea.body());
+        assertEquals(msg, idea.text("message"));
+        Resp card = createProject(team, ana, "ab", team.columnIds().get(0));
+        assertEquals(400, card.status(), card.body());
+        assertEquals(msg, card.text("message"));
+        long id = ideaId(team, "Ideia valida");
+        Resp convert = api.post(team.path() + "/cards/" + id + "/convert", ana.token(),
+                map("title", "ab", "targetAudience", "Estudantes", "pedagogicalObjective", "Ensinar algo importante"));
+        assertEquals(400, convert.status(), convert.body());
+        assertEquals(msg, convert.text("message"));
+    }
+
+    @Test
     @DisplayName("SEC-ROLE-01 Reviewer cannot create ideas/cards (403) but lists and votes")
     void reviewerReadsAndVotes() {
         Team team = newTeam();
@@ -309,7 +366,7 @@ class IdeasAndCardsIT extends AbstractIT {
         Team team = newTeam();
         Set<String> uuids = new HashSet<>();
         for (int i = 0; i < 6; i++) {
-            Resp r = i % 2 == 0 ? createIdea(team, ana, "i" + i) : createProject(team, ana, "p" + i, team.columnIds().get(0));
+            Resp r = i % 2 == 0 ? createIdea(team, ana, "ideia " + i) : createProject(team, ana, "projeto " + i, team.columnIds().get(0));
             String uuid = r.text("uuid");
             assertDoesNotThrow(() -> UUID.fromString(uuid));
             assertTrue(uuids.add(uuid), "duplicate uuid " + uuid);

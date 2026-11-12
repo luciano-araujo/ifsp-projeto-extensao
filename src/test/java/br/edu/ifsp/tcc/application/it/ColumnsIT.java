@@ -126,8 +126,8 @@ class ColumnsIT extends AbstractIT {
         long colA = team.columnIds().get(0);
         long colB = team.columnIds().get(1);
         long colC = team.columnIds().get(2);
-        long one = createProject(team, ana, "Um", colB).num("id");
-        long two = createProject(team, ana, "Dois", colB).num("id");
+        long one = createProject(team, ana, "Card um", colB).num("id");
+        long two = createProject(team, ana, "Card dois", colB).num("id");
         long three = createProject(team, ana, "Tres", colA).num("id");
 
         assertEquals(204, api.delete(team.path() + "/columns/" + colB + "?targetColumnId=" + colC, ana.token()).status());

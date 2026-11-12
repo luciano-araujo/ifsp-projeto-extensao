@@ -144,8 +144,8 @@ class TeamServiceMoreTest {
 
     @Test
     void personalTeamName_shouldFallBackWhenUserHasNoName() {
-        assertEquals("Meu Estudio", service.personalTeamName(user(1L, null)));
-        assertEquals("Meu Estudio", service.personalTeamName(user(1L, "   ")));
+        assertEquals("Meu Estúdio", service.personalTeamName(user(1L, null)));
+        assertEquals("Meu Estúdio", service.personalTeamName(user(1L, "   ")));
     }
 
     @Test

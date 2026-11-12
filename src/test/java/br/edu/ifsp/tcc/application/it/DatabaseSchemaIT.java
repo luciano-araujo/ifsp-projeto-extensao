@@ -14,7 +14,7 @@ import java.util.UUID;
 import static br.edu.ifsp.tcc.application.it.Api.map;
 import static org.junit.jupiter.api.Assertions.*;
 
-/** Plan DB-01..DB-04 (updated for V1-V16) and the schema facts M1 relies on. */
+/** Plan DB-01..DB-04 (updated for V1-V17) and the schema facts M1 relies on. */
 class DatabaseSchemaIT extends AbstractIT {
 
     @Autowired ApplicationContext context;
@@ -34,11 +34,11 @@ class DatabaseSchemaIT extends AbstractIT {
     }
 
     @Test
-    @DisplayName("DB-01 Flyway builds V1..V16 from an empty database and Hibernate ddl-auto=validate accepts it")
+    @DisplayName("DB-01 Flyway builds V1..V17 from an empty database and Hibernate ddl-auto=validate accepts it")
     void flywayCleanBuild() {
         List<Map<String, Object>> history = jdbc.queryForList(
                 "SELECT version, success FROM flyway_schema_history WHERE version IS NOT NULL ORDER BY installed_rank");
-        assertEquals(16, history.size(), "migrations applied: " + history);
+        assertEquals(17, history.size(), "migrations applied: " + history);
         for (int i = 0; i < history.size(); i++) {
             assertEquals(String.valueOf(i + 1), history.get(i).get("version"));
             Object success = history.get(i).get("success");
@@ -166,8 +166,8 @@ class DatabaseSchemaIT extends AbstractIT {
     @DisplayName("DB-07 Every card and script gets a distinct uuid (RN05)")
     void uuidsAreDistinct() {
         Team team = newTeam();
-        long a = projectId(team, "u1");
-        long b = ideaId(team, "u2");
+        long a = projectId(team, "uuid 1");
+        long b = ideaId(team, "uuid 2");
         String ua = jdbc.queryForObject("SELECT uuid FROM kanban_items WHERE id = ?", String.class, a);
         String ub = jdbc.queryForObject("SELECT uuid FROM kanban_items WHERE id = ?", String.class, b);
         assertNotEquals(ua, ub);

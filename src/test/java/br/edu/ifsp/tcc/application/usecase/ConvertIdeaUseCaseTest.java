@@ -158,6 +158,6 @@ class ConvertIdeaUseCaseTest {
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
                 () -> useCase.execute(10L, 1L, 1L, null, null));
-        assertEquals("O título não pode ficar vazio.", ex.getReason());
+        assertEquals("O título deve ter pelo menos 3 caracteres.", ex.getReason());
     }
 }
