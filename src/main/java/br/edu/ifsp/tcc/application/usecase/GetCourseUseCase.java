@@ -2,6 +2,7 @@ package br.edu.ifsp.tcc.application.usecase;
 
 import br.edu.ifsp.tcc.application.dto.CourseDetailResponse;
 import br.edu.ifsp.tcc.application.dto.CourseModuleResponse;
+import br.edu.ifsp.tcc.application.dto.MaterialResponse;
 import br.edu.ifsp.tcc.application.entity.Course;
 import br.edu.ifsp.tcc.application.entity.CourseLesson;
 import br.edu.ifsp.tcc.application.entity.CourseModule;
@@ -32,8 +33,10 @@ public class GetCourseUseCase {
 
         List<CourseModule> modules = courseService.findModules(courseId);
         Map<Long, List<CourseLesson>> lessonsByModule = courseService.findLessonsByModule(modules);
+        Map<Long, List<MaterialResponse>> materialsByLesson = courseService.findMaterialsByLesson(teamId, lessonsByModule);
         List<CourseModuleResponse> moduleResponses = modules.stream()
-                .map(module -> courseService.toModuleResponse(module, lessonsByModule.getOrDefault(module.getId(), List.of())))
+                .map(module -> courseService.toModuleResponse(module,
+                        lessonsByModule.getOrDefault(module.getId(), List.of()), materialsByLesson))
                 .toList();
 
         return new CourseDetailResponse(course.getId(), course.getUuid(), teamId, course.getTitle(), course.getDescription(),

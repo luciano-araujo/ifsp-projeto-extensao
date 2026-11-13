@@ -1,0 +1,303 @@
+package br.edu.ifsp.tcc.application.service;
+
+import br.edu.ifsp.tcc.application.dto.MaterialDownload;
+import br.edu.ifsp.tcc.application.dto.MaterialResponse;
+import br.edu.ifsp.tcc.application.dto.MaterialUploaderResponse;
+import br.edu.ifsp.tcc.application.entity.CourseLesson;
+import br.edu.ifsp.tcc.application.entity.KanbanItem;
+import br.edu.ifsp.tcc.application.entity.LessonMaterial;
+import br.edu.ifsp.tcc.application.entity.Material;
+import br.edu.ifsp.tcc.application.entity.User;
+import br.edu.ifsp.tcc.application.repository.LessonMaterialRepository;
+import br.edu.ifsp.tcc.application.repository.MaterialRepository;
+import br.edu.ifsp.tcc.application.storage.FileStorage;
+import br.edu.ifsp.tcc.application.storage.FileStorageException;
+import br.edu.ifsp.tcc.application.storage.StorageFileNotFoundException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+/**
+ * Materials (files attached to project cards) and their links to course lessons. The only class that
+ * talks to the {@link FileStorage}. Business rules (roles, projects only) live in the material use cases.
+ */
+@Service
+public class MaterialService {
+
+    private static final Logger log = LoggerFactory.getLogger(MaterialService.class);
+
+    /** 20 MB per file (contract 7.8). */
+    public static final long MAX_SIZE_BYTES = 20L * 1024 * 1024;
+    public static final int MAX_FILE_NAME_LENGTH = 255;
+
+    public static final String MSG_TOO_LARGE = "O arquivo excede o limite de 20 MB.";
+    public static final String MSG_TYPE_NOT_ALLOWED = "Tipo de arquivo não permitido.";
+
+    /** Allowed extensions, each with the content types a browser may send for it; the first one is stored. */
+    private static final Map<String, List<String>> TYPES_BY_EXTENSION = Map.ofEntries(
+            Map.entry("pdf", List.of("application/pdf")),
+            Map.entry("doc", List.of("application/msword")),
+            Map.entry("docx", List.of("application/vnd.openxmlformats-officedocument.wordprocessingml.document")),
+            Map.entry("ppt", List.of("application/vnd.ms-powerpoint")),
+            Map.entry("pptx", List.of("application/vnd.openxmlformats-officedocument.presentationml.presentation")),
+            Map.entry("xls", List.of("application/vnd.ms-excel")),
+            Map.entry("xlsx", List.of("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")),
+            Map.entry("txt", List.of("text/plain")),
+            Map.entry("png", List.of("image/png")),
+            Map.entry("jpg", List.of("image/jpeg", "image/jpg")),
+            Map.entry("jpeg", List.of("image/jpeg", "image/jpg")),
+            Map.entry("webp", List.of("image/webp")),
+            Map.entry("gif", List.of("image/gif")));
+
+    private final MaterialRepository materialRepository;
+    private final LessonMaterialRepository lessonMaterialRepository;
+    private final FileStorage fileStorage;
+
+    public MaterialService(MaterialRepository materialRepository,
+                           LessonMaterialRepository lessonMaterialRepository,
+                           FileStorage fileStorage) {
+        this.materialRepository = materialRepository;
+        this.lessonMaterialRepository = lessonMaterialRepository;
+        this.fileStorage = fileStorage;
+    }
+
+    // --- Upload rules ---
+
+    /**
+     * File name as stored: no path parts (a browser may send "C:\\dir\\file.pdf"), no control characters,
+     * at most {@value #MAX_FILE_NAME_LENGTH} characters (the extension is kept when cutting).
+     */
+    public static String sanitizeFileName(String original) {
+        if (original == null) return "";
+        String name = original.replace('\\', '/');
+        name = name.substring(name.lastIndexOf('/') + 1);
+        name = name.replaceAll("\\p{Cntrl}", "").trim();
+        if (name.length() > MAX_FILE_NAME_LENGTH) {
+            String extension = extensionOf(name);
+            String suffix = extension.isEmpty() || extension.length() > 10 ? "" : "." + extension;
+            name = name.substring(0, MAX_FILE_NAME_LENGTH - suffix.length()) + suffix;
+        }
+        return name;
+    }
+
+    /** Lower-case extension without the dot; empty when the name has none. */
+    public static String extensionOf(String fileName) {
+        int dot = fileName.lastIndexOf('.');
+        return dot < 0 || dot == fileName.length() - 1 ? "" : fileName.substring(dot + 1).toLowerCase(Locale.ROOT);
+    }
+
+    /**
+     * The content type to store for the file, or 415 when the extension is not allowed or the content type
+     * sent does not belong to that extension (both are checked).
+     */
+    public static String requireAllowedType(String fileName, String declaredContentType) {
+        List<String> accepted = TYPES_BY_EXTENSION.get(extensionOf(fileName));
+        String declared = declaredContentType == null ? ""
+                : declaredContentType.split(";", 2)[0].trim().toLowerCase(Locale.ROOT);
+        if (accepted == null || !accepted.contains(declared)) {
+            throw new ResponseStatusException(HttpStatus.UNSUPPORTED_MEDIA_TYPE, MSG_TYPE_NOT_ALLOWED);
+        }
+        return accepted.get(0);
+    }
+
+    // --- Materials ---
+
+    /** Validates the upload, saves the bytes in the storage and the row in the database. */
+    public Material attach(KanbanItem card, User uploader, MultipartFile file) {
+        String fileName = sanitizeFileName(file.getOriginalFilename());
+        String contentType = requireAllowedType(fileName, file.getContentType());
+        if (file.getSize() > MAX_SIZE_BYTES) {
+            throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, MSG_TOO_LARGE);
+        }
+
+        String key = UUID.randomUUID().toString();
+        try (InputStream content = file.getInputStream()) {
+            fileStorage.store(key, content, file.getSize(), contentType);
+        } catch (IOException e) {
+            throw new FileStorageException("Could not read the uploaded file.", e);
+        }
+        // If the transaction fails after the bytes were stored, the file must not stay behind
+        removeFileOnRollback(key);
+
+        Material material = new Material();
+        material.setKanbanItem(card);
+        material.setUploadedBy(uploader);
+        material.setFileName(fileName);
+        material.setContentType(contentType);
+        material.setSizeBytes(file.getSize());
+        material.setStorageKey(key);
+        return materialRepository.save(material);
+    }
+
+    /** The material only when it belongs to a card of the team; otherwise 404 (other teams' ids are not revealed). */
+    public Material findMaterial(Long teamId, Long materialId) {
+        return materialRepository.findInTeam(materialId, teamId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Material não encontrado."));
+    }
+
+    /** Materials of the card, newest first. */
+    public List<Material> findByCard(Long cardId) {
+        return materialRepository.findByCardNewestFirst(cardId);
+    }
+
+    public int countByCard(Long cardId) {
+        return materialRepository.countByKanbanItem_Id(cardId);
+    }
+
+    /** Number of materials of each card, in one query for all of them (cards without materials are absent). */
+    public Map<Long, Integer> countByCards(List<KanbanItem> cards) {
+        if (cards.isEmpty()) return Map.of();
+        return materialRepository.countByCards(cards.stream().map(KanbanItem::getId).toList()).stream()
+                .collect(Collectors.toMap(c -> c.getCardId(), c -> c.getTotal().intValue()));
+    }
+
+    /** Opens the stored file for download. */
+    public MaterialDownload open(Material material, boolean inline) {
+        Resource resource;
+        try {
+            resource = fileStorage.load(material.getStorageKey());
+        } catch (StorageFileNotFoundException e) {
+            log.error("Material {} has no file in the storage (key {})", material.getId(), material.getStorageKey());
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Arquivo não encontrado no armazenamento.");
+        }
+        return new MaterialDownload(resource, material.getContentType(), material.getSizeBytes(),
+                contentDisposition(material.getFileName(), inline));
+    }
+
+    /**
+     * Content-Disposition with an ASCII fallback name and the real name encoded as in RFC 5987
+     * ("filename*=UTF-8''..."), attachment by default and inline when asked.
+     */
+    public static String contentDisposition(String fileName, boolean inline) {
+        String fallback = fileName.replaceAll("[^\\x20-\\x7E]", "_").replace('"', '\'').replace('\\', '_');
+        String encoded = URLEncoder.encode(fileName, StandardCharsets.UTF_8).replace("+", "%20").replace("*", "%2A");
+        return (inline ? "inline" : "attachment") + "; filename=\"" + fallback + "\"; filename*=UTF-8''" + encoded;
+    }
+
+    /** Deletes the row (its lesson links go with it, by cascade) and, after commit, the stored file. */
+    public void delete(Material material) {
+        materialRepository.delete(material);
+        deleteFilesAfterCommit(List.of(material.getStorageKey()));
+    }
+
+    // --- Stored files that must not leak ---
+
+    /** Call before a card is deleted: its materials cascade away in the database, so the files go after commit. */
+    public void scheduleFileRemovalOfCard(Long cardId) {
+        deleteFilesAfterCommit(materialRepository.findStorageKeysByCard(cardId));
+    }
+
+    /**
+     * Call before a team is deleted: deletes the materials of all its cards and, after commit, their stored files.
+     * The rows are deleted explicitly instead of relying on the cascade team -> cards -> materials: with MySQL
+     * (InnoDB) that long cascade, combined with the one that reaches course_lesson_materials through the courses
+     * of the same team, left some materials behind pointing to a card that no longer existed.
+     */
+    public void deleteAllOfTeam(Long teamId) {
+        List<String> keys = materialRepository.findStorageKeysByTeam(teamId);
+        materialRepository.deleteByTeam(teamId);
+        deleteFilesAfterCommit(keys);
+    }
+
+    /**
+     * Deletes the files once the current transaction commits (a rollback keeps them, because the rows stay).
+     * Outside a transaction they are deleted at once. A failure is logged, never thrown: the data is already gone.
+     */
+    public void deleteFilesAfterCommit(Collection<String> keys) {
+        if (keys.isEmpty()) return;
+        List<String> copy = List.copyOf(keys);
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            copy.forEach(this::deleteQuietly);
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                copy.forEach(MaterialService.this::deleteQuietly);
+            }
+        });
+    }
+
+    private void removeFileOnRollback(String key) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) return;
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCompletion(int status) {
+                if (status == STATUS_ROLLED_BACK) deleteQuietly(key);
+            }
+        });
+    }
+
+    private void deleteQuietly(String key) {
+        try {
+            fileStorage.delete(key);
+        } catch (RuntimeException e) {
+            log.error("Could not delete the stored file {}", key, e);
+        }
+    }
+
+    // --- Lesson links ---
+
+    /** Links the material to the lesson; 409 when it is already linked. */
+    public LessonMaterial link(CourseLesson lesson, Material material) {
+        if (lessonMaterialRepository.existsByLesson_IdAndMaterial_Id(lesson.getId(), material.getId())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Este material já está vinculado à aula.");
+        }
+        LessonMaterial link = new LessonMaterial();
+        link.setLesson(lesson);
+        link.setMaterial(material);
+        return lessonMaterialRepository.save(link);
+    }
+
+    public void unlink(Long lessonId, Long materialId) {
+        LessonMaterial link = lessonMaterialRepository.findByLesson_IdAndMaterial_Id(lessonId, materialId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Este material não está vinculado à aula."));
+        lessonMaterialRepository.delete(link);
+    }
+
+    /** Materials of each lesson as responses (one query for all the lessons; lessons without materials are absent). */
+    public Map<Long, List<MaterialResponse>> findResponsesByLesson(Long teamId, Collection<Long> lessonIds) {
+        if (lessonIds.isEmpty()) return Map.of();
+        Map<Long, List<MaterialResponse>> byLesson = new HashMap<>();
+        for (LessonMaterial link : lessonMaterialRepository.findByLessons(lessonIds)) {
+            byLesson.computeIfAbsent(link.getLessonId(), id -> new ArrayList<>())
+                    .add(toResponse(link.getMaterial(), teamId));
+        }
+        return byLesson;
+    }
+
+    // --- Response mapping ---
+
+    public MaterialResponse toResponse(Material material, Long teamId) {
+        User uploader = material.getUploadedBy();
+        MaterialUploaderResponse uploadedBy = uploader == null ? null
+                : new MaterialUploaderResponse(uploader.getId(), uploader.getName());
+        return new MaterialResponse(material.getId(), material.getUuid(), material.getKanbanItemId(),
+                material.getFileName(), material.getContentType(), material.getSizeBytes(), uploadedBy,
+                material.getCreatedAt(), downloadUrl(teamId, material.getId()));
+    }
+
+    public static String downloadUrl(Long teamId, Long materialId) {
+        return "/api/v1/teams/" + teamId + "/materials/" + materialId + "/download";
+    }
+}

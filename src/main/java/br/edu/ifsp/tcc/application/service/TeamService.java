@@ -25,15 +25,18 @@ public class TeamService {
     private final BoardColumnRepository boardColumnRepository;
 
     private final TagService tagService;
+    private final MaterialService materialService;
 
     public TeamService(TeamRepository teamRepository,
                        TeamMemberRepository teamMemberRepository,
                        BoardColumnRepository boardColumnRepository,
-                       TagService tagService) {
+                       TagService tagService,
+                       MaterialService materialService) {
         this.teamRepository = teamRepository;
         this.teamMemberRepository = teamMemberRepository;
         this.boardColumnRepository = boardColumnRepository;
         this.tagService = tagService;
+        this.materialService = materialService;
     }
 
     // --- Access verification ---
@@ -76,8 +79,12 @@ public class TeamService {
         return admin;
     }
 
-    /** Deletes the team; its members, columns, cards and courses go with it (database cascade). */
+    /**
+     * Deletes the team; its members, columns, cards, materials and courses go with it (database cascade).
+     * The materials are deleted first (see MaterialService.deleteAllOfTeam) and their stored files after the commit.
+     */
     public void deleteTeam(Team team) {
+        materialService.deleteAllOfTeam(team.getId());
         teamRepository.delete(team);
     }
 

@@ -45,4 +45,7 @@ public class CardResponse {
     /** When the card entered its current column; null for ideas. */
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'")
     private LocalDateTime columnSince;
+
+    /** Number of attached materials (always 0 for ideas). */
+    private Integer materialsCount;
 }

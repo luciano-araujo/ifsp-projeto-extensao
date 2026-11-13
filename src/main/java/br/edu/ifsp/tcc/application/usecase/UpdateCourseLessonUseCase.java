@@ -33,6 +33,6 @@ public class UpdateCourseLessonUseCase {
         if (dto.getType() != null) lesson.setType(dto.getType());
         if (dto.getPublished() != null) lesson.setPublished(dto.getPublished());
         if (dto.getProjectId() != null) lesson.setProject(courseService.findProject(teamId, dto.getProjectId()));
-        return courseService.toLessonResponse(courseService.saveLesson(lesson));
+        return courseService.toLessonResponseWithMaterials(teamId, courseService.saveLesson(lesson));
     }
 }
