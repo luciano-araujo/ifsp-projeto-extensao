@@ -22,6 +22,12 @@ public interface KanbanItemRepository extends JpaRepository<KanbanItem, Long> {
     @Query("DELETE FROM KanbanItem k WHERE k.team.id = :teamId")
     int deleteAllByTeamId(@Param("teamId") Long teamId);
 
+    // Projects of the team with a due date up to the limit (overdue ones included), for the deadline alerts
+    @Query("SELECT k FROM KanbanItem k WHERE k.team.id = :teamId "
+            + "AND k.state = br.edu.ifsp.tcc.application.entity.KanbanItemState.IN_PRODUCTION "
+            + "AND k.dueDate IS NOT NULL AND k.dueDate <= :limit")
+    List<KanbanItem> findProjectsDueUntil(@Param("teamId") Long teamId, @Param("limit") java.time.LocalDate limit);
+
     // The item, only when the user is a member of the item's team
     @Query("SELECT k FROM KanbanItem k WHERE k.id = :id AND k.team.id IN "
             + "(SELECT m.team.id FROM TeamMember m WHERE m.user.id = :userId)")

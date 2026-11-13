@@ -18,4 +18,9 @@ public interface CardTaskRepository extends JpaRepository<CardTask, Long> {
     List<CardTask> findByKanbanItem_IdInOrderBySortOrderAscIdAsc(@Param("kanbanItemIds") Collection<Long> kanbanItemIds);
     Optional<CardTask> findByIdAndKanbanItem_Id(Long id, Long kanbanItemId);
     int countByKanbanItem_Id(Long kanbanItemId);
+
+    // Open tasks of the team with a due date up to the limit (overdue ones included), for the deadline alerts
+    @Query("SELECT t FROM CardTask t JOIN FETCH t.kanbanItem k LEFT JOIN FETCH t.assignee a LEFT JOIN FETCH a.user "
+            + "WHERE k.team.id = :teamId AND t.completed = false AND t.dueDate IS NOT NULL AND t.dueDate <= :limit")
+    List<CardTask> findOpenDueUntil(@Param("teamId") Long teamId, @Param("limit") java.time.LocalDate limit);
 }

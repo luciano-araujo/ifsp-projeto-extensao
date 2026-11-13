@@ -28,6 +28,8 @@ class TeamControllerTest {
     @Mock private AddTeamMemberUseCase addTeamMemberUseCase;
     @Mock private UpdateTeamMemberRoleUseCase updateTeamMemberRoleUseCase;
     @Mock private RemoveTeamMemberUseCase removeTeamMemberUseCase;
+    @Mock private RenameTeamUseCase renameTeamUseCase;
+    @Mock private DeleteTeamUseCase deleteTeamUseCase;
     @InjectMocks private TeamController controller;
 
     private User user;
@@ -39,7 +41,7 @@ class TeamControllerTest {
     }
 
     private TeamResponse team() {
-        return new TeamResponse(10L, "Equipe", TeamRole.ADMIN, 1, LocalDateTime.now());
+        return new TeamResponse(10L, "Equipe", TeamRole.ADMIN, 1, LocalDateTime.now(), false);
     }
 
     private TeamMemberResponse member() {
@@ -113,5 +115,26 @@ class TeamControllerTest {
 
         assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
         verify(removeTeamMemberUseCase).execute(10L, 1L, 5L);
+    }
+
+    @Test
+    void rename_shouldReturnRenamedTeam() {
+        RenameTeamDTO dto = new RenameTeamDTO();
+        dto.setName("Novo nome");
+        TeamResponse renamed = team();
+        when(renameTeamUseCase.execute(10L, 1L, dto)).thenReturn(renamed);
+
+        ResponseEntity<TeamResponse> response = controller.rename(user, 10L, dto);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertSame(renamed, response.getBody());
+    }
+
+    @Test
+    void delete_shouldReturnNoContent() {
+        ResponseEntity<Void> response = controller.delete(user, 10L);
+
+        assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
+        verify(deleteTeamUseCase).execute(10L, 1L);
     }
 }

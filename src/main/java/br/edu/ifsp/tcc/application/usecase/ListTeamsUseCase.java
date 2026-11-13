@@ -23,7 +23,7 @@ public class ListTeamsUseCase {
     public List<TeamResponse> execute(User user) {
         List<TeamMember> memberships = teamService.findMembershipsByUserId(user.getId());
         if (memberships.isEmpty()) {
-            teamService.createTeamWithAdmin(user, teamService.personalTeamName(user));
+            teamService.createPersonalTeam(user);
             memberships = teamService.findMembershipsByUserId(user.getId());
         }
         return memberships.stream().map(teamService::toTeamResponse).toList();

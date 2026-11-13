@@ -14,6 +14,10 @@ public class Team {
     @Column(nullable = false, length = 120)
     private String name;
 
+    // The personal team created on the first access of a user; it cannot be deleted
+    @Column(nullable = false)
+    private boolean personal = false;
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
@@ -27,6 +31,9 @@ public class Team {
 
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
+
+    public boolean isPersonal() { return personal; }
+    public void setPersonal(boolean personal) { this.personal = personal; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
 }
