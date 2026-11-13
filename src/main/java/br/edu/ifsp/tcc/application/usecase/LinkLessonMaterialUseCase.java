@@ -24,7 +24,7 @@ public class LinkLessonMaterialUseCase {
         this.materialService = materialService;
     }
 
-    /** Links a material of the same team to the lesson (editors only); linking twice is a 409. */
+    /** Links a material of the same team to the lesson (editors only); another team's or unknown material is a 400, linking twice a 409. */
     @Transactional
     public CourseLessonResponse execute(Long teamId, Long userId, Long courseId, Long moduleId, Long lessonId,
                                         LinkLessonMaterialDTO dto) {
@@ -32,7 +32,7 @@ public class LinkLessonMaterialUseCase {
         courseService.findCourse(teamId, courseId);
         courseService.findModule(courseId, moduleId);
         CourseLesson lesson = courseService.findLesson(moduleId, lessonId);
-        Material material = materialService.findMaterial(teamId, dto.getMaterialId());
+        Material material = materialService.findMaterialToLink(teamId, dto.getMaterialId());
 
         materialService.link(lesson, material);
         return courseService.toLessonResponseWithMaterials(teamId, lesson);

@@ -27,6 +27,7 @@ class TeamServiceTest {
     @Mock private BoardColumnRepository boardColumnRepository;
     @Mock private TagService tagService;
     @Mock private MaterialService materialService;
+    @Mock private KanbanItemService kanbanItemService;
     @InjectMocks private TeamService teamService;
 
     private TeamMember member(TeamRole role) {

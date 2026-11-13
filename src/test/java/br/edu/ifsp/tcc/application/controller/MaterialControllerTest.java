@@ -81,6 +81,7 @@ class MaterialControllerTest {
         assertEquals(3L, response.getHeaders().getContentLength());
         assertEquals(file.getContentDisposition(), response.getHeaders().getFirst(HttpHeaders.CONTENT_DISPOSITION));
         assertEquals("nosniff", response.getHeaders().getFirst("X-Content-Type-Options"));
+        assertEquals("sandbox; default-src 'none'", response.getHeaders().getFirst("Content-Security-Policy"));
     }
 
     @Test

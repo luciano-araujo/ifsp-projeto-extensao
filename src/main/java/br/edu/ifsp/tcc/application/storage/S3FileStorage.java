@@ -1,15 +1,14 @@
 package br.edu.ifsp.tcc.application.storage;
 
-import org.springframework.core.io.InputStreamResource;
+import org.springframework.core.io.AbstractResource;
 import org.springframework.core.io.Resource;
-import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.CopyObjectRequest;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
-import software.amazon.awssdk.services.s3.model.GetObjectResponse;
+import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.StorageClass;
@@ -40,13 +39,27 @@ public class S3FileStorage implements FileStorage {
     @Override
     public Resource load(String key) {
         try {
-            ResponseInputStream<GetObjectResponse> object = s3.getObject(
-                    GetObjectRequest.builder().bucket(bucket).key(key).build());
-            long length = object.response().contentLength();
-            return new InputStreamResource(object) {
+            // Only a HEAD here: the object is opened when (and if) the body is read, so a HEAD request to the
+            // download route never leaves an S3 stream open
+            long length = s3.headObject(HeadObjectRequest.builder().bucket(bucket).key(key).build()).contentLength();
+            return new AbstractResource() {
+                @Override
+                public String getDescription() {
+                    return "S3 object " + key;
+                }
+
                 @Override
                 public long contentLength() {
                     return length;
+                }
+
+                @Override
+                public InputStream getInputStream() {
+                    try {
+                        return s3.getObject(GetObjectRequest.builder().bucket(bucket).key(key).build());
+                    } catch (SdkException e) {
+                        throw new FileStorageException("Could not read the file from S3.", e);
+                    }
                 }
             };
         } catch (NoSuchKeyException e) {

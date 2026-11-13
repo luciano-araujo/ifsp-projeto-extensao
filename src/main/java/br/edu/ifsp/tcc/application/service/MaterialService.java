@@ -45,6 +45,9 @@ public class MaterialService {
 
     private static final Logger log = LoggerFactory.getLogger(MaterialService.class);
 
+    // Control characters (C0 and C1) and the bidirectional controls that can disguise an extension (U+202E ...)
+    private static final String UNSAFE_CHARACTERS = "[\\p{Cc}\\u200E\\u200F\\u202A-\\u202E\\u2066-\\u2069]";
+
     /** 20 MB per file (contract 7.8). */
     public static final long MAX_SIZE_BYTES = 20L * 1024 * 1024;
     public static final int MAX_FILE_NAME_LENGTH = 255;
@@ -90,11 +93,14 @@ public class MaterialService {
         if (original == null) return "";
         String name = original.replace('\\', '/');
         name = name.substring(name.lastIndexOf('/') + 1);
-        name = name.replaceAll("\\p{Cntrl}", "").trim();
+        name = name.replaceAll(UNSAFE_CHARACTERS, "").trim();
         if (name.length() > MAX_FILE_NAME_LENGTH) {
             String extension = extensionOf(name);
             String suffix = extension.isEmpty() || extension.length() > 10 ? "" : "." + extension;
-            name = name.substring(0, MAX_FILE_NAME_LENGTH - suffix.length()) + suffix;
+            int cut = MAX_FILE_NAME_LENGTH - suffix.length();
+            // Never cut between the two halves of a surrogate pair
+            if (Character.isHighSurrogate(name.charAt(cut - 1))) cut--;
+            name = name.substring(0, cut) + suffix;
         }
         return name;
     }
@@ -106,14 +112,16 @@ public class MaterialService {
     }
 
     /**
-     * The content type to store for the file, or 415 when the extension is not allowed or the content type
-     * sent does not belong to that extension (both are checked).
+     * The content type to store for the file (always the one of the extension), or 415 when the extension is not
+     * allowed or the content type sent conflicts with it. An empty or application/octet-stream type is accepted,
+     * because Windows browsers often send it for docx, xlsx and pptx.
      */
     public static String requireAllowedType(String fileName, String declaredContentType) {
         List<String> accepted = TYPES_BY_EXTENSION.get(extensionOf(fileName));
         String declared = declaredContentType == null ? ""
                 : declaredContentType.split(";", 2)[0].trim().toLowerCase(Locale.ROOT);
-        if (accepted == null || !accepted.contains(declared)) {
+        boolean generic = declared.isEmpty() || declared.equals("application/octet-stream");
+        if (accepted == null || !(generic || accepted.contains(declared))) {
             throw new ResponseStatusException(HttpStatus.UNSUPPORTED_MEDIA_TYPE, MSG_TYPE_NOT_ALLOWED);
         }
         return accepted.get(0);
@@ -130,13 +138,13 @@ public class MaterialService {
         }
 
         String key = UUID.randomUUID().toString();
+        // Registered before storing: if the copy fails half way, the partial file is removed too
+        removeFileOnRollback(key);
         try (InputStream content = file.getInputStream()) {
             fileStorage.store(key, content, file.getSize(), contentType);
         } catch (IOException e) {
             throw new FileStorageException("Could not read the uploaded file.", e);
         }
-        // If the transaction fails after the bytes were stored, the file must not stay behind
-        removeFileOnRollback(key);
 
         Material material = new Material();
         material.setKanbanItem(card);
@@ -152,6 +160,13 @@ public class MaterialService {
     public Material findMaterial(Long teamId, Long materialId) {
         return materialRepository.findInTeam(materialId, teamId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Material não encontrado."));
+    }
+
+    /** The material to link to a lesson: 400 when it does not exist in the team (unknown or another team's). */
+    public Material findMaterialToLink(Long teamId, Long materialId) {
+        return materialRepository.findInTeam(materialId, teamId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "O material não pertence a esta equipe."));
     }
 
     /** Materials of the card, newest first. */
@@ -179,7 +194,9 @@ public class MaterialService {
             log.error("Material {} has no file in the storage (key {})", material.getId(), material.getStorageKey());
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Arquivo não encontrado no armazenamento.");
         }
-        return new MaterialDownload(resource, material.getContentType(), material.getSizeBytes(),
+        String contentType = "text/plain".equals(material.getContentType())
+                ? "text/plain; charset=UTF-8" : material.getContentType();
+        return new MaterialDownload(resource, contentType, material.getSizeBytes(),
                 contentDisposition(material.getFileName(), inline));
     }
 
@@ -206,16 +223,9 @@ public class MaterialService {
         deleteFilesAfterCommit(materialRepository.findStorageKeysByCard(cardId));
     }
 
-    /**
-     * Call before a team is deleted: deletes the materials of all its cards and, after commit, their stored files.
-     * The rows are deleted explicitly instead of relying on the cascade team -> cards -> materials: with MySQL
-     * (InnoDB) that long cascade, combined with the one that reaches course_lesson_materials through the courses
-     * of the same team, left some materials behind pointing to a card that no longer existed.
-     */
-    public void deleteAllOfTeam(Long teamId) {
-        List<String> keys = materialRepository.findStorageKeysByTeam(teamId);
-        materialRepository.deleteByTeam(teamId);
-        deleteFilesAfterCommit(keys);
+    /** Call before a team is deleted: its materials cascade away with its cards, so the files go after commit. */
+    public void scheduleFileRemovalOfTeam(Long teamId) {
+        deleteFilesAfterCommit(materialRepository.findStorageKeysByTeam(teamId));
     }
 
     /**

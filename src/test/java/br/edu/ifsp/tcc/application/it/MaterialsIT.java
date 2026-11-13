@@ -191,6 +191,25 @@ class MaterialsIT extends AbstractIT {
     }
 
     @Test
+    @DisplayName("IT-MAT-02b Generic or missing content types are accepted for allowed extensions, and the type stored is the extension's")
+    void genericContentTypes() {
+        Team team = newTeam();
+        long card = projectId(team, "Tipos genericos");
+        String docx = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+
+        Resp octet = upload(team, card, ana, "texto.docx", "application/octet-stream", PDF);
+        assertEquals(200, octet.status(), octet.body());
+        assertEquals(docx, octet.text("contentType"));
+        Resp txt = upload(team, card, ana, "notas.txt", "text/plain", "ol\u00e1".getBytes(StandardCharsets.UTF_8));
+        assertEquals(200, txt.status(), txt.body());
+        Binary download = download(txt.text("downloadUrl"), ana);
+        assertEquals("text/plain;charset=UTF-8", download.header("Content-Type").replace(" ", ""));
+        assertEquals("sandbox; default-src 'none'", download.header("Content-Security-Policy"));
+
+        assertEquals(415, upload(team, card, ana, "falso.pdf", "text/html", PDF).status());
+    }
+
+    @Test
     @DisplayName("IT-MAT-03 Disallowed extension or mismatching content type: 415 and nothing stored")
     void disallowedTypes() throws IOException {
         Team team = newTeam();
@@ -518,7 +537,7 @@ class MaterialsIT extends AbstractIT {
     }
 
     @Test
-    @DisplayName("SEC-MAT-04 Linking: REVIEWER 403, another team's material 404, bad body 400, unknown ids 404")
+    @DisplayName("SEC-MAT-04 Linking: REVIEWER 403, unknown or another team's material 400, bad body 400, unknown lesson 404")
     void linkRules() {
         Team team = newTeam();
         long card = projectId(team, "Vinculos");
@@ -532,8 +551,10 @@ class MaterialsIT extends AbstractIT {
         assertEquals(403, api.post(link, rui.token(), map("materialId", material)).status());
         assertEquals(403, api.post(link, bia.token(), map("materialId", material)).status());
         assertEquals(401, api.post(link, null, map("materialId", material)).status());
-        assertEquals(404, api.post(link, ana.token(), map("materialId", foreign.num("id"))).status());
-        assertEquals(404, api.post(link, ana.token(), map("materialId", 999999999L)).status());
+        Resp foreignLink = api.post(link, ana.token(), map("materialId", foreign.num("id")));
+        assertEquals(400, foreignLink.status(), foreignLink.body());
+        assertEquals("O material não pertence a esta equipe.", foreignLink.message());
+        assertEquals(400, api.post(link, ana.token(), map("materialId", 999999999L)).status());
         Resp noBody = api.post(link, ana.token(), map());
         assertEquals(400, noBody.status(), noBody.body());
         assertEquals("Informe o material.", noBody.message());
@@ -638,6 +659,19 @@ class MaterialsIT extends AbstractIT {
         String link = courses + "/" + course + "/modules/" + module + "/lessons/" + lesson + "/materials";
         assertEquals(200, api.post(link, solo.token(), map("materialId", a)).status());
         assertEquals(200, api.post(link, solo.token(), map("materialId", b)).status());
+        // Everything else that hangs from the cards, scripts and materials of the team
+        String cardPath = "/api/v1/kanban/" + cardA;
+        assertEquals(200, api.put(cardPath + "/script", solo.token(), map("content", "Roteiro da cena um")).status());
+        assertEquals(200, api.post(cardPath + "/script/versions", solo.token(), map("content", "Roteiro da cena um")).status());
+        assertTrue(jdbc.queryForObject("SELECT COUNT(*) FROM script_versions", Integer.class) > 0);
+        long task = taskIdAs(team, cardA, solo, "Gravar");
+        Resp assigned = api.patch(team.path() + "/cards/" + cardA + "/tasks/" + task, solo.token(),
+                map("assigneeMemberId", team.adminMemberId()));
+        assertEquals(200, assigned.status(), assigned.body());
+        long idea = createIdea(team, solo, "Ideia votada").num("id");
+        assertEquals(200, api.post(team.path() + "/cards/" + idea + "/vote", solo.token(), null).status());
+        Resp tagged = api.put("/api/v1/kanban/" + cardB, solo.token(), map("tagId", team.tagIds().get(0)));
+        assertEquals(200, tagged.status(), tagged.body());
 
         assertEquals(204, api.delete("/api/v1/users/" + solo.id(), solo.token()).status());
 
@@ -645,6 +679,26 @@ class MaterialsIT extends AbstractIT {
         assertFalse(Files.exists(fileB));
         assertEquals(0, countRows(a));
         assertEquals(0, countRows(b));
+        assertNoOrphans();
+    }
+
+    private long taskIdAs(Team team, long cardId, Person by, String title) {
+        Resp r = api.post(team.path() + "/cards/" + cardId + "/tasks", by.token(), map("title", title));
+        assertEquals(200, r.status(), r.body());
+        return r.num("id");
+    }
+
+    /** Every foreign key that points to kanban_items, scripts or materials has no row left without its parent. */
+    private void assertNoOrphans() {
+        List<Map<String, Object>> keys = jdbc.queryForList("SELECT TABLE_NAME AS t, COLUMN_NAME AS c, "
+                + "REFERENCED_TABLE_NAME AS r FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA = ? "
+                + "AND REFERENCED_TABLE_NAME IN ('kanban_items', 'scripts', 'materials')", DB_NAME);
+        assertTrue(keys.size() >= 8, "foreign keys found: " + keys);
+        for (Map<String, Object> key : keys) {
+            String sql = "SELECT COUNT(*) FROM `" + key.get("t") + "` x LEFT JOIN `" + key.get("r") + "` p ON p.id = x.`"
+                    + key.get("c") + "` WHERE x.`" + key.get("c") + "` IS NOT NULL AND p.id IS NULL";
+            assertEquals(0, jdbc.queryForObject(sql, Integer.class), "orphans in " + key);
+        }
     }
 
     @Test

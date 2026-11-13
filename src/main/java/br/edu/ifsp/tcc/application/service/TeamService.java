@@ -26,17 +26,20 @@ public class TeamService {
 
     private final TagService tagService;
     private final MaterialService materialService;
+    private final KanbanItemService kanbanItemService;
 
     public TeamService(TeamRepository teamRepository,
                        TeamMemberRepository teamMemberRepository,
                        BoardColumnRepository boardColumnRepository,
                        TagService tagService,
-                       MaterialService materialService) {
+                       MaterialService materialService,
+                       KanbanItemService kanbanItemService) {
         this.teamRepository = teamRepository;
         this.teamMemberRepository = teamMemberRepository;
         this.boardColumnRepository = boardColumnRepository;
         this.tagService = tagService;
         this.materialService = materialService;
+        this.kanbanItemService = kanbanItemService;
     }
 
     // --- Access verification ---
@@ -81,10 +84,17 @@ public class TeamService {
 
     /**
      * Deletes the team; its members, columns, cards, materials and courses go with it (database cascade).
-     * The materials are deleted first (see MaterialService.deleteAllOfTeam) and their stored files after the commit.
+     * The stored files of the materials are removed after the commit.
+     * <p>
+     * The cards are deleted first, in their own statement. A single DELETE of the team reaches kanban_items by three
+     * paths (team -> cards CASCADE, columns -> cards SET NULL, tags -> cards SET NULL). The local MySQL 9.x has
+     * innodb_native_foreign_keys=OFF, so foreign keys are enforced in the SQL layer, and in that diamond the cascade
+     * from cards to their children stopped before the end: rows were left pointing to cards that no longer existed.
+     * Deleting the cards first keeps each cascade to a single path. Every team deletion must go through this method.
      */
     public void deleteTeam(Team team) {
-        materialService.deleteAllOfTeam(team.getId());
+        materialService.scheduleFileRemovalOfTeam(team.getId());
+        kanbanItemService.deleteAllByTeamId(team.getId());
         teamRepository.delete(team);
     }
 

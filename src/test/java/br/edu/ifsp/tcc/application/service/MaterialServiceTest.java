@@ -101,6 +101,27 @@ class MaterialServiceTest {
     }
 
     @Test
+    void sanitizeFileName_shouldRemoveC1AndBidirectionalControls() {
+        assertEquals("fdp.exe", MaterialService.sanitizeFileName("\u202Efdp.exe"));
+        assertEquals("ab.pdf", MaterialService.sanitizeFileName("a\u0085\u200E\u200F\u202A\u202D\u2066\u2069b.pdf"));
+    }
+
+    @Test
+    void sanitizeFileName_shouldNotSplitASurrogatePairWhenCutting() {
+        // 254 letters + one emoji (2 chars) + ".pdf": the cut falls in the middle of the pair
+        String name = "a".repeat(250) + "\uD83D\uDE00\uD83D\uDE00.pdf";
+
+        String sanitized = MaterialService.sanitizeFileName(name);
+
+        assertTrue(sanitized.length() <= MaterialService.MAX_FILE_NAME_LENGTH);
+        assertTrue(sanitized.endsWith(".pdf"));
+        String base = sanitized.substring(0, sanitized.length() - 4);
+        assertFalse(Character.isHighSurrogate(base.charAt(base.length() - 1)), "no lone high surrogate");
+        assertEquals(base, new String(base.getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                java.nio.charset.StandardCharsets.UTF_8));
+    }
+
+    @Test
     void sanitizeFileName_shouldCutLongNamesWithoutUsableExtension() {
         assertEquals(255, MaterialService.sanitizeFileName("b".repeat(300)).length());
         assertEquals(255, MaterialService.sanitizeFileName("b".repeat(300) + ".semextensaocurta").length());
@@ -135,6 +156,20 @@ class MaterialServiceTest {
     }
 
     @Test
+    void requireAllowedType_shouldAcceptGenericOrMissingTypesForAllowedExtensions() {
+        String docx = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+
+        assertEquals(docx, MaterialService.requireAllowedType("a.docx", "application/octet-stream"));
+        assertEquals(docx, MaterialService.requireAllowedType("a.docx", ""));
+        assertEquals(docx, MaterialService.requireAllowedType("a.docx", null));
+        assertEquals("application/pdf", MaterialService.requireAllowedType("a.pdf", "Application/Octet-Stream; x=1"));
+        assertStatus(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Tipo de arquivo não permitido.",
+                () -> MaterialService.requireAllowedType("a.exe", "application/octet-stream"));
+        assertStatus(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Tipo de arquivo não permitido.",
+                () -> MaterialService.requireAllowedType("a.pdf", "text/html"));
+    }
+
+    @Test
     void requireAllowedType_shouldIgnoreCaseAndParametersAndStoreTheCanonicalType() {
         assertEquals("text/plain", MaterialService.requireAllowedType("NOTAS.TXT", "Text/Plain; charset=UTF-8"));
         assertEquals("image/jpeg", MaterialService.requireAllowedType("foto.jpg", "image/jpg"));
@@ -151,8 +186,6 @@ class MaterialServiceTest {
                 () -> MaterialService.requireAllowedType("falso.pdf", "text/html"));
         assertStatus(HttpStatus.UNSUPPORTED_MEDIA_TYPE, message,
                 () -> MaterialService.requireAllowedType("falso.png", "application/pdf"));
-        assertStatus(HttpStatus.UNSUPPORTED_MEDIA_TYPE, message,
-                () -> MaterialService.requireAllowedType("semtipo.pdf", null));
         assertStatus(HttpStatus.UNSUPPORTED_MEDIA_TYPE, message,
                 () -> MaterialService.requireAllowedType("semextensao", "application/pdf"));
     }
@@ -231,6 +264,24 @@ class MaterialServiceTest {
     }
 
     @Test
+    void attach_shouldRemoveThePartialFileWhenTheStorageFailsInTheMiddle() {
+        TransactionSynchronizationManager.initSynchronization();
+        MultipartFile file = new MockMultipartFile("file", "a.pdf", "application/pdf", "abc".getBytes());
+        doThrow(new FileStorageException("disco cheio")).when(fileStorage)
+                .store(anyString(), any(InputStream.class), eq(3L), eq("application/pdf"));
+
+        assertThrows(FileStorageException.class, () -> service.attach(card(3L), new User(), file));
+
+        ArgumentCaptor<String> key = ArgumentCaptor.forClass(String.class);
+        verify(fileStorage).store(key.capture(), any(InputStream.class), eq(3L), eq("application/pdf"));
+        verifyNoInteractions(materialRepository);
+        List<TransactionSynchronization> synchronizations = TransactionSynchronizationManager.getSynchronizations();
+        assertEquals(1, synchronizations.size());
+        synchronizations.get(0).afterCompletion(TransactionSynchronization.STATUS_ROLLED_BACK);
+        verify(fileStorage).delete(key.getValue());
+    }
+
+    @Test
     void attach_shouldRemoveTheStoredFileWhenTheTransactionRollsBack() {
         TransactionSynchronizationManager.initSynchronization();
         MultipartFile file = new MockMultipartFile("file", "a.pdf", "application/pdf", "abc".getBytes());
@@ -262,6 +313,22 @@ class MaterialServiceTest {
         when(materialRepository.findInTeam(7L, 99L)).thenReturn(Optional.empty());
 
         assertStatus(HttpStatus.NOT_FOUND, "Material não encontrado.", () -> service.findMaterial(99L, 7L));
+    }
+
+    @Test
+    void findMaterialToLink_shouldReturnTheMaterialOfTheTeam() {
+        Material material = material(7L, 3L, "k");
+        when(materialRepository.findInTeam(7L, 10L)).thenReturn(Optional.of(material));
+
+        assertSame(material, service.findMaterialToLink(10L, 7L));
+    }
+
+    @Test
+    void findMaterialToLink_shouldBeBadRequestForUnknownOrForeignMaterials() {
+        when(materialRepository.findInTeam(7L, 10L)).thenReturn(Optional.empty());
+
+        assertStatus(HttpStatus.BAD_REQUEST, "O material não pertence a esta equipe.",
+                () -> service.findMaterialToLink(10L, 7L));
     }
 
     @Test
@@ -312,6 +379,15 @@ class MaterialServiceTest {
         assertEquals("application/pdf", download.getContentType());
         assertEquals(10L, download.getSizeBytes());
         assertTrue(download.getContentDisposition().startsWith("attachment; "));
+    }
+
+    @Test
+    void open_shouldServeTextAsUtf8() {
+        Material text = material(8L, 3L, "key-8");
+        text.setContentType("text/plain");
+        when(fileStorage.load("key-8")).thenReturn(new ByteArrayResource(new byte[0]));
+
+        assertEquals("text/plain; charset=UTF-8", service.open(text, false).getContentType());
     }
 
     @Test
@@ -412,13 +488,12 @@ class MaterialServiceTest {
     }
 
     @Test
-    void deleteAllOfTeam_shouldDeleteTheRowsNowAndTheFilesAfterCommit() {
+    void scheduleFileRemovalOfTeam_shouldCollectTheKeysThenDeleteThemAfterCommit() {
         TransactionSynchronizationManager.initSynchronization();
         when(materialRepository.findStorageKeysByTeam(10L)).thenReturn(List.of("k9"));
 
-        service.deleteAllOfTeam(10L);
+        service.scheduleFileRemovalOfTeam(10L);
 
-        verify(materialRepository).deleteByTeam(10L);
         verifyNoInteractions(fileStorage);
         TransactionSynchronizationManager.getSynchronizations().forEach(TransactionSynchronization::afterCommit);
         verify(fileStorage).delete("k9");

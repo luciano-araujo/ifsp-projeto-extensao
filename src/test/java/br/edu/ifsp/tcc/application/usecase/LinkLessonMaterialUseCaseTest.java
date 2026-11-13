@@ -39,7 +39,7 @@ class LinkLessonMaterialUseCaseTest {
         Material material = new Material();
         CourseLessonResponse response = mock(CourseLessonResponse.class);
         when(courseService.findLesson(30L, 40L)).thenReturn(lesson);
-        when(materialService.findMaterial(10L, 7L)).thenReturn(material);
+        when(materialService.findMaterialToLink(10L, 7L)).thenReturn(material);
         when(courseService.toLessonResponseWithMaterials(10L, lesson)).thenReturn(response);
 
         assertSame(response, useCase.execute(10L, 1L, 20L, 30L, 40L, dto()));
@@ -51,15 +51,16 @@ class LinkLessonMaterialUseCaseTest {
     }
 
     @Test
-    void execute_shouldBeNotFoundForAMaterialOfAnotherTeam() {
+    void execute_shouldBeBadRequestForAMaterialOfAnotherTeam() {
         when(courseService.findLesson(30L, 40L)).thenReturn(new CourseLesson());
-        when(materialService.findMaterial(10L, 7L))
-                .thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Material não encontrado."));
+        when(materialService.findMaterialToLink(10L, 7L))
+                .thenThrow(new ResponseStatusException(HttpStatus.BAD_REQUEST, "O material não pertence a esta equipe."));
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
                 () -> useCase.execute(10L, 1L, 20L, 30L, 40L, dto()));
 
-        assertEquals(HttpStatus.NOT_FOUND, ex.getStatusCode());
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        assertEquals("O material não pertence a esta equipe.", ex.getReason());
         verify(materialService, never()).link(any(), any());
     }
 
@@ -68,7 +69,7 @@ class LinkLessonMaterialUseCaseTest {
         CourseLesson lesson = new CourseLesson();
         Material material = new Material();
         when(courseService.findLesson(30L, 40L)).thenReturn(lesson);
-        when(materialService.findMaterial(10L, 7L)).thenReturn(material);
+        when(materialService.findMaterialToLink(10L, 7L)).thenReturn(material);
         when(materialService.link(lesson, material))
                 .thenThrow(new ResponseStatusException(HttpStatus.CONFLICT, "Este material já está vinculado à aula."));
 

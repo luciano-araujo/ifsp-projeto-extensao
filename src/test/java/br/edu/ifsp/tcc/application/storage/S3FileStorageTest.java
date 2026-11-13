@@ -16,6 +16,8 @@ import software.amazon.awssdk.services.s3.model.CopyObjectRequest;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
+import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
+import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.StorageClass;
@@ -67,11 +69,15 @@ class S3FileStorageTest {
         ResponseInputStream<GetObjectResponse> object = new ResponseInputStream<>(
                 GetObjectResponse.builder().contentLength(3L).build(),
                 AbortableInputStream.create(new ByteArrayInputStream(bytes)));
+        when(s3.headObject(any(HeadObjectRequest.class))).thenReturn(HeadObjectResponse.builder().contentLength(3L).build());
         when(s3.getObject(any(GetObjectRequest.class))).thenReturn(object);
 
         Resource resource = storage().load("chave-1");
 
         assertEquals(3L, resource.contentLength());
+        assertTrue(resource.getDescription().contains("chave-1"));
+        // Nothing is opened until the body is read (a HEAD request never reads it)
+        verify(s3, never()).getObject(any(GetObjectRequest.class));
         assertEquals("abc", new String(resource.getInputStream().readAllBytes(), StandardCharsets.UTF_8));
         ArgumentCaptor<GetObjectRequest> request = ArgumentCaptor.forClass(GetObjectRequest.class);
         verify(s3).getObject(request.capture());
@@ -81,18 +87,28 @@ class S3FileStorageTest {
 
     @Test
     void load_shouldReportAMissingKey() {
-        when(s3.getObject(any(GetObjectRequest.class))).thenThrow(NoSuchKeyException.builder().build());
+        when(s3.headObject(any(HeadObjectRequest.class))).thenThrow(NoSuchKeyException.builder().build());
 
         assertThrows(StorageFileNotFoundException.class, () -> storage().load("nao-existe"));
     }
 
     @Test
     void load_shouldWrapOtherSdkFailures() {
-        when(s3.getObject(any(GetObjectRequest.class)))
+        when(s3.headObject(any(HeadObjectRequest.class)))
                 .thenThrow(AwsServiceException.builder().message("negado").build());
 
         FileStorageException ex = assertThrows(FileStorageException.class, () -> storage().load("k"));
         assertFalse(ex instanceof StorageFileNotFoundException);
+    }
+
+    @Test
+    void load_shouldWrapFailuresWhenTheBodyIsOpened() throws IOException {
+        when(s3.headObject(any(HeadObjectRequest.class))).thenReturn(HeadObjectResponse.builder().contentLength(3L).build());
+        when(s3.getObject(any(GetObjectRequest.class))).thenThrow(SdkClientException.create("sem rede"));
+
+        Resource resource = storage().load("k");
+
+        assertThrows(FileStorageException.class, resource::getInputStream);
     }
 
     @Test

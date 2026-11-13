@@ -2,7 +2,6 @@ package br.edu.ifsp.tcc.application.repository;
 
 import br.edu.ifsp.tcc.application.entity.Material;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -39,8 +38,4 @@ public interface MaterialRepository extends JpaRepository<Material, Long> {
 
     @Query("SELECT m.storageKey FROM Material m WHERE m.kanbanItem.team.id = :teamId")
     List<String> findStorageKeysByTeam(@Param("teamId") Long teamId);
-
-    @Modifying
-    @Query("DELETE FROM Material m WHERE m.kanbanItem.id IN (SELECT k.id FROM KanbanItem k WHERE k.team.id = :teamId)")
-    int deleteByTeam(@Param("teamId") Long teamId);
 }

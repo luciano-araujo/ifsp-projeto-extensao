@@ -62,6 +62,7 @@ public class MaterialController {
                 .contentLength(file.getSizeBytes())
                 .header(HttpHeaders.CONTENT_DISPOSITION, file.getContentDisposition())
                 .header("X-Content-Type-Options", "nosniff")
+                .header("Content-Security-Policy", "sandbox; default-src 'none'")
                 .body(file.getResource());
     }
 
