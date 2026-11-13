@@ -63,7 +63,7 @@ public class ScriptService {
         Document fragment = Jsoup.parseBodyFragment(clean);
         fragment.outputSettings(output);
         for (Element code : fragment.select("code[class]")) {
-            String kept = Arrays.stream(code.className().split("\s+")).filter(c -> CODE_CLASS.matcher(c).matches())
+            String kept = Arrays.stream(code.className().split("\\s+")).filter(c -> CODE_CLASS.matcher(c).matches())
                     .collect(Collectors.joining(" "));
             if (kept.isEmpty()) code.removeAttr("class"); else code.attr("class", kept);
         }

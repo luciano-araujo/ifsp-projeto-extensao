@@ -39,7 +39,7 @@ class IdeasAndCardsIT extends AbstractIT {
     }
 
     @Test
-    @DisplayName("IT-IDEA-04 Editors edit an idea (title, description, tag) with audience/objective optional; RN01 title >= 3; reviewer 403")
+    @DisplayName("IT-IDEA-02 Editors edit an idea (title, description, tag) with audience/objective optional; RN01 title >= 3; reviewer 403")
     void editIdeaAndTag() {
         Team team = newTeam();
         long idea = ideaId(team, "Ideia original");

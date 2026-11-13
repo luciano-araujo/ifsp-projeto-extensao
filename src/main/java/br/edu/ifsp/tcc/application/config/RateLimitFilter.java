@@ -92,10 +92,12 @@ public class RateLimitFilter extends OncePerRequestFilter {
         String path = pathOf(request);
         String ip = clientIp(request);
 
-        // per route + IP (stops rotating e-mails) and per route + IP + e-mail
-        long retryAfter = Math.max(
-                rateLimitService.registerAttempt("ip|" + path + "|" + ip, maxAttemptsPerIp),
-                rateLimitService.registerAttempt(path + "|" + ip + "|" + extractEmail(body), maxAttempts));
+        // per route + IP first (stops rotating e-mails); a blocked IP must not also charge the e-mail bucket,
+        // otherwise an attacker could drain a victim's bucket from an already blocked address
+        long retryAfter = rateLimitService.registerAttempt("ip|" + path + "|" + ip, maxAttemptsPerIp);
+        if (retryAfter == 0) {
+            retryAfter = rateLimitService.registerAttempt(path + "|" + ip + "|" + extractEmail(body), maxAttempts);
+        }
         if (retryAfter > 0) {
             response.setHeader("Retry-After", String.valueOf(retryAfter));
             writeError(response, 429, MESSAGE);

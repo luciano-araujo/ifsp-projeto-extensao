@@ -228,6 +228,14 @@ class ScriptServiceTest {
     }
 
     @Test
+    void sanitizeContent_shouldSplitCodeClassOnTabsAndNewlines() {
+        String clean = scriptService.sanitizeContent("<pre><code class=\"foo\tlanguage-java\nbar\">c</code></pre>");
+        assertTrue(clean.contains("class=\"language-java\""), clean);
+        assertFalse(clean.contains("foo"), clean);
+        assertFalse(clean.contains("bar"), clean);
+    }
+
+    @Test
     void sanitizeContent_shouldEnforceSafeRelOnLinks() {
         String clean = scriptService.sanitizeContent("<a href=\"https://x.com\" rel=\"opener\">l</a>");
         assertTrue(clean.contains("rel=\"noopener noreferrer nofollow\""), clean);

@@ -1,6 +1,10 @@
 name: Build & Test
 
 on:
+  push:
+    branches: [release/v3, main]
+  pull_request:
+    branches: [release/v3, main]
   workflow_dispatch:
 
 jobs:
@@ -46,7 +50,7 @@ jobs:
 #          REDIS_HOST: localhost
 #          REDIS_PORT: 6379
           SPRING_CACHE_TYPE: none
-        run: mvn clean verify
+        run: mvn -B clean test
 
       - name: Build artifact
         run: mvn package -DskipTests

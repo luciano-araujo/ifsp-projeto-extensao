@@ -127,15 +127,15 @@ class RateLimitFilterTest {
     }
 
     @Test
-    void shouldBlockWhenOnlyThePerIpBucketIsExceeded() throws Exception {
+    void shouldBlockWithoutChargingTheEmailBucketWhenThePerIpBucketIsExceeded() throws Exception {
         when(rateLimitService.registerAttempt("ip|/api/auth/password/forgot|203.0.113.5", 100)).thenReturn(77L);
-        when(rateLimitService.registerAttempt("/api/auth/password/forgot|203.0.113.5|new@x.com", 10)).thenReturn(0L);
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         filter(true).doFilter(post("/api/auth/password/forgot", "{\"email\":\"new@x.com\"}"), response, chain);
 
         assertEquals(429, response.getStatus());
         assertEquals("77", response.getHeader("Retry-After"));
+        verify(rateLimitService, never()).registerAttempt(eq("/api/auth/password/forgot|203.0.113.5|new@x.com"), anyInt());
         verifyNoInteractions(chain);
     }
 
