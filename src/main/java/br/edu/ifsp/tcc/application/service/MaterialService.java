@@ -29,6 +29,7 @@ import java.io.InputStream;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -329,7 +330,7 @@ public class MaterialService {
                 continue;
             }
             // Marked right after its own S3 copy, in its own transaction: a crash never leaves archived objects unmarked
-            materialRepository.markArchived(material.getId(), LocalDateTime.now());
+            materialRepository.markArchived(material.getId(), LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS));
             archived++;
         }
         return archived;

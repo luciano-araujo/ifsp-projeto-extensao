@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -115,7 +116,7 @@ public class CoursePublicationService {
                     + problems.stream().map(PublicationProblemResponse::getMessage).collect(Collectors.joining(" ")));
         }
         course.setStatus(CourseStatus.PUBLISHED);
-        course.setPublishedAt(LocalDateTime.now());
+        course.setPublishedAt(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS));
         return courseService.saveCourse(course);
     }
 
