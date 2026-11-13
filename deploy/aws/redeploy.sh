@@ -72,7 +72,15 @@ trap 'rm -rf "$T"' EXIT
   echo "MAIL_USERNAME=$(secret MAIL_USERNAME)"
   echo "MAIL_PASSWORD=$(secret MAIL_PASSWORD)"
   echo "APP_ADMIN_EMAILS=admin.sistema@creatorworkbench.test"
+  YTV="$(secret YOUTUBE_API_KEY | tr -d '\r"' || true)"
+  [ -n "$YTV" ] && echo "YOUTUBE_API_KEY=$YTV"
+  unset YTV
 } > "$T/backend.env"
+if grep -q '^YOUTUBE_API_KEY=' "$T/backend.env"; then
+  log "YOUTUBE_API_KEY presente: acompanhamento de videos do YouTube ativo"
+else
+  log "Sem YOUTUBE_API_KEY: acompanhamento do YouTube responde 503 (nao configurado)"
+fi
 : > "$T/summary.env"
 AENV="$(find_anthropic_env || true)"
 if [ -n "$AENV" ]; then
