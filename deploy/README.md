@@ -47,3 +47,17 @@ Logs: console do CloudWatch > Log groups > `/creator-workbench/containers` (um s
 
 ## Custo aproximado (us-east-1, sob demanda)
 EKS 0,10 + 2 nós t3.medium 0,083 + builder t3.medium 0,042 + RDS db.t3.micro 0,017 + ELB 0,025 ≈ **US$ 0,27/hora** (mais armazenamento: centavos). Desligue o builder quando não estiver em uso (`aws ec2 stop-instances`) para economizar; ele é religado pelo `redeploy.sh`.
+
+## HTTPS (RNF02)
+O ELB atende **HTTP na porta 80** e **HTTPS na 443** (TLS termina no ELB; do ELB ao pod segue HTTP). O certificado é **autoassinado** (RSA 2048, 2 anos; SAN = DNS do ELB; o CN fica curto porque o limite do CN e 64 caracteres e o DNS do ELB tem 70), gerado por `redeploy.sh` com `openssl` e importado no ACM com a tag `Project=creator-workbench`; o ARN fica em `deploy/aws/.state/cert_arn` e a chave em `.state/cert/` (ignorado pelo git). As execuções seguintes reutilizam o certificado. O Service `web` ganha as anotações `aws-load-balancer-ssl-cert`/`ssl-ports` e a porta 443 em toda aplicação, então o HTTPS sobrevive aos redeploys. `CORS_ORIGINS` recebe `http://<elb>,https://<elb>`.
+
+**O navegador mostra um aviso de certificado não confiável** (é esperado). Um certificado confiável exige um domínio próprio (ACM público + Route 53 ou CNAME). `curl -k https://<elb>/` ignora o aviso. O `teardown.sh` apaga o certificado.
+
+## Segurança do builder e limitações conhecidas
+- O builder usa o security group próprio `SG-CreatorWorkbench-Builder`, com SSH (22) apenas do IP público atual de quem roda o script (/32, via `checkip.amazonaws.com`); `up.sh` e `redeploy.sh` atualizam a regra a cada execução. O SG legado `SG-CreatorWorkbench-App` (22 aberto ao mundo) não é mais usado.
+- Os IDs fixos de security groups, sub-redes e VPC em `deploy/aws/common.sh` pertencem **a esta conta do Learner Lab** (VPC padrão 172.31.0.0/16); em outra conta, ajuste-os.
+- **Limitação do Learner Lab:** só existe a `LabRole`, com permissões amplas, usada como papel do cluster e dos nós. O launch template define `HttpPutResponseHopLimit=2`, então qualquer pod alcança as credenciais da `LabRole` pelo IMDS. Em uma conta própria use IRSA/Pod Identity com papéis mínimos.
+- Segredos e chaves nunca vão para o git (`.state/`, Secrets do Kubernetes criados pelo script).
+
+## Planos (M5)
+Depois do rollout, `redeploy.sh` e `seed.sh` executam `apply_plans`: se a coluna `teams.plan` existir (migration do M5 já aplicada), a equipe "Equipe Office Resolve" recebe `plan='AGENCIA'`, `plan_source='MANUAL'`, `plan_expires_at=NULL`. É idempotente e não faz nada antes da migration. O segredo do backend também recebe `APP_ADMIN_EMAILS=admin.sistema@creatorworkbench.test` (usuário criado por `seed-users.sql`, senha `Teste@123`).

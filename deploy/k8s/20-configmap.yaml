@@ -6,7 +6,7 @@ metadata:
   labels: { Project: creator-workbench }
 data:
   SPRING_PROFILES_ACTIVE: prod
-  CORS_ORIGINS: "http://${ELB_HOST}"
+  CORS_ORIGINS: "http://${ELB_HOST},https://${ELB_HOST}"
   STORAGE_TYPE: s3
   STORAGE_S3_BUCKET: "${S3_BUCKET}"
   STORAGE_S3_REGION: us-east-1

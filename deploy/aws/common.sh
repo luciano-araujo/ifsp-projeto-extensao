@@ -20,7 +20,9 @@ BUCKET="creator-workbench-materials-$ACCOUNT"
 LOG_GROUP=/creator-workbench/containers
 RDS_ID=creator-workbench-db
 DB_SUBNET_GROUP=creator-workbench-db-subnet
-SG_APP=sg-08da4c9f8f5c0d45c     # SG-CreatorWorkbench-App (22, 80, 9000)
+# IDs fixos abaixo pertencem a ESTA conta/Learner Lab (VPC padrao 172.31.0.0/16); em outra conta, ajuste-os.
+SG_APP=sg-08da4c9f8f5c0d45c     # legado (22 aberto ao mundo): NAO e usado pelo builder
+SG_BUILDER_NAME=SG-CreatorWorkbench-Builder
 SG_RDS=sg-0bcb25f9250e29521     # SG-CreatorWorkbench-RDS (3306 da VPC)
 VPC_CIDR=172.31.0.0/16
 EKS_VERSION=1.35
@@ -82,4 +84,53 @@ ensure_kubectl() {
   mkdir -p "$HOME/bin"
   curl -sL -o "$HOME/bin/kubectl.exe" "https://dl.k8s.io/release/$(curl -sL https://dl.k8s.io/release/stable.txt)/bin/windows/amd64/kubectl.exe"
   chmod +x "$HOME/bin/kubectl.exe"
+}
+
+# Certificado autoassinado (RSA 2048, 2 anos; SAN = DNS do ELB; o CN fica curto porque o limite do CN e 64 caracteres e o DNS do ELB tem 70) importado no ACM; reutiliza o existente.
+ensure_cert() { # ensure_cert <dns-do-elb> -> imprime o ARN
+  local host=$1 arn
+  arn="$(cat "$STATE_DIR/cert_arn" 2>/dev/null || true)"
+  if [ -n "$arn" ] && aws acm describe-certificate --certificate-arn "$arn" --query Certificate.DomainName --output text 2>/dev/null | grep -qx "$host"; then
+    echo "$arn"; return
+  fi
+  local d="$STATE_DIR/cert"; mkdir -p "$d"
+  (cd "$d" && openssl req -x509 -newkey rsa:2048 -nodes -sha256 -days 730 -keyout key.pem -out cert.pem \
+    -subj "/CN=creator-workbench/O=Creator Workbench" -addext "subjectAltName=DNS:$host" >/dev/null 2>&1) || { echo "openssl falhou" >&2; return 1; }
+  arn="$(aws acm import-certificate --certificate "fileb://$(cygpath -m "$d/cert.pem")" --private-key "fileb://$(cygpath -m "$d/key.pem")" \
+    --tags Key=Project,Value=$PROJECT --query CertificateArn --output text)"
+  echo "$arn" > "$STATE_DIR/cert_arn"
+  echo "$arn"
+}
+
+# SG proprio do builder: SSH (22) somente do IP publico atual do operador (/32). Imprime o id do SG.
+ensure_builder_sg() {
+  local vpc sg myip old
+  vpc="$(aws ec2 describe-security-groups --group-ids "$SG_RDS" --query 'SecurityGroups[0].VpcId' --output text)"
+  sg="$(aws ec2 describe-security-groups --filters "Name=group-name,Values=$SG_BUILDER_NAME" "Name=vpc-id,Values=$vpc" --query 'SecurityGroups[0].GroupId' --output text 2>/dev/null)"
+  if [ -z "$sg" ] || [ "$sg" = "None" ]; then
+    sg="$(aws ec2 create-security-group --group-name "$SG_BUILDER_NAME" --description "SSH do operador para o builder do Creator Workbench" --vpc-id "$vpc" \
+      --tag-specifications "ResourceType=security-group,Tags=[{Key=Project,Value=$PROJECT}]" --query GroupId --output text)"
+  fi
+  myip="$(curl -s -m 10 https://checkip.amazonaws.com | tr -d '[:space:]')"
+  [ -n "$myip" ] || { echo "Nao consegui descobrir o IP publico (checkip.amazonaws.com)" >&2; return 1; }
+  for old in $(aws ec2 describe-security-groups --group-ids "$sg" --query 'SecurityGroups[0].IpPermissions[].IpRanges[].CidrIp' --output text); do
+    [ "$old" = "$myip/32" ] || aws ec2 revoke-security-group-ingress --group-id "$sg" --protocol tcp --port 22 --cidr "$old" >/dev/null
+  done
+  aws ec2 authorize-security-group-ingress --group-id "$sg" --protocol tcp --port 22 --cidr "$myip/32" >/dev/null 2>&1 || true
+  echo "$sg"
+}
+
+# Aplica o plano AGENCIA a "Equipe Office Resolve" se a coluna teams.plan existir (idempotente; apos o Flyway do M5).
+apply_plans() {
+  [ -n "$(builder_ip)" ] || { log "Builder desligado: plano da equipe nao aplicado (rode seed/redeploy com o builder ligado)"; return 0; }
+  ssh_b 'bash -s' <<SQL
+export MYSQL_PWD='$(secret DB_PASSWORD)'
+command -v mysql >/dev/null || sudo dnf install -y mariadb105 >/dev/null
+Q="mysql -h $(rds_endpoint) -u admin -N db_tcc"
+if [ "\$(\$Q -e "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema='db_tcc' AND table_name='teams' AND column_name='plan'")" != "0" ]; then
+  \$Q -e "UPDATE teams SET plan='AGENCIA', plan_source='MANUAL', plan_expires_at=NULL WHERE name='Equipe Office Resolve'" && echo "plano AGENCIA aplicado (se a equipe existe)"
+else
+  echo "teams.plan ainda nao existe: nada a fazer"
+fi
+SQL
 }

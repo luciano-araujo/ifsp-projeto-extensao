@@ -13,6 +13,7 @@ if [ "${SKIP_BUILD:-}" != 1 ]; then
   BID="$(builder_id)"
   [ -n "$BID" ] || { echo "Builder nao existe: rode deploy/aws/up.sh" >&2; exit 1; }
   aws ec2 start-instances --instance-ids "$BID" >/dev/null 2>&1 || true
+  SG_B="$(ensure_builder_sg)"; aws ec2 modify-instance-attribute --instance-id "$BID" --groups "$SG_B"
   aws ec2 wait instance-running --instance-ids "$BID"
   IP="$(builder_ip)"
   log "Builder $BID em $IP"
@@ -43,7 +44,10 @@ aws eks update-kubeconfig --name "$CLUSTER" --region "$REGION" >/dev/null
 K="$(cygpath -m "$REPO_ROOT")/deploy/k8s"
 render() { sed -e "s|\${ELB_HOST}|$ELB_HOST|g" -e "s|\${S3_BUCKET}|$S3_BUCKET|g" -e "s|\${ECR_REGISTRY}|$ECR_REGISTRY|g" -e "s|\${IMAGE_TAG}|$IMAGE_TAG|g" "$1"; }
 kubectl apply -f "$K/00-namespace.yaml"
-kubectl apply -f "$K/10-service-web.yaml"
+SVC="$K/10-service-web.yaml"
+if ! "${NSK[@]}" get svc web >/dev/null 2>&1; then   # 1a vez: sem HTTPS, so para obter o DNS do ELB
+  grep -v '#SSL' "$SVC" | kubectl apply -f -
+fi
 log "Aguardando DNS do ELB"
 ELB_HOST=""
 for i in $(seq 1 60); do
@@ -53,10 +57,13 @@ for i in $(seq 1 60); do
 done
 [ -n "$ELB_HOST" ] || { log "O ELB nao foi criado"; "${NSK[@]}" describe svc web | tail -20; exit 1; }
 echo "$ELB_HOST" > "$STATE_DIR/elb_host"
-log "ELB: http://$ELB_HOST"
+SSL_CERT_ARN="$(ensure_cert "$ELB_HOST")"
+sed -e "s|\${SSL_CERT_ARN}|$SSL_CERT_ARN|g" -e 's| #SSL$||' "$SVC" | kubectl apply -f - >/dev/null   # HTTP 80 + HTTPS 443
+log "ELB: http://$ELB_HOST  https://$ELB_HOST (certificado autoassinado, $SSL_CERT_ARN)"
 
 # segredos: arquivos temporarios, nada e impresso
 T="$(mktemp -d)"; TW="$(cygpath -m "$T")"; umask 077
+trap 'rm -rf "$T"' EXIT
 {
   echo "DB_URL=jdbc:mysql://$(rds_endpoint):3306/db_tcc?useSSL=true&serverTimezone=UTC&allowPublicKeyRetrieval=true"
   echo "DB_USER=admin"
@@ -64,6 +71,7 @@ T="$(mktemp -d)"; TW="$(cygpath -m "$T")"; umask 077
   echo "JWT_SECRET=$(secret JWT_SECRET)"
   echo "MAIL_USERNAME=$(secret MAIL_USERNAME)"
   echo "MAIL_PASSWORD=$(secret MAIL_PASSWORD)"
+  echo "APP_ADMIN_EMAILS=admin.sistema@creatorworkbench.test"
 } > "$T/backend.env"
 : > "$T/summary.env"
 AENV="$(find_anthropic_env || true)"
@@ -80,7 +88,6 @@ else
   "${NSK[@]}" delete secret summary-env --ignore-not-found >/dev/null
   log "Sem ANTHROPIC_API_KEY: resumo usa o motor extrativo"
 fi
-rm -rf "$T"
 
 for f in 20-configmap 30-summary 40-web 50-fluent-bit; do render "$K/$f.yaml" | kubectl apply -f - >/dev/null; done
 "${NSK[@]}" rollout restart deployment/summary >/dev/null   # le o segredo de novo (a chave do Claude pode ter surgido)
@@ -88,4 +95,5 @@ for f in 20-configmap 30-summary 40-web 50-fluent-bit; do render "$K/$f.yaml" | 
 "${NSK[@]}" rollout status deployment/web --timeout=600s
 "${NSK[@]}" rollout status daemonset/fluent-bit --timeout=180s || true
 "${NSK[@]}" get pods -o wide
+apply_plans
 log "PRONTO: http://$ELB_HOST (imagens $IMAGE_TAG)"

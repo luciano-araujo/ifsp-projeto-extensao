@@ -38,6 +38,9 @@ if [ "$(rds_status)" != "ABSENT" ]; then
 fi
 BID="$(builder_id)"
 if [ -n "$BID" ]; then aws ec2 terminate-instances --instance-ids $BID >/dev/null; chk $? "builder $BID"; fi
+if [ -n "$BID" ]; then aws ec2 wait instance-terminated --instance-ids $BID; fi
+SGB="$(aws ec2 describe-security-groups --filters "Name=group-name,Values=$SG_BUILDER_NAME" --query "SecurityGroups[0].GroupId" --output text 2>/dev/null)"
+[ -n "$SGB" ] && [ "$SGB" != None ] && { aws ec2 delete-security-group --group-id $SGB; chk $? "SG do builder $SGB"; }
 
 # 4) ECR, S3, logs
 for r in backend frontend summary; do aws ecr delete-repository --repository-name creator-workbench/$r --force >/dev/null 2>&1; chk $? "ECR $r"; done
@@ -48,6 +51,8 @@ if aws s3api head-bucket --bucket "$BUCKET" 2>/dev/null; then
   aws s3api delete-bucket --bucket "$BUCKET"; chk $? "S3 $BUCKET"
 fi
 aws logs delete-log-group --log-group-name $LOG_GROUP 2>/dev/null; chk $? "log group $LOG_GROUP"
+CA="$(cat "$STATE_DIR/cert_arn" 2>/dev/null)"; [ -n "$CA" ] && { aws acm delete-certificate --certificate-arn "$CA"; chk $? "certificado ACM"; rm -rf "$STATE_DIR/cert_arn" "$STATE_DIR/cert"; }
+for ca in $(aws acm list-certificates --query "CertificateSummaryList[].CertificateArn" --output text); do aws acm list-tags-for-certificate --certificate-arn $ca --query "Tags[?Key=='Project'].Value" --output text | grep -q "$PROJECT" && { aws acm delete-certificate --certificate-arn $ca; chk $? "ACM $ca"; }; done
 
 # 5) tags de subnets e regra de SG que o up.sh acrescentou
 for s in ${EKS_SUBNETS//,/ }; do

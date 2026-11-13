@@ -1,4 +1,5 @@
-# Service LoadBalancer = ELB classico (HTTP 80). Criado antes dos deployments para conhecermos o DNS (CORS_ORIGINS).
+# Service LoadBalancer = ELB classico: HTTP 80 e HTTPS 443 (TLS termina no ELB, certificado autoassinado no ACM).
+# Linhas com o marcador SSL sao removidas na primeira aplicacao (o DNS do ELB e necessario para gerar o certificado).
 apiVersion: v1
 kind: Service
 metadata:
@@ -9,6 +10,8 @@ metadata:
     service.beta.kubernetes.io/aws-load-balancer-backend-protocol: http
     service.beta.kubernetes.io/aws-load-balancer-additional-resource-tags: Project=creator-workbench
     service.beta.kubernetes.io/aws-load-balancer-connection-idle-timeout: "75"
+    service.beta.kubernetes.io/aws-load-balancer-ssl-cert: "${SSL_CERT_ARN}" #SSL
+    service.beta.kubernetes.io/aws-load-balancer-ssl-ports: "443" #SSL
 spec:
   type: LoadBalancer
   selector: { app: web }
@@ -16,3 +19,6 @@ spec:
     - name: http
       port: 80
       targetPort: 8081
+    - name: https #SSL
+      port: 443 #SSL
+      targetPort: 8081 #SSL

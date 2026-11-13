@@ -1,6 +1,6 @@
 ﻿$ErrorActionPreference = "Stop"
 $api = $args[0]   # ex.: http://<DNS do ELB>
-$pwd = $args[1]   # senha dos usuarios de demonstracao
+$demoPass = $args[1]   # senha dos usuarios de demonstracao
 
 function Call($method, $path, $token, $body) {
     $headers = @{}
@@ -17,7 +17,7 @@ function Call($method, $path, $token, $body) {
     return $null
 }
 
-function Login($email) { (Call POST "/api/auth/login" $null @{ email = $email; password = $pwd }).token }
+function Login($email) { (Call POST "/api/auth/login" $null @{ email = $email; password = $demoPass }).token }
 
 $ana = Login "ana.admin@creatorworkbench.test"
 $rui = Login "rui.revisor@creatorworkbench.test"
@@ -25,6 +25,8 @@ $bia = Login "bia.criadora@creatorworkbench.test"
 
 # Team first, so it is Ana's first team (no empty personal team in front of it)
 $team = (Call POST "/api/v1/teams" $ana @{ name = "Equipe Office Resolve" }).id
+# Plano AGENCIA antes de adicionar membros (limites do plano Gratuito); hook opcional: args[2] = executavel, args[3] = argumento
+if ($args[2]) { & $args[2] $args[3] | Out-Host }
 Call POST "/api/v1/teams/$team/members" $ana @{ email = "bia.criadora@creatorworkbench.test"; role = "CREATOR" } | Out-Null
 Call POST "/api/v1/teams/$team/members" $ana @{ email = "rui.revisor@creatorworkbench.test"; role = "REVIEWER" } | Out-Null
 $cols = (Call GET "/api/v1/teams/$team/board" $ana).columns

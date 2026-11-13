@@ -6,3 +6,5 @@ target/
 automation/
 deploy/
 data/
+.env*
+**/.env
