@@ -722,8 +722,7 @@ class MaterialsIT extends AbstractIT {
     void deleteUserOfSharedTeamKeepsMaterials() {
         Team team = newTeam();
         Person temp = person("temp");
-        Resp added = api.post(team.path() + "/members", ana.token(), map("email", temp.email(), "role", "CREATOR"));
-        assertEquals(200, added.status(), added.body());
+        addMemberDirect(team.id(), temp, "CREATOR");
         long card = projectId(team, "Compartilhado");
         Resp up = upload(team, card, temp, "dele.pdf", "application/pdf", PDF);
         assertEquals(200, up.status(), up.body());

@@ -75,7 +75,7 @@ public class TeamController {
     }
 
     @PostMapping("/{teamId}/members")
-    public ResponseEntity<TeamMemberResponse> addMember(@AuthenticationPrincipal User user,
+    public ResponseEntity<InviteResponse> addMember(@AuthenticationPrincipal User user,
                                                         @PathVariable Long teamId,
                                                         @Valid @RequestBody AddTeamMemberDTO dto) {
         return ResponseEntity.ok(addTeamMemberUseCase.execute(teamId, user.getId(), dto));

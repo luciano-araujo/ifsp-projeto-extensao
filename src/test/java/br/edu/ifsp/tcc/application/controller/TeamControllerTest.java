@@ -86,13 +86,14 @@ class TeamControllerTest {
     }
 
     @Test
-    void addMember_shouldReturnNewMember() {
+    void addMember_shouldReturnTheInvite() {
         AddTeamMemberDTO dto = new AddTeamMemberDTO();
         dto.setEmail("bia@teste.com");
-        TeamMemberResponse added = member();
+        InviteResponse added = new InviteResponse(3L, "bia@teste.com", TeamRole.CREATOR,
+                br.edu.ifsp.tcc.application.entity.InviteStatus.PENDING, null, null, null);
         when(addTeamMemberUseCase.execute(10L, 1L, dto)).thenReturn(added);
 
-        ResponseEntity<TeamMemberResponse> response = controller.addMember(user, 10L, dto);
+        ResponseEntity<InviteResponse> response = controller.addMember(user, 10L, dto);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertSame(added, response.getBody());

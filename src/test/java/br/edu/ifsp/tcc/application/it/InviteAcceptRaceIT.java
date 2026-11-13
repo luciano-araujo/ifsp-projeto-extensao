@@ -21,7 +21,7 @@ class InviteAcceptRaceIT extends AbstractIT {
     void parallelAcceptsRespectTheMemberLimit() throws Exception {
         Team team = newTeam();                       // Agência: 5 users, 3 members now
         Person extra = person("extra");
-        assertEquals(200, api.post(team.path() + "/members", ana.token(), map("email", extra.email(), "role", "CREATOR")).status());
+        addMemberDirect(team.id(), extra, "CREATOR");
         // 4 members: one seat left. Two valid invites (stored directly, as if sent before the team filled up)
         Person dora = person("dora");
         Person edu = person("edu");
