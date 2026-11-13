@@ -36,7 +36,8 @@ if [ "${SKIP_BUILD:-}" != 1 ]; then
   ssh_b "cd ~/deploy-input && sed -i 's/\r\$//' remote-deploy.sh && \
     ECR_REGISTRY='$ECR_REGISTRY' FRONTEND_REPO='$FRONTEND_REPO' FRONTEND_BRANCH='$FRONTEND_BRANCH' bash remote-deploy.sh"
 fi
-IMAGE_TAG="$(ssh_b 'cat ~/image_tag')"
+# IMAGE_TAG_OVERRIDE=<tag> evita consultar o builder (util com SKIP_BUILD=1 quando o builder esta desligado)
+IMAGE_TAG="${IMAGE_TAG_OVERRIDE:-$(ssh_b 'cat ~/image_tag')}"
 export ECR_REGISTRY IMAGE_TAG S3_BUCKET="$BUCKET"
 
 # --- cluster ---------------------------------------------------------------------------------------------------
