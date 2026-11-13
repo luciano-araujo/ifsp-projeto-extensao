@@ -35,6 +35,8 @@ public interface KanbanItemRepository extends JpaRepository<KanbanItem, Long> {
             + "AND k.dueDate IS NOT NULL AND k.dueDate <= :limit")
     List<KanbanItem> findAllProjectsDueUntil(@Param("limit") java.time.LocalDate limit);
 
+    List<KanbanItem> findByVideoUrlIsNotNull();
+
     // The item, only when the user is a member of the item's team
     @Query("SELECT k FROM KanbanItem k WHERE k.id = :id AND k.team.id IN "
             + "(SELECT m.team.id FROM TeamMember m WHERE m.user.id = :userId)")

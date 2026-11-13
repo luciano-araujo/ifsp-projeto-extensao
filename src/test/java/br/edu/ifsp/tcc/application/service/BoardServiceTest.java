@@ -48,6 +48,9 @@ class BoardServiceTest {
         CardResponse full = boardService.toCardResponse(project, 100L, List.of(), null, 3, ReviewStatus.APPROVED);
         assertEquals(3, full.getMaterialsCount());
         assertEquals(ReviewStatus.APPROVED, full.getReviewStatus());
+        assertNull(full.getVideoUrl());
+        project.setVideoUrl("https://youtu.be/dQw4w9WgXcQ");
+        assertEquals("https://youtu.be/dQw4w9WgXcQ", boardService.toCardResponse(project, 100L, List.of()).getVideoUrl());
         assertEquals(ReviewStatus.NONE, boardService.toCardResponse(project, 100L, List.of()).getReviewStatus());
         assertEquals(0, boardService.toCardResponse(project, 100L, List.of(), null).getMaterialsCount());
         assertEquals(0, boardService.toCardResponse(project, 100L, List.of()).getMaterialsCount());

@@ -36,6 +36,9 @@ public class BoardController {
     private final ListCardReviewsUseCase listCardReviewsUseCase;
     private final GenerateCardSummaryUseCase generateCardSummaryUseCase;
     private final GetCardSummaryUseCase getCardSummaryUseCase;
+    private final SetCardVideoUseCase setCardVideoUseCase;
+    private final GetCardVideoStatsUseCase getCardVideoStatsUseCase;
+    private final RefreshCardVideoStatsUseCase refreshCardVideoStatsUseCase;
 
     public BoardController(GetBoardUseCase getBoardUseCase,
                            ListIdeasUseCase listIdeasUseCase,
@@ -58,7 +61,10 @@ public class BoardController {
                            CreateCardReviewUseCase createCardReviewUseCase,
                            ListCardReviewsUseCase listCardReviewsUseCase,
                            GenerateCardSummaryUseCase generateCardSummaryUseCase,
-                           GetCardSummaryUseCase getCardSummaryUseCase) {
+                           GetCardSummaryUseCase getCardSummaryUseCase,
+                           SetCardVideoUseCase setCardVideoUseCase,
+                           GetCardVideoStatsUseCase getCardVideoStatsUseCase,
+                           RefreshCardVideoStatsUseCase refreshCardVideoStatsUseCase) {
         this.getBoardUseCase = getBoardUseCase;
         this.listIdeasUseCase = listIdeasUseCase;
         this.createIdeaUseCase = createIdeaUseCase;
@@ -81,6 +87,9 @@ public class BoardController {
         this.listCardReviewsUseCase = listCardReviewsUseCase;
         this.generateCardSummaryUseCase = generateCardSummaryUseCase;
         this.getCardSummaryUseCase = getCardSummaryUseCase;
+        this.setCardVideoUseCase = setCardVideoUseCase;
+        this.getCardVideoStatsUseCase = getCardVideoStatsUseCase;
+        this.refreshCardVideoStatsUseCase = refreshCardVideoStatsUseCase;
     }
 
     @GetMapping("/board")
@@ -183,6 +192,30 @@ public class BoardController {
                                                        @PathVariable Long teamId,
                                                        @PathVariable Long cardId) {
         return ResponseEntity.ok(getCardSummaryUseCase.execute(teamId, user.getId(), cardId));
+    }
+
+    // --- YouTube post-publication tracking ---
+
+    @PutMapping("/cards/{cardId}/video")
+    public ResponseEntity<CardResponse> setVideo(@AuthenticationPrincipal User user,
+                                                @PathVariable Long teamId,
+                                                @PathVariable Long cardId,
+                                                @RequestBody SetVideoDTO dto) {
+        return ResponseEntity.ok(setCardVideoUseCase.execute(teamId, user.getId(), cardId, dto));
+    }
+
+    @GetMapping("/cards/{cardId}/video-stats")
+    public ResponseEntity<VideoStatsResponse> videoStats(@AuthenticationPrincipal User user,
+                                                        @PathVariable Long teamId,
+                                                        @PathVariable Long cardId) {
+        return ResponseEntity.ok(getCardVideoStatsUseCase.execute(teamId, user.getId(), cardId));
+    }
+
+    @PostMapping("/cards/{cardId}/video-stats/refresh")
+    public ResponseEntity<VideoStatsResponse> refreshVideoStats(@AuthenticationPrincipal User user,
+                                                               @PathVariable Long teamId,
+                                                               @PathVariable Long cardId) {
+        return ResponseEntity.ok(refreshCardVideoStatsUseCase.execute(teamId, user.getId(), cardId));
     }
 
     // --- Columns ---

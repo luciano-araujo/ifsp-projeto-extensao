@@ -50,4 +50,7 @@ public class CardResponse {
     private Integer materialsCount;
     /** NONE until a reviewer decides; then the decision of the latest review. Ideas are always NONE. */
     private ReviewStatus reviewStatus;
+
+    /** YouTube link of the published video; null when none (always null for ideas). */
+    private String videoUrl;
 }

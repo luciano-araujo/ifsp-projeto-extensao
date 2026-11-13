@@ -61,6 +61,9 @@ public class KanbanItem {
     @JoinColumn(name = "tag_id")
     private Tag tag;
 
+    @Column(name = "video_url", length = 500)
+    private String videoUrl;
+
     @JsonFormat(pattern = "yyyy-MM-dd")
     @Column(name = "due_date")
     private LocalDate dueDate;
@@ -128,6 +131,9 @@ public class KanbanItem {
     public void setTag(Tag tag) { this.tag = tag; }
 
     public Long getTagId() { return tag != null ? tag.getId() : null; }
+
+    public String getVideoUrl() { return videoUrl; }
+    public void setVideoUrl(String videoUrl) { this.videoUrl = videoUrl; }
 
     public LocalDate getDueDate() { return dueDate; }
     public void setDueDate(LocalDate dueDate) { this.dueDate = dueDate; }
