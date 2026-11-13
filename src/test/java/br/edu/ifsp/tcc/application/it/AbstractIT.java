@@ -35,7 +35,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public abstract class AbstractIT {
 
-    public static final String DB_NAME = "db_tcc_it";
+    /** db_tcc_it by default; parallel slices may use IT_DB_NAME=db_tcc_it_<suffix> (only db_tcc_it* names are allowed). */
+    public static final String DB_NAME = itDbName();
     public static final String PASSWORD = "Teste@123";
 
     static {
@@ -66,13 +67,19 @@ public abstract class AbstractIT {
         public String path() { return "/api/v1/teams/" + id; }
     }
 
+    private static String itDbName() {
+        String name = System.getenv().getOrDefault("IT_DB_NAME", "db_tcc_it");
+        if (!name.matches("db_tcc_it(_[a-z0-9]{1,20})?")) throw new IllegalStateException("IT_DB_NAME must be db_tcc_it or db_tcc_it_<suffix>, got: " + name);
+        return name;
+    }
+
     private static void resetDatabase() {
         String user = System.getenv().getOrDefault("DB_USER", "root");
         String password = System.getenv().getOrDefault("DB_PASSWORD", "root");
         try (Connection connection = DriverManager.getConnection(
                 "jdbc:mysql://localhost:3306/?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true", user, password);
              Statement statement = connection.createStatement()) {
-            if (!"db_tcc_it".equals(DB_NAME)) throw new IllegalStateException("Refusing to reset " + DB_NAME);
+            if (!DB_NAME.matches("db_tcc_it(_[a-z0-9]{1,20})?")) throw new IllegalStateException("Refusing to reset " + DB_NAME);
             statement.execute("DROP DATABASE IF EXISTS " + DB_NAME);
             statement.execute("CREATE DATABASE " + DB_NAME + " CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
         } catch (SQLException e) {
