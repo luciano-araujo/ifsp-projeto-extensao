@@ -28,6 +28,7 @@ _SENTENCE_END_RE = re.compile(
 _BLOCK_TAG_RE = re.compile(
     r"<\s*(br|/?\s*(p|div|li|ul|ol|h[1-6]|blockquote|tr|pre))\b[^>]*>", re.IGNORECASE)
 _TAG_RE = re.compile(r"<[^>]*>")
+_HEADER_RE = re.compile(r"^\s*(título|público-alvo|objetivo)\s*:", re.IGNORECASE)
 _KEY_STRIP = " .!?…,;:\"'”“’)(]["
 _WORD_RE = re.compile(r"[^\W\d_]+", re.UNICODE)
 
@@ -69,12 +70,27 @@ def _truncate(sentence: str, limit: int) -> str:
     return " ".join(sentence.split()[:limit])
 
 
+def _split_header(text: str) -> tuple[list[str], str]:
+    """Separa as linhas de cabeçalho (Título/Público-alvo/Objetivo) do início do texto do restante."""
+    lines = text.split("\n")
+    header: list[str] = []
+    i = 0
+    while i < len(lines) and (not lines[i].strip() or _HEADER_RE.match(lines[i])):
+        if lines[i].strip():
+            header.append(lines[i])
+        i += 1
+    return header, "\n".join(lines[i:])
+
+
 def summarize_extractive(text: str, max_words: int = MAX_SUMMARY_WORDS) -> str:
-    sentences = _unique(split_sentences(text))
+    header, body = _split_header(text)
+    sentences = _unique(split_sentences(body))
     if not sentences:
         return ""
     tokens = [_content_words(s) for s in sentences]
+    # As palavras do cabeçalho contam na frequência, mas as linhas nunca viram frases do resumo
     freq = Counter(w for ws in tokens for w in ws)
+    freq.update(w for line in header for w in _content_words(line))
     if not freq:
         return _truncate(" ".join(sentences), max_words)
     top = max(freq.values())

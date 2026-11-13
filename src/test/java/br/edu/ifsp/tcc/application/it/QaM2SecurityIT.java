@@ -1,6 +1,5 @@
 package br.edu.ifsp.tcc.application.it;
 
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -274,8 +273,6 @@ class QaM2SecurityIT extends AbstractIT {
     }
 
     @Test
-    @Disabled("BUG QA-M2-01: a multipart request without boundary or truncated gives 500 instead of 400. "
-            + "GlobalExceptionHandler has no MultipartException handler, so the catch-all (Exception.class) answers. Remove @Disabled when fixed.")
     @DisplayName("SEC-M2-07 Malformed multipart (no boundary / truncated) is a client error, not a 500")
     void malformedMultipart() {
         Team team = newTeam();

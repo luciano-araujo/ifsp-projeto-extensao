@@ -66,3 +66,42 @@ def test_strip_html_breaks_blocks_and_decodes_entities():
     out = strip_html("<p>Um &amp; dois</p><p>Três&nbsp;quatro</p><b>x</b><param>")
     assert split_sentences(out) == ["Um & dois", "Três\xa0quatro", "x"]
     assert "<" not in out and "&amp;" not in out
+
+
+
+HEADER = "Título: Oficina de robótica\nPúblico-alvo: Alunos do ensino médio\nObjetivo: Ensinar sensores\n\n"
+
+
+def test_header_lines_are_never_summary_sentences():
+    body = ("Hoje vamos montar um carrinho com sensores. Os sensores medem a distância. "
+            "O carrinho desvia dos obstáculos.")
+    summary = summarize_extractive(HEADER + body)
+    for label in ("Título:", "Público-alvo:", "Objetivo:"):
+        assert label not in summary
+    assert summary.startswith("Hoje vamos")
+
+
+def test_header_is_case_insensitive_and_ignores_leading_blank_lines():
+    summary = summarize_extractive("\nTÍTULO: X\npúblico-ALVO: Y\nobjetivo: Z\nUma frase real sobre o tema.")
+    assert summary == "Uma frase real sobre o tema."
+
+
+def test_header_words_still_count_towards_frequency():
+    script = "Gatos dormem muito. Cachorros correm bastante."
+    # sem cabeçalho vence a segunda frase; o título repetido faz a primeira vencer
+    assert summarize_extractive(script, max_words=3) == "Cachorros correm bastante."
+    assert summarize_extractive("Título: gatos gatos gatos\n\n" + script, max_words=3) == "Gatos dormem muito."
+
+
+def test_header_label_inside_the_script_is_kept():
+    text = HEADER + "Primeira frase do roteiro.\nObjetivo: aparece no meio do roteiro."
+    assert "Objetivo: aparece no meio do roteiro." in summarize_extractive(text)
+
+
+def test_header_only_text_gives_empty_summary():
+    assert summarize_extractive("Título: Só cabeçalho\nObjetivo: nada mais") == ""
+
+
+def test_long_script_without_punctuation_is_capped_at_120_words():
+    text = HEADER + " ".join(f"palavra{i}" for i in range(500))
+    assert len(summarize_extractive(text).split()) == MAX_SUMMARY_WORDS

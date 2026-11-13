@@ -91,6 +91,14 @@ class MaterialServiceTest {
     }
 
     @Test
+    void sanitizeFileName_shouldGiveAnEmptyBaseNameADefault() {
+        assertEquals("arquivo.pdf", MaterialService.sanitizeFileName(".pdf"));
+        assertEquals("arquivo.pdf", MaterialService.sanitizeFileName("C:\\dir\\ .pdf"));
+        assertEquals("a.b.pdf", MaterialService.sanitizeFileName("a.b.pdf"));
+        assertEquals(".", MaterialService.sanitizeFileName("."));
+    }
+
+    @Test
     void sanitizeFileName_shouldCutLongNamesKeepingTheExtension() {
         String longName = "a".repeat(400) + ".pdf";
 
