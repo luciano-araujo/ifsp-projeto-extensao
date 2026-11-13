@@ -15,6 +15,18 @@ class RequestDtoValidationTest {
     private static final String LONG = "t".repeat(256);
 
     @Test
+    void linkLessonMaterial_shouldRequireTheMaterialId() {
+        LinkLessonMaterialDTO dto = new LinkLessonMaterialDTO();
+
+        var violations = VALIDATOR.validate(dto);
+
+        assertEquals(1, violations.size());
+        assertEquals("Informe o material.", violations.iterator().next().getMessage());
+        dto.setMaterialId(7L);
+        assertTrue(VALIDATOR.validate(dto).isEmpty());
+    }
+
+    @Test
     void createCard_shouldRejectLongTitleAudienceAndTag() {
         CreateCardDTO dto = new CreateCardDTO();
         dto.setTitle(LONG);

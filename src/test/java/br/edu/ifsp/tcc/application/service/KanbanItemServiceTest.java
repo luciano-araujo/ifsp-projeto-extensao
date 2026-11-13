@@ -62,6 +62,13 @@ class KanbanItemServiceTest {
     }
 
     @Test
+    void deleteAllByTeamId_shouldDeleteTheCardsOfTheTeamInOneStatement() {
+        kanbanItemService.deleteAllByTeamId(10L);
+
+        verify(kanbanItemRepository).deleteAllByTeamId(10L);
+    }
+
+    @Test
     void deleteById_shouldDelegateToRepository() {
         kanbanItemService.deleteById(1L);
 

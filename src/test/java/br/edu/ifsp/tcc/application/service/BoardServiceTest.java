@@ -39,6 +39,17 @@ class BoardServiceTest {
     }
 
     @Test
+    void toCardResponse_shouldCarryTheMaterialsCountAndDefaultToZero() {
+        KanbanItem project = new KanbanItem();
+        project.setId(1L);
+        project.setState(KanbanItemState.IN_PRODUCTION);
+
+        assertEquals(3, boardService.toCardResponse(project, 100L, List.of(), null, 3).getMaterialsCount());
+        assertEquals(0, boardService.toCardResponse(project, 100L, List.of(), null).getMaterialsCount());
+        assertEquals(0, boardService.toCardResponse(project, 100L, List.of()).getMaterialsCount());
+    }
+
+    @Test
     void progressOf_shouldBeZeroWithoutTasksAndRoundedPercentageOtherwise() {
         KanbanItem item = new KanbanItem();
         assertEquals(0, BoardService.progressOf(List.of()));

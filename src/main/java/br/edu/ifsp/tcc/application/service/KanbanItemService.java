@@ -73,6 +73,11 @@ public class KanbanItemService {
         return kanbanItemRepository.findByIdAndTeam_Id(id, teamId);
     }
 
+    /** Deletes every card (ideas included) of the team in a single statement. */
+    public void deleteAllByTeamId(Long teamId) {
+        kanbanItemRepository.deleteAllByTeamId(teamId);
+    }
+
     public void deleteById(Long id) {
         kanbanItemRepository.deleteById(id);
     }

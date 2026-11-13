@@ -2,6 +2,7 @@ package br.edu.ifsp.tcc.application.usecase;
 
 import br.edu.ifsp.tcc.application.entity.*;
 import br.edu.ifsp.tcc.application.service.KanbanItemService;
+import br.edu.ifsp.tcc.application.service.MaterialService;
 import br.edu.ifsp.tcc.application.service.ScriptService;
 import br.edu.ifsp.tcc.application.service.TeamService;
 import org.junit.jupiter.api.Test;
@@ -24,6 +25,7 @@ class DeleteKanbanItemUseCaseTest {
 
     @Mock private KanbanItemService kanbanItemService;
     @Mock private TeamService teamService;
+    @Mock private MaterialService materialService;
     @InjectMocks private DeleteKanbanItemUseCase useCase;
 
     private static final String FORBIDDEN = "Seu papel na equipe não permite esta ação.";
@@ -55,6 +57,7 @@ class DeleteKanbanItemUseCaseTest {
         useCase.execute(1L, 2L);
 
         verify(teamService).requireRole(10L, 2L, TeamRole.ADMIN, TeamRole.CREATOR);
+        verify(materialService).scheduleFileRemovalOfCard(1L);
         verify(kanbanItemService).deleteById(1L);
     }
 

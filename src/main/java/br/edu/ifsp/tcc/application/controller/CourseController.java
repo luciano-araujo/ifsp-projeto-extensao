@@ -23,6 +23,8 @@ public class CourseController {
     private final CreateCourseLessonUseCase createCourseLessonUseCase;
     private final UpdateCourseLessonUseCase updateCourseLessonUseCase;
     private final DeleteCourseLessonUseCase deleteCourseLessonUseCase;
+    private final LinkLessonMaterialUseCase linkLessonMaterialUseCase;
+    private final UnlinkLessonMaterialUseCase unlinkLessonMaterialUseCase;
 
     public CourseController(ListCoursesUseCase listCoursesUseCase,
                             GetCourseUseCase getCourseUseCase,
@@ -32,7 +34,9 @@ public class CourseController {
                             DeleteCourseModuleUseCase deleteCourseModuleUseCase,
                             CreateCourseLessonUseCase createCourseLessonUseCase,
                             UpdateCourseLessonUseCase updateCourseLessonUseCase,
-                            DeleteCourseLessonUseCase deleteCourseLessonUseCase) {
+                            DeleteCourseLessonUseCase deleteCourseLessonUseCase,
+                            LinkLessonMaterialUseCase linkLessonMaterialUseCase,
+                            UnlinkLessonMaterialUseCase unlinkLessonMaterialUseCase) {
         this.listCoursesUseCase = listCoursesUseCase;
         this.getCourseUseCase = getCourseUseCase;
         this.createCourseUseCase = createCourseUseCase;
@@ -42,6 +46,8 @@ public class CourseController {
         this.createCourseLessonUseCase = createCourseLessonUseCase;
         this.updateCourseLessonUseCase = updateCourseLessonUseCase;
         this.deleteCourseLessonUseCase = deleteCourseLessonUseCase;
+        this.linkLessonMaterialUseCase = linkLessonMaterialUseCase;
+        this.unlinkLessonMaterialUseCase = unlinkLessonMaterialUseCase;
     }
 
     @GetMapping
@@ -118,6 +124,29 @@ public class CourseController {
                                              @PathVariable Long moduleId,
                                              @PathVariable Long lessonId) {
         deleteCourseLessonUseCase.execute(teamId, user.getId(), courseId, moduleId, lessonId);
+        return ResponseEntity.noContent().build();
+    }
+
+    // --- Lesson materials ---
+
+    @PostMapping("/{courseId}/modules/{moduleId}/lessons/{lessonId}/materials")
+    public ResponseEntity<CourseLessonResponse> linkMaterial(@AuthenticationPrincipal User user,
+                                                             @PathVariable Long teamId,
+                                                             @PathVariable Long courseId,
+                                                             @PathVariable Long moduleId,
+                                                             @PathVariable Long lessonId,
+                                                             @Valid @RequestBody LinkLessonMaterialDTO dto) {
+        return ResponseEntity.ok(linkLessonMaterialUseCase.execute(teamId, user.getId(), courseId, moduleId, lessonId, dto));
+    }
+
+    @DeleteMapping("/{courseId}/modules/{moduleId}/lessons/{lessonId}/materials/{materialId}")
+    public ResponseEntity<Void> unlinkMaterial(@AuthenticationPrincipal User user,
+                                               @PathVariable Long teamId,
+                                               @PathVariable Long courseId,
+                                               @PathVariable Long moduleId,
+                                               @PathVariable Long lessonId,
+                                               @PathVariable Long materialId) {
+        unlinkLessonMaterialUseCase.execute(teamId, user.getId(), courseId, moduleId, lessonId, materialId);
         return ResponseEntity.noContent().build();
     }
 }

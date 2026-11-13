@@ -9,6 +9,7 @@ import br.edu.ifsp.tcc.application.entity.TeamRole;
 import br.edu.ifsp.tcc.application.entity.User;
 import br.edu.ifsp.tcc.application.service.BoardService;
 import br.edu.ifsp.tcc.application.service.KanbanItemService;
+import br.edu.ifsp.tcc.application.service.MaterialService;
 import br.edu.ifsp.tcc.application.service.TeamService;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
@@ -24,11 +25,14 @@ public class MoveCardUseCase {
     private final TeamService teamService;
     private final BoardService boardService;
     private final KanbanItemService kanbanItemService;
+    private final MaterialService materialService;
 
-    public MoveCardUseCase(TeamService teamService, BoardService boardService, KanbanItemService kanbanItemService) {
+    public MoveCardUseCase(TeamService teamService, BoardService boardService, KanbanItemService kanbanItemService,
+                           MaterialService materialService) {
         this.teamService = teamService;
         this.boardService = boardService;
         this.kanbanItemService = kanbanItemService;
+        this.materialService = materialService;
     }
 
     @Transactional
@@ -52,6 +56,7 @@ public class MoveCardUseCase {
         LocalDateTime columnSince = columnChanged
                 ? boardService.recordMovement(saved, column, user).getEnteredAt()
                 : boardService.findColumnSince(List.of(saved)).get(saved.getId());
-        return boardService.toCardResponse(saved, column.getId(), boardService.findTasks(saved), columnSince);
+        return boardService.toCardResponse(saved, column.getId(), boardService.findTasks(saved), columnSince,
+                materialService.countByCard(saved.getId()));
     }
 }

@@ -30,6 +30,8 @@ class TeamServiceMoreTest {
     @Mock private TeamRepository teamRepository;
     @Mock private TeamMemberRepository teamMemberRepository;
     @Mock private BoardColumnRepository boardColumnRepository;
+    @Mock private MaterialService materialService;
+    @Mock private KanbanItemService kanbanItemService;
     @InjectMocks private TeamService service;
 
     private Team team(Long id) {
@@ -134,7 +136,11 @@ class TeamServiceMoreTest {
 
         service.deleteTeam(team);
 
-        verify(teamRepository).delete(team);
+        // Files are scheduled, then the cards go in their own statement, then the team
+        var order = inOrder(materialService, kanbanItemService, teamRepository);
+        order.verify(materialService).scheduleFileRemovalOfTeam(10L);
+        order.verify(kanbanItemService).deleteAllByTeamId(10L);
+        order.verify(teamRepository).delete(team);
     }
 
     @Test

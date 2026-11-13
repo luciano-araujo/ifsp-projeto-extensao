@@ -31,3 +31,6 @@ automation/.venv/
 automation/.env
 __pycache__/
 .pytest_cache/
+
+# Uploaded materials (app.storage.type=local)
+data/

@@ -3,6 +3,7 @@ package br.edu.ifsp.tcc.application.service;
 import br.edu.ifsp.tcc.application.dto.CourseLessonResponse;
 import br.edu.ifsp.tcc.application.dto.CourseModuleResponse;
 import br.edu.ifsp.tcc.application.dto.CourseResponse;
+import br.edu.ifsp.tcc.application.dto.MaterialResponse;
 import br.edu.ifsp.tcc.application.entity.*;
 import br.edu.ifsp.tcc.application.repository.CourseLessonRepository;
 import br.edu.ifsp.tcc.application.repository.CourseModuleRepository;
@@ -26,15 +27,18 @@ public class CourseService {
     private final CourseModuleRepository moduleRepository;
     private final CourseLessonRepository lessonRepository;
     private final KanbanItemService kanbanItemService;
+    private final MaterialService materialService;
 
     public CourseService(CourseRepository courseRepository,
                          CourseModuleRepository moduleRepository,
                          CourseLessonRepository lessonRepository,
-                         KanbanItemService kanbanItemService) {
+                         KanbanItemService kanbanItemService,
+                         MaterialService materialService) {
         this.courseRepository = courseRepository;
         this.moduleRepository = moduleRepository;
         this.lessonRepository = lessonRepository;
         this.kanbanItemService = kanbanItemService;
+        this.materialService = materialService;
     }
 
     // --- Courses ---
@@ -87,6 +91,12 @@ public class CourseService {
                 .stream().collect(Collectors.groupingBy(CourseLesson::getModuleId));
     }
 
+    /** Materials of all the lessons of a course (one query), by lesson id; lessons without materials are absent. */
+    public Map<Long, List<MaterialResponse>> findMaterialsByLesson(Long teamId, Map<Long, List<CourseLesson>> lessonsByModule) {
+        List<Long> lessonIds = lessonsByModule.values().stream().flatMap(List::stream).map(CourseLesson::getId).toList();
+        return materialService.findResponsesByLesson(teamId, lessonIds);
+    }
+
     public CourseLesson findLesson(Long moduleId, Long lessonId) {
         return lessonRepository.findByIdAndModule_Id(lessonId, moduleId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Aula não encontrada."));
@@ -120,13 +130,30 @@ public class CourseService {
     }
 
     public CourseModuleResponse toModuleResponse(CourseModule module, List<CourseLesson> lessons) {
-        return new CourseModuleResponse(module.getId(), module.getUuid(), module.getCourseId(), module.getTitle(), module.getSortOrder(),
-                lessons.stream().map(this::toLessonResponse).toList(), module.getCreatedAt());
+        return toModuleResponse(module, lessons, Map.of());
     }
 
+    public CourseModuleResponse toModuleResponse(CourseModule module, List<CourseLesson> lessons,
+                                                 Map<Long, List<MaterialResponse>> materialsByLesson) {
+        return new CourseModuleResponse(module.getId(), module.getUuid(), module.getCourseId(), module.getTitle(), module.getSortOrder(),
+                lessons.stream().map(l -> toLessonResponse(l, materialsByLesson.getOrDefault(l.getId(), List.of()))).toList(),
+                module.getCreatedAt());
+    }
+
+    /** A lesson without materials (for example one that was just created). */
     public CourseLessonResponse toLessonResponse(CourseLesson lesson) {
+        return toLessonResponse(lesson, List.of());
+    }
+
+    public CourseLessonResponse toLessonResponse(CourseLesson lesson, List<MaterialResponse> materials) {
         return new CourseLessonResponse(lesson.getId(), lesson.getUuid(), lesson.getModuleId(), lesson.getTitle(), lesson.getType(),
                 Boolean.TRUE.equals(lesson.getPublished()), lesson.getSortOrder() != null ? lesson.getSortOrder() : 0,
-                lesson.getProjectId(), lesson.getCreatedAt());
+                lesson.getProjectId(), lesson.getCreatedAt(), materials);
+    }
+
+    /** A lesson with its linked materials loaded from the database. */
+    public CourseLessonResponse toLessonResponseWithMaterials(Long teamId, CourseLesson lesson) {
+        return toLessonResponse(lesson, materialService.findResponsesByLesson(teamId, List.of(lesson.getId()))
+                .getOrDefault(lesson.getId(), List.of()));
     }
 }

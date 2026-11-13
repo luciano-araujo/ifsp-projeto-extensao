@@ -193,6 +193,11 @@ public class BoardService {
     }
 
     public CardResponse toCardResponse(KanbanItem item, Long columnId, List<CardTask> tasks, LocalDateTime columnSince) {
+        return toCardResponse(item, columnId, tasks, columnSince, 0);
+    }
+
+    public CardResponse toCardResponse(KanbanItem item, Long columnId, List<CardTask> tasks, LocalDateTime columnSince,
+                                       int materialsCount) {
         int done = (int) tasks.stream().filter(t -> Boolean.TRUE.equals(t.getCompleted())).count();
         boolean idea = item.getState() == KanbanItemState.IDEATION;
         Tag tag = item.getTag();
@@ -201,7 +206,7 @@ public class BoardService {
                 progressOf(tasks), tasks.size(), done, item.getTargetAudience(), item.getPedagogicalObjective(),
                 tasks.stream().map(this::toTaskResponse).toList(), tag != null ? tag.getName() : null,
                 item.getDueDate(), 0, false, item.getCreatedAt(), item.getUpdatedAt(),
-                tag != null ? tag.getId() : null, tag != null ? tag.getColor() : null, columnSince);
+                tag != null ? tag.getId() : null, tag != null ? tag.getColor() : null, columnSince, materialsCount);
     }
 
     public CardTaskResponse toTaskResponse(CardTask task) {

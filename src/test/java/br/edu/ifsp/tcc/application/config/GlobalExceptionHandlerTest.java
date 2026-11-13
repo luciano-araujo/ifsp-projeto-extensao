@@ -39,6 +39,24 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    void handleUploadTooLarge_shouldReturn413WithTheLimitMessage() {
+        ResponseEntity<MessageResponse> response = handler.handleUploadTooLarge(
+                new org.springframework.web.multipart.MaxUploadSizeExceededException(20L * 1024 * 1024));
+
+        assertEquals(HttpStatus.PAYLOAD_TOO_LARGE, response.getStatusCode());
+        assertEquals("O arquivo excede o limite de 20 MB.", response.getBody().getMessage());
+    }
+
+    @Test
+    void handleUnexpected_shouldHideStorageFailures() {
+        ResponseEntity<MessageResponse> response = handler.handleUnexpected(
+                new br.edu.ifsp.tcc.application.storage.FileStorageException("bucket x, key y"));
+
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+        assertEquals("Erro interno. Tente novamente mais tarde.", response.getBody().getMessage());
+    }
+
+    @Test
     void handleDataIntegrity_shouldReturn409WithoutLeakingSql() {
         DataIntegrityViolationException ex = new DataIntegrityViolationException(
                 "Duplicate entry 'x' for key 'uk_tags_team_name' [insert into tags ...]");

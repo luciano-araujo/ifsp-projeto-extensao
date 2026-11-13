@@ -3,6 +3,7 @@ package br.edu.ifsp.tcc.application.service;
 import br.edu.ifsp.tcc.application.dto.CourseLessonResponse;
 import br.edu.ifsp.tcc.application.dto.CourseModuleResponse;
 import br.edu.ifsp.tcc.application.dto.CourseResponse;
+import br.edu.ifsp.tcc.application.dto.MaterialResponse;
 import br.edu.ifsp.tcc.application.entity.Course;
 import br.edu.ifsp.tcc.application.entity.CourseLesson;
 import br.edu.ifsp.tcc.application.entity.CourseModule;
@@ -35,6 +36,7 @@ class CourseServiceTest {
     @Mock private CourseModuleRepository moduleRepository;
     @Mock private CourseLessonRepository lessonRepository;
     @Mock private KanbanItemService kanbanItemService;
+    @Mock private MaterialService materialService;
     @InjectMocks private CourseService service;
 
     private Course course(Long id) {
@@ -285,5 +287,54 @@ class CourseServiceTest {
 
         assertTrue(response.getPublished());
         assertEquals(2, response.getSortOrder());
+    }
+
+    @Test
+    void toLessonResponse_shouldHaveNoMaterialsByDefault() {
+        CourseLesson lesson = lesson(4L, module(3L, course(2L)));
+
+        assertTrue(service.toLessonResponse(lesson).getMaterials().isEmpty());
+    }
+
+    @Test
+    void toModuleResponse_shouldAttachTheMaterialsOfEachLesson() {
+        CourseModule module = module(3L, course(2L));
+        CourseLesson withMaterial = lesson(4L, module);
+        CourseLesson without = lesson(5L, module);
+        MaterialResponse material = mock(MaterialResponse.class);
+
+        CourseModuleResponse response = service.toModuleResponse(module, List.of(withMaterial, without),
+                Map.of(4L, List.of(material)));
+
+        assertEquals(List.of(material), response.getLessons().get(0).getMaterials());
+        assertTrue(response.getLessons().get(1).getMaterials().isEmpty());
+    }
+
+    @Test
+    void findMaterialsByLesson_shouldLoadTheMaterialsOfAllTheLessonsInOneCall() {
+        CourseModule module = module(3L, course(2L));
+        Map<Long, List<CourseLesson>> lessons = Map.of(3L, List.of(lesson(4L, module), lesson(5L, module)));
+        Map<Long, List<MaterialResponse>> materials = Map.of(4L, List.of(mock(MaterialResponse.class)));
+        when(materialService.findResponsesByLesson(eq(10L), argThat(ids -> List.copyOf(ids).equals(List.of(4L, 5L)))))
+                .thenReturn(materials);
+
+        assertSame(materials, service.findMaterialsByLesson(10L, lessons));
+    }
+
+    @Test
+    void toLessonResponseWithMaterials_shouldLoadTheMaterialsOfTheLesson() {
+        CourseLesson lesson = lesson(4L, module(3L, course(2L)));
+        MaterialResponse material = mock(MaterialResponse.class);
+        when(materialService.findResponsesByLesson(10L, List.of(4L))).thenReturn(Map.of(4L, List.of(material)));
+
+        assertEquals(List.of(material), service.toLessonResponseWithMaterials(10L, lesson).getMaterials());
+    }
+
+    @Test
+    void toLessonResponseWithMaterials_shouldBeEmptyWhenNothingIsLinked() {
+        CourseLesson lesson = lesson(4L, module(3L, course(2L)));
+        when(materialService.findResponsesByLesson(10L, List.of(4L))).thenReturn(Map.of());
+
+        assertTrue(service.toLessonResponseWithMaterials(10L, lesson).getMaterials().isEmpty());
     }
 }

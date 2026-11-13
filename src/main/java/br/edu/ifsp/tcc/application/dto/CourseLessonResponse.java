@@ -6,6 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @AllArgsConstructor
@@ -21,4 +22,7 @@ public class CourseLessonResponse {
 
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'")
     private LocalDateTime createdAt;
+
+    /** Materials linked to the lesson, in the order they were linked. */
+    private List<MaterialResponse> materials;
 }
