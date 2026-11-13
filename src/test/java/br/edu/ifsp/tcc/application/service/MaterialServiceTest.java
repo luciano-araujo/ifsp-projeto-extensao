@@ -695,10 +695,8 @@ class MaterialServiceTest {
 
         verify(fileStorage).archive("key-a");
         verify(fileStorage).archive("key-b");
-        assertNotNull(a.getArchivedAt());
-        assertNotNull(b.getArchivedAt());
-        verify(materialRepository).save(a);
-        verify(materialRepository).save(b);
+        verify(materialRepository).markArchived(eq(1L), any(java.time.LocalDateTime.class));
+        verify(materialRepository).markArchived(eq(2L), any(java.time.LocalDateTime.class));
     }
 
     @Test
@@ -711,9 +709,8 @@ class MaterialServiceTest {
 
         assertEquals(1, service.archiveDueMaterials(limit));
 
-        assertNull(a.getArchivedAt());
-        assertNotNull(b.getArchivedAt());
-        verify(materialRepository, never()).save(a);
+        verify(materialRepository, never()).markArchived(eq(1L), any(java.time.LocalDateTime.class));
+        verify(materialRepository).markArchived(eq(2L), any(java.time.LocalDateTime.class));
     }
 
     @Test

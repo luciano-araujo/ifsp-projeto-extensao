@@ -18,8 +18,11 @@ public class CourseExportService {
     public static final String CSV_HEADER =
             "modulo_ordem;modulo_titulo;aula_ordem;aula_titulo;aula_tipo;aula_publicada;aula_link;projeto_id;materiais";
 
+    /** UTF-8 byte order mark, so Excel opens the accents correctly. */
+    public static final String BOM = "﻿";
+
     public byte[] toCsv(CourseDetailResponse course) {
-        StringBuilder csv = new StringBuilder(CSV_HEADER).append("\r\n");
+        StringBuilder csv = new StringBuilder(BOM).append(CSV_HEADER).append("\r\n");
         int moduleOrder = 0;
         for (CourseModuleResponse module : course.getModules()) {
             moduleOrder++;

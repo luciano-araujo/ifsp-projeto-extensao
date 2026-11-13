@@ -29,7 +29,7 @@ public class CourseLesson {
     private String description;
 
     // External content (YouTube, Vimeo or LMS); only validated against RN06 when the course is published
-    @Column(name = "content_url", length = 2048)
+    @Column(name = "content_url", length = 500)
     private String contentUrl;
 
     @Enumerated(EnumType.STRING)

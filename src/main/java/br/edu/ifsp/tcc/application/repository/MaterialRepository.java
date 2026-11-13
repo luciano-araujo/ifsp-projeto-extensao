@@ -39,6 +39,12 @@ public interface MaterialRepository extends JpaRepository<Material, Long> {
             + "AND c.publishedAt <= :limit AND m.archivedAt IS NULL ORDER BY m.id")
     List<Material> findDueForArchive(@Param("limit") java.time.LocalDateTime limit);
 
+    /** Marks one material as archived in its own short transaction (call it outside any other transaction). */
+    @org.springframework.transaction.annotation.Transactional
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("UPDATE Material m SET m.archivedAt = :at WHERE m.id = :id")
+    int markArchived(@Param("id") Long id, @Param("at") java.time.LocalDateTime at);
+
     @Query("SELECT m.storageKey FROM Material m WHERE m.kanbanItem.id = :cardId")
     List<String> findStorageKeysByCard(@Param("cardId") Long cardId);
 

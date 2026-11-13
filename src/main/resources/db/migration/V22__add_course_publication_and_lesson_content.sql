@@ -7,4 +7,4 @@ ALTER TABLE courses
 -- Lesson description and external content link (YouTube, Vimeo or an LMS; checked at publication, RN06).
 ALTER TABLE course_lessons
     ADD COLUMN description TEXT NULL AFTER title,
-    ADD COLUMN content_url VARCHAR(2048) NULL AFTER description;
+    ADD COLUMN content_url VARCHAR(500) NULL AFTER description;

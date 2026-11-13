@@ -35,7 +35,7 @@ class CourseExportServiceTest {
 
         String csv = new String(service.toCsv(tree), StandardCharsets.UTF_8);
 
-        assertEquals(CourseExportService.CSV_HEADER + "\r\n"
+        assertEquals("﻿" + CourseExportService.CSV_HEADER + "\r\n"
                 + "1;Introdução;1;\"Aula; um\";VIDEO;true;https://youtu.be/dQw4w9WgXcQ;7;a.pdf | b.pdf\r\n"
                 + "1;Introdução;2;\"Diz \"\"oi\"\"\";VIDEO;true;;;\r\n"
                 + "2;'=Vazio;;;;;;;\r\n", csv);
@@ -45,6 +45,6 @@ class CourseExportServiceTest {
     void toCsv_shouldWriteOnlyTheHeaderForACourseWithoutModules() {
         CourseDetailResponse tree = new CourseDetailResponse(9L, "u", 1L, "C", null, CourseStatus.DRAFT, null, 0, List.of(), null);
 
-        assertEquals(CourseExportService.CSV_HEADER + "\r\n", new String(service.toCsv(tree), StandardCharsets.UTF_8));
+        assertEquals("﻿" + CourseExportService.CSV_HEADER + "\r\n", new String(service.toCsv(tree), StandardCharsets.UTF_8));
     }
 }

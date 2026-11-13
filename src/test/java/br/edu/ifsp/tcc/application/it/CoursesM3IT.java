@@ -194,6 +194,15 @@ class CoursesM3IT extends AbstractIT {
         assertNull(cleared.text("description"));
         assertNull(cleared.text("contentUrl"));
         assertEquals(403, api.patch(base + "/" + id, rui.token(), map("description", "x")).status());
+
+        // Whitespace-only clears like an empty text; 501 characters is refused
+        assertEquals(200, api.patch(base + "/" + id, ana.token(), map("contentUrl", "https://vimeo.com/1")).status());
+        Resp blank = api.patch(base + "/" + id, ana.token(), map("contentUrl", "   "));
+        assertEquals(200, blank.status(), blank.body());
+        assertNull(blank.text("contentUrl"));
+        String tooLong = "https://exemplo.com/" + "a".repeat(481);
+        assertEquals(400, api.patch(base + "/" + id, ana.token(), map("contentUrl", tooLong)).status());
+        assertEquals(400, api.post(base, ana.token(), map("title", "X", "contentUrl", tooLong)).status());
     }
 
     // --- Publication ---
@@ -319,6 +328,8 @@ class CoursesM3IT extends AbstractIT {
             assertTrue(csv.header("Content-Type").toLowerCase().contains("utf-8"));
             assertTrue(csv.header("Content-Disposition").contains("filename=\"curso-" + c + ".csv\""));
             String[] lines = csv.body().split("\r\n");
+            assertTrue(csv.body().startsWith("﻿"), "UTF-8 BOM");
+            lines[0] = lines[0].substring(1);
             assertEquals("modulo_ordem;modulo_titulo;aula_ordem;aula_titulo;aula_tipo;aula_publicada;aula_link;projeto_id;materiais", lines[0]);
             assertEquals("1;Introdução;1;\"Aula; com ponto e vírgula\";VIDEO;false;" + YT + ";;", lines[1]);
             assertEquals("1;Introdução;2;Aula com arquivo;VIDEO;false;;;slides.pdf", lines[2]);

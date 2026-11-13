@@ -9,6 +9,6 @@ public class UpdateCourseDTO {
     @Size(max = 255, message = "O título do curso deve ter no máximo 255 caracteres.")
     private String title;
 
-    @Size(max = 5000, message = "A descrição do curso deve ter no máximo 5000 caracteres.")
+    @Size(max = 10000, message = "A descrição deve ter no máximo 10000 caracteres.")
     private String description;
 }

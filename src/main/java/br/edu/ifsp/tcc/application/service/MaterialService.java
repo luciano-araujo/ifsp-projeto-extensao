@@ -317,7 +317,7 @@ public class MaterialService {
 
     /**
      * Archives every material of courses published on or before the limit that is not archived yet, then marks the
-     * row. A material whose archive fails is logged and left for the next run. Returns how many were archived.
+     * row, one material at a time. Call it outside a transaction, so none stays open across the S3 calls. A material whose archive fails is logged and left for the next run. Returns how many were archived.
      */
     public int archiveDueMaterials(LocalDateTime limit) {
         int archived = 0;
@@ -328,8 +328,8 @@ public class MaterialService {
                 log.error("Could not archive material {} (key {})", material.getId(), material.getStorageKey(), e);
                 continue;
             }
-            material.setArchivedAt(LocalDateTime.now());
-            materialRepository.save(material);
+            // Marked right after its own S3 copy, in its own transaction: a crash never leaves archived objects unmarked
+            materialRepository.markArchived(material.getId(), LocalDateTime.now());
             archived++;
         }
         return archived;

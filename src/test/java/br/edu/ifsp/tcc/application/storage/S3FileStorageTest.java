@@ -130,6 +130,8 @@ class S3FileStorageTest {
 
     @Test
     void archive_shouldCopyTheObjectOntoItselfWithGlacierInstantRetrieval() {
+        when(s3.headObject(any(HeadObjectRequest.class))).thenReturn(HeadObjectResponse.builder().build());
+
         storage().archive("chave-1");
 
         ArgumentCaptor<CopyObjectRequest> request = ArgumentCaptor.forClass(CopyObjectRequest.class);
@@ -143,7 +145,26 @@ class S3FileStorageTest {
     }
 
     @Test
+    void archive_shouldDoNothingWhenAlreadyInGlacierInstantRetrieval() {
+        when(s3.headObject(any(HeadObjectRequest.class)))
+                .thenReturn(HeadObjectResponse.builder().storageClass(StorageClass.GLACIER_IR).build());
+
+        storage().archive("chave-1");
+
+        verify(s3, never()).copyObject(any(CopyObjectRequest.class));
+    }
+
+    @Test
+    void archive_shouldWrapHeadFailures() {
+        when(s3.headObject(any(HeadObjectRequest.class))).thenThrow(SdkClientException.create("sem rede"));
+
+        assertThrows(FileStorageException.class, () -> storage().archive("k"));
+        verify(s3, never()).copyObject(any(CopyObjectRequest.class));
+    }
+
+    @Test
     void archive_shouldWrapSdkFailures() {
+        when(s3.headObject(any(HeadObjectRequest.class))).thenReturn(HeadObjectResponse.builder().build());
         when(s3.copyObject(any(CopyObjectRequest.class))).thenThrow(SdkClientException.create("sem rede"));
 
         assertThrows(FileStorageException.class, () -> storage().archive("k"));

@@ -21,7 +21,7 @@ public class CreateCourseLessonDTO {
     private String description;
 
     /** http or https link; an empty text clears it (on update). */
-    @Size(max = 2048, message = "O link da aula deve ter no máximo 2048 caracteres.")
-    @Pattern(regexp = "(?i)^(https?://[^\\s/]+\\S*)?$", message = "O link da aula deve começar com http:// ou https://.")
+    @Size(max = 500, message = "O link da aula deve ter no máximo 500 caracteres.")
+    @Pattern(regexp = "(?i)^(\\s*|\\s*https?://[^\\s/]+\\S*\\s*)$", message = "O link da aula deve começar com http:// ou https://.")
     private String contentUrl;
 }
