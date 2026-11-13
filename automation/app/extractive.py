@@ -1,4 +1,5 @@
 """Resumo extrativo em Python puro: frequência normalizada de palavras, determinístico."""
+import html
 import re
 from collections import Counter
 
@@ -24,13 +25,17 @@ _ABBR_RE = re.compile(r"\b(" + "|".join(_ABBREVIATIONS) + r")\.", re.IGNORECASE)
 _DECIMAL_RE = re.compile(r"(?<=\d)\.(?=\d)")
 _SENTENCE_END_RE = re.compile(
     r"\s*\n\s*|(?:(?<=[.!?…])|(?<=[.!?…][\"'”’)\]]))\s+")
+_BLOCK_TAG_RE = re.compile(
+    r"<\s*(br|/?\s*(p|div|li|ul|ol|h[1-6]|blockquote|tr|pre))\b[^>]*>", re.IGNORECASE)
 _TAG_RE = re.compile(r"<[^>]*>")
 _KEY_STRIP = " .!?…,;:\"'”“’)(]["
 _WORD_RE = re.compile(r"[^\W\d_]+", re.UNICODE)
 
 
 def strip_html(text: str) -> str:
-    return _TAG_RE.sub(" ", text)
+    """Tags de bloco viram quebra de linha (fim de frase), as demais viram espaço; entidades são decodificadas."""
+    text = _BLOCK_TAG_RE.sub("\n", text)
+    return html.unescape(_TAG_RE.sub(" ", text))
 
 
 def _dedup_key(sentence: str) -> str:

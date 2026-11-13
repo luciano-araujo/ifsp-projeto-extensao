@@ -29,6 +29,11 @@ def test_short_text_is_422():
     assert r.status_code == 422
 
 
+def test_tags_do_not_count_as_words():
+    r = client.post("/summarize", json={"text": "<p class='a'>palavra</p> " * 60})
+    assert r.status_code == 422
+
+
 def test_exactly_100_words_is_accepted():
     r = client.post("/summarize", json={"text": "gato "
                                         * 99 + "gato."})

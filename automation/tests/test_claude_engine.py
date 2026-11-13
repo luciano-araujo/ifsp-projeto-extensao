@@ -105,6 +105,13 @@ def test_builds_real_client_with_timeout_and_retries(long_text, monkeypatch):
     monkeypatch.setattr(anthropic, "Anthropic", fake_ctor)
     assert summarize_with_claude(long_text, settings()) == "ok"
     assert created == {"api_key": "sk-test", "timeout": 20, "max_retries": 0}
+    fake.close.assert_called_once()  # o cliente criado aqui é fechado ao final
+
+
+def test_injected_client_is_not_closed(long_text):
+    client = client_returning(response([text_block("ok")]))
+    summarize_with_claude(long_text, settings(), client)
+    client.close.assert_not_called()
 
 
 def test_service_uses_claude_when_it_works(long_text):

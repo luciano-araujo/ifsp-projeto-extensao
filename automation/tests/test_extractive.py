@@ -59,3 +59,10 @@ def test_single_huge_sentence_is_truncated():
 def test_only_stopwords_falls_back_to_head():
     text = "de a o e. " * 50
     assert 0 < len(summarize_extractive(text).split()) <= MAX_SUMMARY_WORDS
+
+
+def test_strip_html_breaks_blocks_and_decodes_entities():
+    from app.extractive import strip_html
+    out = strip_html("<p>Um &amp; dois</p><p>Três&nbsp;quatro</p><b>x</b><param>")
+    assert split_sentences(out) == ["Um & dois", "Três\xa0quatro", "x"]
+    assert "<" not in out and "&amp;" not in out

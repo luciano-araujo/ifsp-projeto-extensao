@@ -47,12 +47,14 @@ def _call(client, settings: Settings, text: str):
 
 
 def summarize_with_claude(text: str, settings: Settings, client=None) -> str:
-    if client is None:
+    owns_client = client is None
+    if owns_client:
         if not settings.api_key:
             raise FallbackError("sem ANTHROPIC_API_KEY")
         client = build_client(settings)
     safe_text = _ROTEIRO_TAG_RE.sub("", text)
     pool = ThreadPoolExecutor(max_workers=1)
+    future = None
     try:
         future = pool.submit(_call, client, settings, safe_text)
         try:
@@ -73,6 +75,8 @@ def summarize_with_claude(text: str, settings: Settings, client=None) -> str:
         raise FallbackError("erro da API") from None
     finally:
         pool.shutdown(wait=False)
+        if owns_client and (future is None or future.done()):
+            client.close()  # libera os sockets; se a chamada ainda roda, o GC fecha depois
 
     usage = getattr(response, "usage", None)
     log.info("claude ok request_id=%s input_tokens=%s output_tokens=%s",

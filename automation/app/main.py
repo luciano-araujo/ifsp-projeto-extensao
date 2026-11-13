@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from pydantic import BaseModel, field_validator
 
 from app.config import MAX_WORDS, MIN_WORDS, get_settings, load_env_file
+from app.extractive import strip_html
 from app.service import summarize
 
 load_env_file()
@@ -19,7 +20,7 @@ class SummarizeRequest(BaseModel):
     @field_validator("text")
     @classmethod
     def check_size(cls, v: str) -> str:
-        words = len(v.split())
+        words = len(strip_html(v).split())  # conta palavras do texto, não das tags
         if words < MIN_WORDS:
             raise ValueError(f"O texto deve ter pelo menos {MIN_WORDS} palavras.")
         if words > MAX_WORDS:
