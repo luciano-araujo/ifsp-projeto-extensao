@@ -1,0 +1,56 @@
+# Pod "web" = nginx (frontend estatico + proxy /api/) + Spring Boot, no mesmo pod.
+# Motivo: o RateLimitFilter so confia em X-Forwarded-For vindo de enderecos exatos (sem CIDR); no mesmo pod o par e sempre 127.0.0.1.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+  namespace: creator-workbench
+  labels: { app: web, Project: creator-workbench }
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: { maxUnavailable: 0, maxSurge: 1 }
+  selector:
+    matchLabels: { app: web }
+  template:
+    metadata:
+      labels: { app: web, Project: creator-workbench }
+    spec:
+      containers:
+        - name: nginx
+          image: ${ECR_REGISTRY}/creator-workbench/frontend:${IMAGE_TAG}
+          ports:
+            - containerPort: 8081
+          readinessProbe:
+            httpGet: { path: /healthz, port: 8081 }
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /healthz, port: 8081 }
+            initialDelaySeconds: 5
+            periodSeconds: 20
+          resources:
+            requests: { cpu: 25m, memory: 32Mi }
+            limits: { memory: 128Mi }
+        - name: backend
+          image: ${ECR_REGISTRY}/creator-workbench/backend:${IMAGE_TAG}
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef: { name: backend-config }
+            - secretRef: { name: backend-env }
+          startupProbe:
+            httpGet: { path: /actuator/health/liveness, port: 8080 }
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            httpGet: { path: /actuator/health/readiness, port: 8080 }
+            periodSeconds: 10
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet: { path: /actuator/health/liveness, port: 8080 }
+            periodSeconds: 20
+            timeoutSeconds: 3
+          resources:
+            requests: { cpu: 200m, memory: 640Mi }
+            limits: { memory: 1Gi }

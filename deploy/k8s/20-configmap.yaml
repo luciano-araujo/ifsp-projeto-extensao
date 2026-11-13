@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-config
+  namespace: creator-workbench
+  labels: { Project: creator-workbench }
+data:
+  SPRING_PROFILES_ACTIVE: prod
+  CORS_ORIGINS: "http://${ELB_HOST}"
+  STORAGE_TYPE: s3
+  STORAGE_S3_BUCKET: "${S3_BUCKET}"
+  STORAGE_S3_REGION: us-east-1
+  SUMMARY_URL: http://summary:8000
+  MAIL_HOST: smtp.gmail.com
+  MAIL_PORT: "587"
+  # nginx roda no mesmo pod: o backend so ve 127.0.0.1 (padrao de app.rate-limit.trusted-proxies) e le o X-Forwarded-For dele
+  APP_RATE_LIMIT_TRUSTED_PROXIES: "127.0.0.1,0:0:0:0:0:0:0:1,::1"
+  AWS_REGION: us-east-1
+  JAVA_OPTS: "-XX:MaxRAMPercentage=70 -XX:+ExitOnOutOfMemoryError"

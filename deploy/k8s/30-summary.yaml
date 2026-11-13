@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: summary
+  namespace: creator-workbench
+  labels: { app: summary, Project: creator-workbench }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: summary }
+  template:
+    metadata:
+      labels: { app: summary, Project: creator-workbench }
+    spec:
+      containers:
+        - name: summary
+          image: ${ECR_REGISTRY}/creator-workbench/summary:${IMAGE_TAG}
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - secretRef: { name: summary-env, optional: true }
+          readinessProbe:
+            httpGet: { path: /health, port: 8000 }
+            periodSeconds: 10
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet: { path: /health, port: 8000 }
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            timeoutSeconds: 3
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { memory: 384Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: summary
+  namespace: creator-workbench
+  labels: { app: summary, Project: creator-workbench }
+spec:
+  type: ClusterIP
+  selector: { app: summary }
+  ports:
+    - port: 8000
+      targetPort: 8000
