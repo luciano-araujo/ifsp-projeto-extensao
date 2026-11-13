@@ -62,11 +62,17 @@ echo "$ELB_HOST" > "$STATE_DIR/elb_host"
 SITE_HOST="${SITE_HOST:-$(cat "$STATE_DIR/site_host" 2>/dev/null || true)}"
 [ -n "$SITE_HOST" ] && echo "$SITE_HOST" > "$STATE_DIR/site_host"
 PUBLIC_HOST="${SITE_HOST:-$ELB_HOST}"
-PUBLIC_SCHEME="${SITE_SCHEME:-http}"
+# certificado valido do dominio (ACM, validado por DNS) quando existe e esta ISSUED; senao o autoassinado do ELB
+DOMAIN_CERT_ARN="$(cat "$STATE_DIR/domain_cert_arn" 2>/dev/null || true)"
+if [ -n "$SITE_HOST" ] && [ -n "$DOMAIN_CERT_ARN" ] && \
+   [ "$(aws acm describe-certificate --certificate-arn "$DOMAIN_CERT_ARN" --query Certificate.Status --output text 2>/dev/null)" = ISSUED ]; then
+  SSL_CERT_ARN="$DOMAIN_CERT_ARN"; CERT_KIND="valido para $SITE_HOST"; PUBLIC_SCHEME="${SITE_SCHEME:-https}"
+else
+  SSL_CERT_ARN="$(ensure_cert "$ELB_HOST")"; CERT_KIND="autoassinado"; PUBLIC_SCHEME="${SITE_SCHEME:-http}"
+fi
 log "Endereco publico: $PUBLIC_SCHEME://$PUBLIC_HOST"
-SSL_CERT_ARN="$(ensure_cert "$ELB_HOST")"
 sed -e "s|\${SSL_CERT_ARN}|$SSL_CERT_ARN|g" -e 's| #SSL$||' "$SVC" | kubectl apply -f - >/dev/null   # HTTP 80 + HTTPS 443
-log "ELB: http://$ELB_HOST  https://$ELB_HOST (certificado autoassinado, $SSL_CERT_ARN)"
+log "ELB: http://$ELB_HOST  https://$ELB_HOST (certificado $CERT_KIND, $SSL_CERT_ARN)"
 
 # segredos: arquivos temporarios, nada e impresso
 T="$(mktemp -d)"; TW="$(cygpath -m "$T")"; umask 077
