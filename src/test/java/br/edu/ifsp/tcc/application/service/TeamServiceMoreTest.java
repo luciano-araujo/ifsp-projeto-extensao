@@ -30,6 +30,7 @@ class TeamServiceMoreTest {
     @Mock private TeamRepository teamRepository;
     @Mock private TeamMemberRepository teamMemberRepository;
     @Mock private BoardColumnRepository boardColumnRepository;
+    @Mock private MaterialService materialService;
     @InjectMocks private TeamService service;
 
     private Team team(Long id) {
@@ -134,6 +135,7 @@ class TeamServiceMoreTest {
 
         service.deleteTeam(team);
 
+        verify(materialService).deleteAllOfTeam(10L);
         verify(teamRepository).delete(team);
     }
 

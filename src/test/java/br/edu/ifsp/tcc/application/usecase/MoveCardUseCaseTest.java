@@ -10,6 +10,7 @@ import br.edu.ifsp.tcc.application.entity.TeamRole;
 import br.edu.ifsp.tcc.application.entity.User;
 import br.edu.ifsp.tcc.application.service.BoardService;
 import br.edu.ifsp.tcc.application.service.KanbanItemService;
+import br.edu.ifsp.tcc.application.service.MaterialService;
 import br.edu.ifsp.tcc.application.service.TeamService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -34,6 +35,7 @@ class MoveCardUseCaseTest {
     @Mock private TeamService teamService;
     @Mock private BoardService boardService;
     @Mock private KanbanItemService kanbanItemService;
+    @Mock private MaterialService materialService;
     @InjectMocks private MoveCardUseCase useCase;
 
     private User user;
@@ -45,6 +47,7 @@ class MoveCardUseCaseTest {
         TeamMember member = new TeamMember();
         member.setUser(user);
         when(teamService.requireRole(10L, 1L, TeamRole.ADMIN, TeamRole.CREATOR)).thenReturn(member);
+        lenient().when(materialService.countByCard(1L)).thenReturn(2);
     }
 
     private MoveCardDTO dto(Long columnId) {
@@ -108,7 +111,7 @@ class MoveCardUseCaseTest {
         assertSame(roteiro, project.getColumn());
         assertEquals(0, project.getSortOrder());
         verify(boardService).recordMovement(project, roteiro, user);
-        verify(boardService).toCardResponse(project, 101L, List.of(), enteredAt);
+        verify(boardService).toCardResponse(project, 101L, List.of(), enteredAt, 2);
     }
 
     @Test
@@ -125,7 +128,7 @@ class MoveCardUseCaseTest {
         useCase.execute(10L, 1L, 1L, dto(100L));
 
         verify(boardService, never()).recordMovement(any(), any(), any());
-        verify(boardService).toCardResponse(project, 100L, List.of(), since);
+        verify(boardService).toCardResponse(project, 100L, List.of(), since, 2);
     }
 
     @Test
@@ -174,6 +177,6 @@ class MoveCardUseCaseTest {
         useCase.execute(10L, 1L, 1L, dto(101L));
 
         verify(boardService, never()).recordMovement(any(), any(), any());
-        verify(boardService).toCardResponse(project, 101L, List.of(), since);
+        verify(boardService).toCardResponse(project, 101L, List.of(), since, 2);
     }
 }

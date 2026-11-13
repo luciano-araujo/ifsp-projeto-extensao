@@ -36,6 +36,7 @@ class UpdateCourseLessonUseCaseTest {
         assertEquals("BFS", lesson.getTitle());
         assertEquals(LessonType.VIDEO, lesson.getType());
         verify(courseService).saveLesson(lesson);
+        verify(courseService).toLessonResponseWithMaterials(10L, null);
         verify(courseService, never()).findProject(10L, null);
     }
 }

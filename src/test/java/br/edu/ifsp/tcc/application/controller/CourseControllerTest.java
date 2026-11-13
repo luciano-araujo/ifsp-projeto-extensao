@@ -29,6 +29,8 @@ class CourseControllerTest {
     @Mock private CreateCourseLessonUseCase createCourseLessonUseCase;
     @Mock private UpdateCourseLessonUseCase updateCourseLessonUseCase;
     @Mock private DeleteCourseLessonUseCase deleteCourseLessonUseCase;
+    @Mock private LinkLessonMaterialUseCase linkLessonMaterialUseCase;
+    @Mock private UnlinkLessonMaterialUseCase unlinkLessonMaterialUseCase;
     @InjectMocks private CourseController controller;
 
     private User user;
@@ -131,5 +133,25 @@ class CourseControllerTest {
 
         assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
         verify(deleteCourseLessonUseCase).execute(10L, 1L, 2L, 3L, 4L);
+    }
+
+    @Test
+    void linkMaterial_shouldReturnTheLesson() {
+        LinkLessonMaterialDTO dto = new LinkLessonMaterialDTO();
+        CourseLessonResponse lesson = mock(CourseLessonResponse.class);
+        when(linkLessonMaterialUseCase.execute(10L, 1L, 2L, 3L, 4L, dto)).thenReturn(lesson);
+
+        ResponseEntity<CourseLessonResponse> response = controller.linkMaterial(user, 10L, 2L, 3L, 4L, dto);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertSame(lesson, response.getBody());
+    }
+
+    @Test
+    void unlinkMaterial_shouldReturnNoContent() {
+        ResponseEntity<Void> response = controller.unlinkMaterial(user, 10L, 2L, 3L, 4L, 5L);
+
+        assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
+        verify(unlinkLessonMaterialUseCase).execute(10L, 1L, 2L, 3L, 4L, 5L);
     }
 }

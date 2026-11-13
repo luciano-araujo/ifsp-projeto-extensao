@@ -1,6 +1,7 @@
 package br.edu.ifsp.tcc.application.usecase;
 
 import br.edu.ifsp.tcc.application.dto.CourseDetailResponse;
+import br.edu.ifsp.tcc.application.dto.MaterialResponse;
 import br.edu.ifsp.tcc.application.entity.Course;
 import br.edu.ifsp.tcc.application.entity.CourseLesson;
 import br.edu.ifsp.tcc.application.entity.CourseModule;
@@ -41,14 +42,17 @@ class GetCourseUseCaseTest {
         List<CourseLesson> grafosLessons = List.of(new CourseLesson());
         when(courseService.findCourse(10L, 20L)).thenReturn(course);
         when(courseService.findModules(20L)).thenReturn(List.of(grafos, arvores));
-        when(courseService.findLessonsByModule(List.of(grafos, arvores))).thenReturn(Map.of(30L, grafosLessons));
+        Map<Long, List<CourseLesson>> lessonsByModule = Map.of(30L, grafosLessons);
+        Map<Long, List<MaterialResponse>> materials = Map.of(7L, List.of(mock(MaterialResponse.class)));
+        when(courseService.findLessonsByModule(List.of(grafos, arvores))).thenReturn(lessonsByModule);
+        when(courseService.findMaterialsByLesson(10L, lessonsByModule)).thenReturn(materials);
 
         CourseDetailResponse detail = useCase.execute(10L, 1L, 20L);
 
         assertEquals("Algoritmos", detail.getTitle());
         assertEquals(2, detail.getModulesCount());
         verify(teamService).requireMember(10L, 1L);
-        verify(courseService).toModuleResponse(grafos, grafosLessons);
-        verify(courseService).toModuleResponse(arvores, List.of());
+        verify(courseService).toModuleResponse(grafos, grafosLessons, materials);
+        verify(courseService).toModuleResponse(arvores, List.of(), materials);
     }
 }

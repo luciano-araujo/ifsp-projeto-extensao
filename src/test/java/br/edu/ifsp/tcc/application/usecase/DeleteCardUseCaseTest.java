@@ -4,6 +4,7 @@ import br.edu.ifsp.tcc.application.entity.KanbanItem;
 import br.edu.ifsp.tcc.application.entity.TeamRole;
 import br.edu.ifsp.tcc.application.service.BoardService;
 import br.edu.ifsp.tcc.application.service.KanbanItemService;
+import br.edu.ifsp.tcc.application.service.MaterialService;
 import br.edu.ifsp.tcc.application.service.TeamService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -19,6 +20,7 @@ class DeleteCardUseCaseTest {
     @Mock private TeamService teamService;
     @Mock private BoardService boardService;
     @Mock private KanbanItemService kanbanItemService;
+    @Mock private MaterialService materialService;
     @InjectMocks private DeleteCardUseCase useCase;
 
     @Test
@@ -30,6 +32,7 @@ class DeleteCardUseCaseTest {
         useCase.execute(10L, 1L, 3L);
 
         verify(teamService).requireRole(10L, 1L, TeamRole.ADMIN, TeamRole.CREATOR);
+        verify(materialService).scheduleFileRemovalOfCard(3L);
         verify(kanbanItemService).deleteById(3L);
     }
 }

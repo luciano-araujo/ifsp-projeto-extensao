@@ -34,11 +34,13 @@ class DatabaseSchemaIT extends AbstractIT {
     }
 
     @Test
-    @DisplayName("DB-01 Flyway builds V1..V17 from an empty database and Hibernate ddl-auto=validate accepts it")
-    void flywayCleanBuild() {
+    @DisplayName("DB-01 Flyway builds every migration V1..Vn from an empty database and Hibernate ddl-auto=validate accepts it")
+    void flywayCleanBuild() throws java.io.IOException {
         List<Map<String, Object>> history = jdbc.queryForList(
                 "SELECT version, success FROM flyway_schema_history WHERE version IS NOT NULL ORDER BY installed_rank");
-        assertEquals(17, history.size(), "migrations applied: " + history);
+        int migrationFiles = new org.springframework.core.io.support.PathMatchingResourcePatternResolver()
+                .getResources("classpath:db/migration/V*__*.sql").length;
+        assertEquals(migrationFiles, history.size(), "migrations applied: " + history);
         for (int i = 0; i < history.size(); i++) {
             assertEquals(String.valueOf(i + 1), history.get(i).get("version"));
             Object success = history.get(i).get("success");
@@ -49,6 +51,34 @@ class DatabaseSchemaIT extends AbstractIT {
         assertNotNull(context);
         assertEquals("validate", environment.getProperty("spring.jpa.hibernate.ddl-auto"));
         assertEquals(DB_NAME, jdbc.queryForObject("SELECT DATABASE()", String.class));
+    }
+
+    @Test
+    @DisplayName("DB-01c M2 materials schema: materials and course_lesson_materials with their keys and cascade rules")
+    void materialsSchemaShape() {
+        assertEquals("char(36)", columnType("materials", "uuid"));
+        assertEquals("NO", nullable("materials", "kanban_item_id"));
+        assertEquals("YES", nullable("materials", "uploaded_by"));
+        assertEquals("YES", nullable("materials", "archived_at"));
+        assertEquals("NO", nullable("materials", "storage_key"));
+        assertEquals("bigint", columnType("materials", "size_bytes"));
+        for (String column : List.of("uuid", "storage_key")) {
+            assertEquals(1, count("SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = ? "
+                    + "AND TABLE_NAME = 'materials' AND COLUMN_NAME = ? AND NON_UNIQUE = 0", DB_NAME, column),
+                    "materials." + column + " must be unique");
+        }
+        assertEquals("CASCADE", deleteRule("fk_materials_kanban_item"));
+        assertEquals("SET NULL", deleteRule("fk_materials_uploaded_by"));
+        assertEquals("CASCADE", deleteRule("fk_course_lesson_materials_lesson"));
+        assertEquals("CASCADE", deleteRule("fk_course_lesson_materials_material"));
+        assertEquals(1, count("SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS WHERE TABLE_SCHEMA = ? "
+                + "AND TABLE_NAME = 'course_lesson_materials' AND CONSTRAINT_NAME = 'uk_course_lesson_materials' "
+                + "AND CONSTRAINT_TYPE = 'UNIQUE'", DB_NAME));
+    }
+
+    private String deleteRule(String constraint) {
+        return jdbc.queryForObject("SELECT DELETE_RULE FROM information_schema.REFERENTIAL_CONSTRAINTS "
+                + "WHERE CONSTRAINT_SCHEMA = ? AND CONSTRAINT_NAME = ?", String.class, DB_NAME, constraint);
     }
 
     @Test
