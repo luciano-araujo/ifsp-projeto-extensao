@@ -37,8 +37,9 @@ public class RequestPasswordResetUseCase {
      */
     @Transactional
     public void execute(ForgotPasswordRequest request) {
-        String email = request.getEmail().trim();
-        userService.findByEmail(email).ifPresent(user -> {
+        // The database may match the typed e-mail loosely (case, accents): the code is keyed to and sent to the STORED address
+        userService.findByEmail(request.getEmail().trim()).ifPresent(user -> {
+            String email = user.getEmail();
             passwordResetTokenService.deleteByEmail(email);
 
             String tokenCode = String.format("%06d", secureRandom.nextInt(1_000_000));

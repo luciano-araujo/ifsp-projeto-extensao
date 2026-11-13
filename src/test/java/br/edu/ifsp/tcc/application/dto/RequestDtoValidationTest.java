@@ -223,4 +223,32 @@ class RequestDtoValidationTest {
         ok.setName("Núcleo <b>& \"Cia\"");
         assertTrue(VALIDATOR.validate(ok).isEmpty());
     }
+
+    @Test
+    void saveScript_shouldRefuseContentOver500000Characters() {
+        SaveScriptDTO dto = new SaveScriptDTO();
+        dto.setContent("a".repeat(500_000));
+        assertTrue(VALIDATOR.validate(dto).isEmpty());
+        dto.setContent("a".repeat(500_001));
+        var violations = VALIDATOR.validate(dto);
+        assertEquals(1, violations.size());
+        assertEquals("O roteiro deve ter no máximo 500.000 caracteres.", violations.iterator().next().getMessage());
+    }
+
+    @Test
+    void userNames_shouldRefuseControlCharacters() {
+        String message = "O texto não pode conter quebras de linha ou caracteres de controle.";
+        for (String bad : new String[]{"Ana\nSilva", "Ana\tSilva", "Ana\u0000"}) {
+            UpdateUserDTO update = new UpdateUserDTO();
+            update.setName(bad);
+            assertEquals(message, VALIDATOR.validate(update).iterator().next().getMessage());
+            RegisterTokenRequest signUp = new RegisterTokenRequest();
+            signUp.setName(bad);
+            signUp.setEmail("ana@example.com");
+            assertEquals(message, VALIDATOR.validate(signUp).iterator().next().getMessage());
+        }
+        UpdateUserDTO ok = new UpdateUserDTO();
+        ok.setName("José da Silva");
+        assertTrue(VALIDATOR.validate(ok).isEmpty());
+    }
 }

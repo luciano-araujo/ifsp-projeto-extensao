@@ -38,18 +38,24 @@ class AccountIT extends AbstractIT {
     }
 
     @Test
-    @DisplayName("IT-ACC-01 PUT password: 204, the new password logs in, the old one does not, the session stays valid")
+    @DisplayName("IT-ACC-01 PUT password: 200 {token}, the new password logs in, the old one does not, the old token dies and the new one works")
     void changePassword() {
         Person user = person("pwd");
 
         Resp changed = api.put("/api/v1/users/" + user.id() + "/password", user.token(),
                 map("currentPassword", PASSWORD, "newPassword", "NovaSenha@456"));
 
-        assertEquals(204, changed.status(), changed.body());
-        assertEquals("", changed.body());
+        assertEquals(200, changed.status(), changed.body());
+        String fresh = changed.text("token");
+        assertNotNull(fresh);
         assertEquals(200, login(user.email(), "NovaSenha@456").status());
         assertEquals(401, login(user.email(), PASSWORD).status());
-        assertEquals(200, api.get("/api/v1/users/" + user.id(), user.token()).status());
+        // the other sessions are gone (token version + 1); the token of the answer is the current session
+        assertEquals(401, api.get("/api/v1/users/" + user.id(), user.token()).status());
+        assertEquals(200, api.get("/api/v1/users/" + user.id(), fresh).status());
+        assertEquals(1, jdbc.queryForObject("SELECT token_version FROM users WHERE id = ?", Integer.class, user.id()));
+        // a login after the change gets a working token too
+        assertEquals(200, api.get("/api/v1/users/" + user.id(), login(user.email(), "NovaSenha@456").text("token")).status());
     }
 
     @Test
@@ -69,7 +75,7 @@ class AccountIT extends AbstractIT {
         assertEquals(400, api.put(path, user.token(), map("currentPassword", "", "newPassword", "NovaSenha@456")).status());
         assertEquals(400, api.put(path, user.token(), map("currentPassword", PASSWORD)).status());
         // a 72-byte password is accepted
-        assertEquals(204, api.put(path, user.token(), map("currentPassword", PASSWORD, "newPassword", "a".repeat(72))).status());
+        assertEquals(200, api.put(path, user.token(), map("currentPassword", PASSWORD, "newPassword", "a".repeat(72))).status());
 
         Person other = person("pwd");
         assertEquals(403, api.put(path, other.token(), map("currentPassword", PASSWORD, "newPassword", "NovaSenha@456")).status());

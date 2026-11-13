@@ -10,7 +10,9 @@ import br.edu.ifsp.tcc.application.service.BoardService;
 import br.edu.ifsp.tcc.application.service.CardSummaryService;
 import br.edu.ifsp.tcc.application.service.ScriptService;
 import br.edu.ifsp.tcc.application.service.SummaryGenerator;
+import br.edu.ifsp.tcc.application.exception.TooManyRequestsException;
 import br.edu.ifsp.tcc.application.service.PlanService;
+import br.edu.ifsp.tcc.application.service.RateLimitService;
 import br.edu.ifsp.tcc.application.service.TeamService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -21,6 +23,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.Duration;
 import java.util.Collections;
 import java.util.Optional;
 
@@ -37,6 +40,7 @@ class GenerateCardSummaryUseCaseTest {
     @Mock private CardSummaryService cardSummaryService;
     @Mock private SummaryGenerator summaryGenerator;
     @Mock private PlanService planService;
+    @Mock private RateLimitService rateLimitService;
     @InjectMocks private GenerateCardSummaryUseCase useCase;
 
     private KanbanItem project;
@@ -73,6 +77,32 @@ class GenerateCardSummaryUseCaseTest {
 
         assertSame(response, useCase.execute(10L, 1L, 3L));
         verify(teamService).requireRole(10L, 1L, TeamRole.ADMIN, TeamRole.CREATOR);
+        verify(rateLimitService).registerAttempt("summary:10", 10, Duration.ofHours(1));
+    }
+
+    @Test
+    void execute_shouldAnswer429WithRetryAfterWhenTheTeamLimitIsReached() {
+        when(boardService.findCard(10L, 3L)).thenReturn(project);
+        when(scriptService.findByKanbanItemId(3L)).thenReturn(Optional.of(script("<p>" + words(120) + "</p>")));
+        when(rateLimitService.registerAttempt("summary:10", 10, Duration.ofHours(1))).thenReturn(1800L);
+
+        TooManyRequestsException ex = assertThrows(TooManyRequestsException.class, () -> useCase.execute(10L, 1L, 3L));
+
+        assertEquals(HttpStatus.TOO_MANY_REQUESTS, ex.getStatusCode());
+        assertEquals(1800L, ex.getRetryAfterSeconds());
+        assertEquals("1800", ex.getHeaders().getFirst("Retry-After"));
+        verifyNoInteractions(summaryGenerator);
+        verify(cardSummaryService, never()).overwrite(any(), any());
+    }
+
+    @Test
+    void execute_shouldNotCountTheAttemptWhenTheScriptIsTooShort() {
+        when(boardService.findCard(10L, 3L)).thenReturn(project);
+        when(scriptService.findByKanbanItemId(3L)).thenReturn(Optional.empty());
+
+        assertThrows(ResponseStatusException.class, () -> useCase.execute(10L, 1L, 3L));
+
+        verifyNoInteractions(rateLimitService);
     }
 
     @Test

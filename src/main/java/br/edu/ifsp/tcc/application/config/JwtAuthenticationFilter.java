@@ -52,6 +52,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         User user = userOpt.get();
+        // A token without "tv", or with an older version (password changed/reset since), is no session anymore
+        Integer tokenVersion = decoded.getClaim(JwtService.TOKEN_VERSION_CLAIM).asInt();
+        if (tokenVersion == null || tokenVersion != user.getTokenVersion()) {
+            filterChain.doFilter(request, response);
+            return;
+        }
         UsernamePasswordAuthenticationToken authentication =
                 new UsernamePasswordAuthenticationToken(user, null, Collections.emptyList());
         SecurityContextHolder.getContext().setAuthentication(authentication);

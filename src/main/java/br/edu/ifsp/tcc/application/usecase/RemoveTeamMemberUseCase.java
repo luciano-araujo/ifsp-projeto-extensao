@@ -5,6 +5,7 @@ import br.edu.ifsp.tcc.application.entity.TeamRole;
 import br.edu.ifsp.tcc.application.service.TeamService;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -18,8 +19,10 @@ public class RemoveTeamMemberUseCase {
     }
 
     /** Admins remove anyone; any member can leave the team by removing themselves. */
-    @Transactional
+    // READ_COMMITTED + the team lock first: two parallel changes cannot both see another admin (last-admin race)
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public void execute(Long teamId, Long userId, Long memberId) {
+        teamService.lockTeam(teamId);
         TeamMember requester = teamService.requireMember(teamId, userId);
         TeamMember member = teamService.findMember(teamId, memberId);
 

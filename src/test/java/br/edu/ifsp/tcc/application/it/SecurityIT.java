@@ -18,7 +18,7 @@ class SecurityIT extends AbstractIT {
 
     private String forge(String secret, long userId, Instant expiresAt) {
         return JWT.create().withIssuer("creator-workbench").withSubject(String.valueOf(userId))
-                .withIssuedAt(Instant.now().minusSeconds(3600)).withExpiresAt(expiresAt)
+                .withClaim("tv", 0).withIssuedAt(Instant.now().minusSeconds(3600)).withExpiresAt(expiresAt)
                 .sign(Algorithm.HMAC256(secret));
     }
 

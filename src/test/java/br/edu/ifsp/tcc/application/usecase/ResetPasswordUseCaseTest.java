@@ -37,6 +37,14 @@ class ResetPasswordUseCaseTest {
         return request;
     }
 
+    private User stubUser() {
+        User ana = new User();
+        ana.setEmail("ana@example.com");
+        ana.setPassword("old-hash");
+        when(userService.findByEmail("ana@example.com")).thenReturn(Optional.of(ana));
+        return ana;
+    }
+
     private PasswordResetToken token(int attempts, LocalDateTime expiresAt) {
         PasswordResetToken token = new PasswordResetToken();
         token.setEmail("ana@example.com");
@@ -48,22 +56,22 @@ class ResetPasswordUseCaseTest {
 
     @Test
     void execute_shouldChangePasswordAndDiscardCode() {
-        User ana = new User();
-        ana.setPassword("old-hash");
+        User ana = stubUser();
         when(passwordResetTokenService.findLatestByEmail("ana@example.com"))
                 .thenReturn(Optional.of(token(0, LocalDateTime.now().plusMinutes(5))));
-        when(userService.findByEmail("ana@example.com")).thenReturn(Optional.of(ana));
         when(passwordEncoder.encode("novaSenha1")).thenReturn("new-hash");
 
         useCase.execute(request("123456"));
 
         assertEquals("new-hash", ana.getPassword());
+        assertEquals(1, ana.getTokenVersion());
         verify(userService).update(ana);
         verify(passwordResetTokenService).deleteByEmail("ana@example.com");
     }
 
     @Test
     void execute_shouldCountWrongCodeAndKeepPassword() {
+        stubUser();
         PasswordResetToken current = token(1, LocalDateTime.now().plusMinutes(5));
         when(passwordResetTokenService.findLatestByEmail("ana@example.com")).thenReturn(Optional.of(current));
         when(passwordResetTokenService.registerAttempt(any(), eq(ResetPasswordUseCase.MAX_ATTEMPTS))).thenReturn(2);
@@ -77,6 +85,7 @@ class ResetPasswordUseCaseTest {
 
     @Test
     void execute_shouldDiscardCodeAfterMaxAttempts() {
+        stubUser();
         PasswordResetToken current = token(ResetPasswordUseCase.MAX_ATTEMPTS - 1, LocalDateTime.now().plusMinutes(5));
         when(passwordResetTokenService.findLatestByEmail("ana@example.com")).thenReturn(Optional.of(current));
         when(passwordResetTokenService.registerAttempt(any(), eq(ResetPasswordUseCase.MAX_ATTEMPTS))).thenReturn(ResetPasswordUseCase.MAX_ATTEMPTS);
@@ -90,6 +99,7 @@ class ResetPasswordUseCaseTest {
 
     @Test
     void execute_shouldRejectExpiredCode() {
+        stubUser();
         when(passwordResetTokenService.findLatestByEmail("ana@example.com"))
                 .thenReturn(Optional.of(token(0, LocalDateTime.now().minusMinutes(1))));
 
@@ -101,6 +111,7 @@ class ResetPasswordUseCaseTest {
 
     @Test
     void execute_shouldRejectWhenNoCodeWasRequested() {
+        stubUser();
         when(passwordResetTokenService.findLatestByEmail("ana@example.com")).thenReturn(Optional.empty());
 
         assertThrows(ResponseStatusException.class, () -> useCase.execute(request("123456")));
@@ -121,6 +132,7 @@ class ResetPasswordUseCaseTest {
 
     @Test
     void execute_shouldRefuseEvenTheRightCodeOnceTheCapWasReached() {
+        stubUser();
         when(passwordResetTokenService.findLatestByEmail("ana@example.com"))
                 .thenReturn(Optional.of(token(0, LocalDateTime.now().plusMinutes(5))));
         when(passwordResetTokenService.registerAttempt(any(), eq(ResetPasswordUseCase.MAX_ATTEMPTS))).thenReturn(-1);
@@ -130,5 +142,33 @@ class ResetPasswordUseCaseTest {
         assertTrue(ex.getReason().contains("Muitas tentativas"));
         verify(passwordResetTokenService).deleteByEmail("ana@example.com");
         verify(userService, never()).update(any());
+    }
+
+    @Test
+    void execute_shouldMatchThroughTheStoredEmailWhenTypedWithDifferentCase() {
+        User ana = new User();
+        ana.setEmail("ana@example.com");
+        ana.setPassword("old-hash");
+        when(userService.findByEmail("ANA@Example.com")).thenReturn(Optional.of(ana));
+        when(passwordResetTokenService.findLatestByEmail("ana@example.com"))
+                .thenReturn(Optional.of(token(0, LocalDateTime.now().plusMinutes(5))));
+        when(passwordEncoder.encode("novaSenha1")).thenReturn("new-hash");
+        ResetPasswordRequest request = request("123456");
+        request.setEmail("  ANA@Example.com ");
+
+        useCase.execute(request);
+
+        assertEquals("new-hash", ana.getPassword());
+        verify(passwordResetTokenService).deleteByEmail("ana@example.com");
+    }
+
+    @Test
+    void execute_shouldRejectUnknownEmailWithTheGenericMessage() {
+        when(userService.findByEmail("ana@example.com")).thenReturn(Optional.empty());
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class, () -> useCase.execute(request("123456")));
+
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        verifyNoInteractions(passwordResetTokenService);
     }
 }

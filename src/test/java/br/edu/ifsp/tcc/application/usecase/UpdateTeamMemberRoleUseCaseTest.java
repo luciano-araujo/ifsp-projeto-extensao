@@ -51,7 +51,9 @@ class UpdateTeamMemberRoleUseCaseTest {
         useCase.execute(10L, 1L, 6L, dto(TeamRole.REVIEWER));
 
         assertEquals(TeamRole.REVIEWER, creator.getRole());
-        verify(teamService).requireRole(10L, 1L, TeamRole.ADMIN);
+        var order = inOrder(teamService);
+        order.verify(teamService).lockTeam(10L);
+        order.verify(teamService).requireRole(10L, 1L, TeamRole.ADMIN);
         verify(teamService).saveMember(creator);
     }
 }

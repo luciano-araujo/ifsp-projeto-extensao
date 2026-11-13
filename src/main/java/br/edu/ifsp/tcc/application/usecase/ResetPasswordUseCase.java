@@ -34,7 +34,10 @@ public class ResetPasswordUseCase {
     @Transactional(noRollbackFor = ResponseStatusException.class)
     public void execute(ResetPasswordRequest request) {
         PasswordPolicy.requireEncodable(request.getNewPassword());
-        String email = request.getEmail().trim();
+        // The code is keyed to the stored address: resolve it first, so a loosely typed e-mail (case, accents) still matches
+        User user = userService.findByEmail(request.getEmail().trim())
+                .orElseThrow(() -> invalid("Código inválido ou expirado. Solicite um novo."));
+        String email = user.getEmail();
         PasswordResetToken token = passwordResetTokenService.findLatestByEmail(email)
                 .orElseThrow(() -> invalid("Código inválido ou expirado. Solicite um novo."));
 
@@ -57,9 +60,8 @@ public class ResetPasswordUseCase {
             throw invalid("Código inválido.");
         }
 
-        User user = userService.findByEmail(email)
-                .orElseThrow(() -> invalid("Código inválido ou expirado. Solicite um novo."));
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        user.setTokenVersion(user.getTokenVersion() + 1);
         userService.update(user);
         passwordResetTokenService.deleteByEmail(email);
     }

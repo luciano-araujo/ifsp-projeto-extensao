@@ -2,6 +2,8 @@ package br.edu.ifsp.tcc.application.usecase;
 
 import br.edu.ifsp.tcc.application.dto.ChangePasswordDTO;
 import br.edu.ifsp.tcc.application.entity.User;
+import br.edu.ifsp.tcc.application.dto.TokenResponse;
+import br.edu.ifsp.tcc.application.service.JwtService;
 import br.edu.ifsp.tcc.application.service.PasswordPolicy;
 import br.edu.ifsp.tcc.application.service.UserService;
 import org.springframework.http.HttpStatus;
@@ -17,15 +19,20 @@ public class ChangePasswordUseCase {
 
     private final UserService userService;
     private final PasswordEncoder passwordEncoder;
+    private final JwtService jwtService;
 
-    public ChangePasswordUseCase(UserService userService, PasswordEncoder passwordEncoder) {
+    public ChangePasswordUseCase(UserService userService, PasswordEncoder passwordEncoder, JwtService jwtService) {
         this.userService = userService;
         this.passwordEncoder = passwordEncoder;
+        this.jwtService = jwtService;
     }
 
-    /** Only the user themself; the current password must match (400 otherwise). */
+    /**
+     * Only the user themself; the current password must match (400 otherwise). Every other session is
+     * invalidated (token version + 1); the answer carries a new token so this session keeps working.
+     */
     @Transactional
-    public void execute(Long id, Long authenticatedUserId, ChangePasswordDTO dto) {
+    public TokenResponse execute(Long id, Long authenticatedUserId, ChangePasswordDTO dto) {
         if (!id.equals(authenticatedUserId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Acesso negado.");
         }
@@ -39,6 +46,8 @@ public class ChangePasswordUseCase {
         PasswordPolicy.requireEncodable(dto.getNewPassword());
 
         user.setPassword(passwordEncoder.encode(dto.getNewPassword()));
+        user.setTokenVersion(user.getTokenVersion() + 1);
         userService.update(user);
+        return new TokenResponse(jwtService.generateToken(user));
     }
 }

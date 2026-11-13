@@ -94,8 +94,8 @@ class JwtAuthenticationFilterTest {
         user.setId(1L);
         user.setEmail("test@example.com");
 
-        DecodedJWT decoded = mock(DecodedJWT.class);
-        when(decoded.getSubject()).thenReturn("1");
+        user.setTokenVersion(3);
+        DecodedJWT decoded = decodedFor("1", 3);
 
         when(request.getHeader("Authorization")).thenReturn("Bearer valid-token");
         when(jwtService.validateToken("valid-token")).thenReturn(decoded);
@@ -106,5 +106,45 @@ class JwtAuthenticationFilterTest {
         verify(filterChain).doFilter(request, response);
         assertNotNull(SecurityContextHolder.getContext().getAuthentication());
         assertEquals(user, SecurityContextHolder.getContext().getAuthentication().getPrincipal());
+    }
+
+    private DecodedJWT decodedFor(String subject, Integer tokenVersion) {
+        DecodedJWT decoded = mock(DecodedJWT.class);
+        when(decoded.getSubject()).thenReturn(subject);
+        com.auth0.jwt.interfaces.Claim claim = mock(com.auth0.jwt.interfaces.Claim.class);
+        when(claim.asInt()).thenReturn(tokenVersion);
+        when(decoded.getClaim("tv")).thenReturn(claim);
+        return decoded;
+    }
+
+    @Test
+    void shouldNotAuthenticateWhenTheTokenVersionIsOlderThanTheUsers() throws Exception {
+        User user = new User();
+        user.setId(1L);
+        user.setTokenVersion(2);
+        when(request.getHeader("Authorization")).thenReturn("Bearer old-token");
+        DecodedJWT decoded = decodedFor("1", 1);
+        when(jwtService.validateToken("old-token")).thenReturn(decoded);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+
+        filter.doFilterInternal(request, response, filterChain);
+
+        verify(filterChain).doFilter(request, response);
+        assertNull(SecurityContextHolder.getContext().getAuthentication());
+    }
+
+    @Test
+    void shouldNotAuthenticateWhenTheTokenHasNoVersionClaim() throws Exception {
+        User user = new User();
+        user.setId(1L);
+        when(request.getHeader("Authorization")).thenReturn("Bearer legacy-token");
+        DecodedJWT decoded = decodedFor("1", null);
+        when(jwtService.validateToken("legacy-token")).thenReturn(decoded);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+
+        filter.doFilterInternal(request, response, filterChain);
+
+        verify(filterChain).doFilter(request, response);
+        assertNull(SecurityContextHolder.getContext().getAuthentication());
     }
 }

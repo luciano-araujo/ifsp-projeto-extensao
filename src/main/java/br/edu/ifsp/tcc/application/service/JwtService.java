@@ -14,6 +14,8 @@ import java.time.Instant;
 @Service
 public class JwtService {
 
+    public static final String TOKEN_VERSION_CLAIM = "tv";
+
     private final Algorithm algorithm;
     private final JWTVerifier verifier;
     private final long expirationMs;
@@ -32,6 +34,7 @@ public class JwtService {
                 .withSubject(user.getId().toString())
                 .withClaim("email", user.getEmail())
                 .withClaim("name", user.getName())
+                .withClaim(TOKEN_VERSION_CLAIM, user.getTokenVersion())
                 .withIssuedAt(Instant.now())
                 .withExpiresAt(Instant.now().plusMillis(expirationMs))
                 .sign(algorithm);
