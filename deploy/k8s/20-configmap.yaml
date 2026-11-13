@@ -6,8 +6,9 @@ metadata:
   labels: { Project: creator-workbench }
 data:
   SPRING_PROFILES_ACTIVE: prod
-  CORS_ORIGINS: "http://${ELB_HOST},https://${ELB_HOST}"
-  FRONTEND_BASE_URL: "http://${ELB_HOST}"
+  CORS_ORIGINS: "http://${ELB_HOST},https://${ELB_HOST},http://${PUBLIC_HOST},https://${PUBLIC_HOST}"
+  # PUBLIC_HOST = dominio proprio (SITE_HOST) quando existe; senao o DNS do ELB
+  FRONTEND_BASE_URL: "${PUBLIC_SCHEME}://${PUBLIC_HOST}"
   STORAGE_TYPE: s3
   STORAGE_S3_BUCKET: "${S3_BUCKET}"
   STORAGE_S3_REGION: us-east-1

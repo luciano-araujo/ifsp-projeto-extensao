@@ -42,7 +42,7 @@ export ECR_REGISTRY IMAGE_TAG S3_BUCKET="$BUCKET"
 # --- cluster ---------------------------------------------------------------------------------------------------
 aws eks update-kubeconfig --name "$CLUSTER" --region "$REGION" >/dev/null
 K="$(cygpath -m "$REPO_ROOT")/deploy/k8s"
-render() { sed -e "s|\${ELB_HOST}|$ELB_HOST|g" -e "s|\${S3_BUCKET}|$S3_BUCKET|g" -e "s|\${ECR_REGISTRY}|$ECR_REGISTRY|g" -e "s|\${IMAGE_TAG}|$IMAGE_TAG|g" "$1"; }
+render() { sed -e "s|\${PUBLIC_HOST}|$PUBLIC_HOST|g" -e "s|\${PUBLIC_SCHEME}|$PUBLIC_SCHEME|g" -e "s|\${ELB_HOST}|$ELB_HOST|g" -e "s|\${S3_BUCKET}|$S3_BUCKET|g" -e "s|\${ECR_REGISTRY}|$ECR_REGISTRY|g" -e "s|\${IMAGE_TAG}|$IMAGE_TAG|g" "$1"; }
 kubectl apply -f "$K/00-namespace.yaml"
 SVC="$K/10-service-web.yaml"
 if ! "${NSK[@]}" get svc web >/dev/null 2>&1; then   # 1a vez: sem HTTPS, so para obter o DNS do ELB
@@ -57,6 +57,12 @@ for i in $(seq 1 60); do
 done
 [ -n "$ELB_HOST" ] || { log "O ELB nao foi criado"; "${NSK[@]}" describe svc web | tail -20; exit 1; }
 echo "$ELB_HOST" > "$STATE_DIR/elb_host"
+# dominio proprio opcional: SITE_HOST=www.exemplo.com (fica salvo em .state/site_host); SITE_SCHEME=https quando houver certificado valido
+SITE_HOST="${SITE_HOST:-$(cat "$STATE_DIR/site_host" 2>/dev/null || true)}"
+[ -n "$SITE_HOST" ] && echo "$SITE_HOST" > "$STATE_DIR/site_host"
+PUBLIC_HOST="${SITE_HOST:-$ELB_HOST}"
+PUBLIC_SCHEME="${SITE_SCHEME:-http}"
+log "Endereco publico: $PUBLIC_SCHEME://$PUBLIC_HOST"
 SSL_CERT_ARN="$(ensure_cert "$ELB_HOST")"
 sed -e "s|\${SSL_CERT_ARN}|$SSL_CERT_ARN|g" -e 's| #SSL$||' "$SVC" | kubectl apply -f - >/dev/null   # HTTP 80 + HTTPS 443
 log "ELB: http://$ELB_HOST  https://$ELB_HOST (certificado autoassinado, $SSL_CERT_ARN)"
