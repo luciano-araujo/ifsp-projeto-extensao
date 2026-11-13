@@ -16,6 +16,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.Base64;
 import java.util.HexFormat;
 import java.util.List;
@@ -55,7 +56,7 @@ public class InviteService {
     /** Stores the invite with the hash of the token and the 7-day expiry; the token itself is never stored. */
     public TeamInvite create(TeamInvite invite, String token) {
         invite.setTokenHash(hash(token));
-        invite.setExpiresAt(LocalDateTime.now().plusDays(VALID_DAYS));
+        invite.setExpiresAt(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS).plusDays(VALID_DAYS));
         return teamInviteRepository.save(invite);
     }
 

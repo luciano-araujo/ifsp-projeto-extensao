@@ -15,6 +15,8 @@ public class CourseLessonResponse {
     private String uuid;
     private Long moduleId;
     private String title;
+    private String description;
+    private String contentUrl;
     private LessonType type;
     private Boolean published;
     private Integer sortOrder;

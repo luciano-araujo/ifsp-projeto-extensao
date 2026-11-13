@@ -337,4 +337,60 @@ class CourseServiceTest {
 
         assertTrue(service.toLessonResponseWithMaterials(10L, lesson).getMaterials().isEmpty());
     }
+
+    @Test
+    void toDetailResponse_shouldReturnTheTreeWithStatusAndLessonFields() {
+        Course course = course(2L);
+        course.setTitle("Curso");
+        course.setStatus(br.edu.ifsp.tcc.application.entity.CourseStatus.PUBLISHED);
+        CourseModule module = module(3L, course);
+        CourseLesson lesson = lesson(4L, module);
+        lesson.setDescription("Desc");
+        lesson.setContentUrl("https://vimeo.com/1");
+        when(moduleRepository.findByCourse_IdOrderBySortOrderAscIdAsc(2L)).thenReturn(List.of(module));
+        when(lessonRepository.findByModule_IdInOrderBySortOrderAscIdAsc(List.of(3L))).thenReturn(List.of(lesson));
+        when(materialService.findResponsesByLesson(10L, List.of(4L))).thenReturn(Map.of());
+
+        var detail = service.toDetailResponse(10L, course);
+
+        assertEquals(br.edu.ifsp.tcc.application.entity.CourseStatus.PUBLISHED, detail.getStatus());
+        assertEquals(1, detail.getModulesCount());
+        assertEquals("Desc", detail.getModules().get(0).getLessons().get(0).getDescription());
+        assertEquals("https://vimeo.com/1", detail.getModules().get(0).getLessons().get(0).getContentUrl());
+    }
+
+    @Test
+    void toModuleResponses_shouldBeEmptyWithoutModules() {
+        assertTrue(service.toModuleResponses(10L, List.of()).isEmpty());
+    }
+
+    @Test
+    void findLessons_shouldReadTheLessonsOfOneModule() {
+        CourseLesson lesson = lesson(4L, module(3L, course(2L)));
+        when(lessonRepository.findByModule_IdInOrderBySortOrderAscIdAsc(List.of(3L))).thenReturn(List.of(lesson));
+
+        assertEquals(List.of(lesson), service.findLessons(3L));
+    }
+
+    @Test
+    void requireExactIds_shouldAcceptTheSameIdsInAnyOrder() {
+        assertDoesNotThrow(() -> service.requireExactIds(List.of(3L, 1L, 2L), List.of(1L, 2L, 3L), "x"));
+    }
+
+    @Test
+    void requireExactIds_shouldRefuseMissingExtraOrRepeatedIds() {
+        for (List<Long> requested : List.of(List.of(1L, 2L), List.of(1L, 2L, 3L, 4L), List.of(1L, 1L, 2L), List.of(1L, 2L, 9L))) {
+            ResponseStatusException e = assertThrows(ResponseStatusException.class,
+                    () -> service.requireExactIds(requested, List.of(1L, 2L, 3L), "mensagem"));
+            assertEquals(HttpStatus.BAD_REQUEST, e.getStatusCode());
+            assertEquals("mensagem", e.getReason());
+        }
+    }
+
+    @Test
+    void blankToNull_shouldTrimOrClear() {
+        assertNull(CourseService.blankToNull(null));
+        assertNull(CourseService.blankToNull("  "));
+        assertEquals("a", CourseService.blankToNull(" a "));
+    }
 }

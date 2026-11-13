@@ -15,6 +15,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 
 @Component
 public class RequestEmailChangeUseCase {
@@ -55,7 +56,7 @@ public class RequestEmailChangeUseCase {
         token.setUser(user);
         token.setNewEmail(newEmail);
         token.setToken(code);
-        token.setExpiresAt(LocalDateTime.now().plusMinutes(tokenExpiryMinutes));
+        token.setExpiresAt(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS).plusMinutes(tokenExpiryMinutes));
         emailChangeTokenService.save(token);
 
         emailService.sendEmailChangeToken(newEmail, user.getName(), code);

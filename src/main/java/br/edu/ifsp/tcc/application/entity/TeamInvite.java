@@ -2,6 +2,7 @@ package br.edu.ifsp.tcc.application.entity;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 
 @Entity
 @Table(name = "team_invites")
@@ -43,7 +44,7 @@ public class TeamInvite {
 
     @PrePersist
     protected void onCreate() {
-        createdAt = LocalDateTime.now();
+        createdAt = LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS);
     }
 
     public boolean isExpired() {

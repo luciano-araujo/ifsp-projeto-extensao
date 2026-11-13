@@ -1,5 +1,6 @@
 package br.edu.ifsp.tcc.application.dto;
 
+import br.edu.ifsp.tcc.application.entity.CourseStatus;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -15,6 +16,11 @@ public class CourseDetailResponse {
     private Long teamId;
     private String title;
     private String description;
+    private CourseStatus status;
+
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'")
+    private LocalDateTime publishedAt;
+
     private Integer modulesCount;
     private List<CourseModuleResponse> modules;
 

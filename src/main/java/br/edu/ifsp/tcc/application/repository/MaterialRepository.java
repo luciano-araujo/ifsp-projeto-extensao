@@ -33,6 +33,18 @@ public interface MaterialRepository extends JpaRepository<Material, Long> {
             + "WHERE m.kanbanItem.id IN :cardIds GROUP BY m.kanbanItem.id")
     List<CardCount> countByCards(@Param("cardIds") Collection<Long> cardIds);
 
+    /** Materials linked to lessons of courses published on or before the limit, not archived yet (RN04). */
+    @Query("SELECT DISTINCT m FROM LessonMaterial lm JOIN lm.material m JOIN lm.lesson l JOIN l.module mo JOIN mo.course c "
+            + "WHERE c.status = br.edu.ifsp.tcc.application.entity.CourseStatus.PUBLISHED "
+            + "AND c.publishedAt <= :limit AND m.archivedAt IS NULL ORDER BY m.id")
+    List<Material> findDueForArchive(@Param("limit") java.time.LocalDateTime limit);
+
+    /** Marks one material as archived in its own short transaction (call it outside any other transaction). */
+    @org.springframework.transaction.annotation.Transactional
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("UPDATE Material m SET m.archivedAt = :at WHERE m.id = :id")
+    int markArchived(@Param("id") Long id, @Param("at") java.time.LocalDateTime at);
+
     @Query("SELECT m.storageKey FROM Material m WHERE m.kanbanItem.id = :cardId")
     List<String> findStorageKeysByCard(@Param("cardId") Long cardId);
 

@@ -23,10 +23,13 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -51,6 +54,8 @@ public class MaterialService {
     /** 20 MB per file (contract 7.8). */
     public static final long MAX_SIZE_BYTES = 20L * 1024 * 1024;
     public static final int MAX_FILE_NAME_LENGTH = 255;
+    /** Bytes read to check that the content matches the extension. */
+    static final int SNIFF_BYTES = 8192;
 
     public static final String MSG_TOO_LARGE = "O arquivo excede o limite de 20 MB.";
     public static final String MSG_TYPE_NOT_ALLOWED = "Tipo de arquivo não permitido.";
@@ -128,6 +133,48 @@ public class MaterialService {
         return accepted.get(0);
     }
 
+    /**
+     * The first bytes must look like the extension says (a script renamed to .pdf is refused with 415). Reads at most
+     * {@value #SNIFF_BYTES} bytes and leaves the stream at its start (mark/reset), so the file is never loaded whole.
+     */
+    static void requireContentMatchesExtension(String fileName, BufferedInputStream content) throws IOException {
+        content.mark(SNIFF_BYTES + 1);
+        byte[] head = content.readNBytes(SNIFF_BYTES);
+        content.reset();
+        if (!contentMatches(extensionOf(fileName), head)) {
+            throw new ResponseStatusException(HttpStatus.UNSUPPORTED_MEDIA_TYPE, MSG_TYPE_NOT_ALLOWED);
+        }
+    }
+
+    static boolean contentMatches(String extension, byte[] head) {
+        return switch (extension) {
+            case "pdf" -> startsWith(head, 0, '%', 'P', 'D', 'F', '-');
+            case "png" -> startsWith(head, 0, 0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A);
+            case "jpg", "jpeg" -> startsWith(head, 0, 0xFF, 0xD8, 0xFF);
+            case "gif" -> startsWith(head, 0, 'G', 'I', 'F', '8', '7', 'a') || startsWith(head, 0, 'G', 'I', 'F', '8', '9', 'a');
+            case "webp" -> startsWith(head, 0, 'R', 'I', 'F', 'F') && startsWith(head, 8, 'W', 'E', 'B', 'P');
+            case "docx", "xlsx", "pptx" -> startsWith(head, 0, 'P', 'K', 0x03, 0x04);
+            case "doc", "xls", "ppt" -> startsWith(head, 0, 0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1);
+            case "txt" -> noNulByte(head);
+            default -> false;
+        };
+    }
+
+    private static boolean startsWith(byte[] head, int offset, int... expected) {
+        if (head.length < offset + expected.length) return false;
+        for (int i = 0; i < expected.length; i++) {
+            if ((head[offset + i] & 0xFF) != expected[i]) return false;
+        }
+        return true;
+    }
+
+    private static boolean noNulByte(byte[] head) {
+        for (byte b : head) {
+            if (b == 0) return false;
+        }
+        return true;
+    }
+
     // --- Materials ---
 
     /** Validates the upload, saves the bytes in the storage and the row in the database. */
@@ -139,9 +186,10 @@ public class MaterialService {
         }
 
         String key = UUID.randomUUID().toString();
-        // Registered before storing: if the copy fails half way, the partial file is removed too
-        removeFileOnRollback(key);
-        try (InputStream content = file.getInputStream()) {
+        try (InputStream raw = file.getInputStream(); BufferedInputStream content = new BufferedInputStream(raw)) {
+            requireContentMatchesExtension(fileName, content);
+            // Registered before storing: if the copy fails half way, the partial file is removed too
+            removeFileOnRollback(key);
             fileStorage.store(key, content, file.getSize(), contentType);
         } catch (IOException e) {
             throw new FileStorageException("Could not read the uploaded file.", e);
@@ -264,6 +312,28 @@ public class MaterialService {
         } catch (RuntimeException e) {
             log.error("Could not delete the stored file {}", key, e);
         }
+    }
+
+    // --- Archive (RN04) ---
+
+    /**
+     * Archives every material of courses published on or before the limit that is not archived yet, then marks the
+     * row, one material at a time. Call it outside a transaction, so none stays open across the S3 calls. A material whose archive fails is logged and left for the next run. Returns how many were archived.
+     */
+    public int archiveDueMaterials(LocalDateTime limit) {
+        int archived = 0;
+        for (Material material : materialRepository.findDueForArchive(limit)) {
+            try {
+                fileStorage.archive(material.getStorageKey());
+            } catch (RuntimeException e) {
+                log.error("Could not archive material {} (key {})", material.getId(), material.getStorageKey(), e);
+                continue;
+            }
+            // Marked right after its own S3 copy, in its own transaction: a crash never leaves archived objects unmarked
+            materialRepository.markArchived(material.getId(), LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS));
+            archived++;
+        }
+        return archived;
     }
 
     // --- Lesson links ---

@@ -2,6 +2,7 @@ package br.edu.ifsp.tcc.application.entity;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 
 @Entity
 @Table(name = "email_change_tokens")
@@ -32,7 +33,7 @@ public class EmailChangeToken {
 
     @PrePersist
     protected void onCreate() {
-        createdAt = LocalDateTime.now();
+        createdAt = LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS);
     }
 
     public boolean isExpired() {
