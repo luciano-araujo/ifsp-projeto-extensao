@@ -4,7 +4,9 @@ import br.edu.ifsp.tcc.application.dto.BoardColumnResponse;
 import br.edu.ifsp.tcc.application.dto.BoardResponse;
 import br.edu.ifsp.tcc.application.dto.CardResponse;
 import br.edu.ifsp.tcc.application.entity.*;
+import br.edu.ifsp.tcc.application.dto.ReviewStatus;
 import br.edu.ifsp.tcc.application.service.BoardService;
+import br.edu.ifsp.tcc.application.service.CardReviewService;
 import br.edu.ifsp.tcc.application.service.KanbanItemService;
 import br.edu.ifsp.tcc.application.service.TeamService;
 import org.springframework.stereotype.Component;
@@ -22,11 +24,14 @@ public class GetBoardUseCase {
     private final TeamService teamService;
     private final BoardService boardService;
     private final KanbanItemService kanbanItemService;
+    private final CardReviewService cardReviewService;
 
-    public GetBoardUseCase(TeamService teamService, BoardService boardService, KanbanItemService kanbanItemService) {
+    public GetBoardUseCase(TeamService teamService, BoardService boardService, KanbanItemService kanbanItemService,
+                           CardReviewService cardReviewService) {
         this.teamService = teamService;
         this.boardService = boardService;
         this.kanbanItemService = kanbanItemService;
+        this.cardReviewService = cardReviewService;
     }
 
     /** Columns of the team with their project cards; ideas stay in the inbox and are not listed here. */
@@ -39,6 +44,7 @@ public class GetBoardUseCase {
                 .toList();
         Map<Long, List<CardTask>> tasksByCard = boardService.findTasksByCard(projects);
         Map<Long, LocalDateTime> columnSinceByCard = boardService.findColumnSince(projects);
+        Map<Long, ReviewStatus> reviewStatusByCard = cardReviewService.findStatuses(projects);
 
         Long firstColumnId = columns.isEmpty() ? null : columns.get(0).getId();
         Map<Long, List<CardResponse>> cardsByColumn = new HashMap<>();
@@ -48,7 +54,8 @@ public class GetBoardUseCase {
             if (columnId == null) continue;
             cardsByColumn.computeIfAbsent(columnId, id -> new ArrayList<>())
                     .add(boardService.toCardResponse(item, columnId, tasksByCard.getOrDefault(item.getId(), List.of()),
-                            columnSinceByCard.get(item.getId())));
+                            columnSinceByCard.get(item.getId()),
+                            reviewStatusByCard.getOrDefault(item.getId(), ReviewStatus.NONE)));
         }
 
         List<BoardColumnResponse> columnResponses = columns.stream()

@@ -38,6 +38,10 @@ class BoardControllerTest {
     @Mock private ReorderCardTasksUseCase reorderCardTasksUseCase;
     @Mock private ReorderColumnsUseCase reorderColumnsUseCase;
     @Mock private GetCardHistoryUseCase getCardHistoryUseCase;
+    @Mock private CreateCardReviewUseCase createCardReviewUseCase;
+    @Mock private ListCardReviewsUseCase listCardReviewsUseCase;
+    @Mock private GenerateCardSummaryUseCase generateCardSummaryUseCase;
+    @Mock private GetCardSummaryUseCase getCardSummaryUseCase;
     @InjectMocks private BoardController controller;
 
     private User user;
@@ -127,6 +131,50 @@ class BoardControllerTest {
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertSame(moved, response.getBody());
+    }
+
+    @Test
+    void createReview_shouldReturnReview() {
+        CreateReviewDTO dto = new CreateReviewDTO();
+        CardReviewResponse review = mock(CardReviewResponse.class);
+        when(createCardReviewUseCase.execute(10L, 1L, 3L, dto)).thenReturn(review);
+
+        ResponseEntity<CardReviewResponse> response = controller.createReview(user, 10L, 3L, dto);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertSame(review, response.getBody());
+    }
+
+    @Test
+    void reviews_shouldReturnList() {
+        when(listCardReviewsUseCase.execute(10L, 1L, 3L)).thenReturn(List.of());
+
+        ResponseEntity<List<CardReviewResponse>> response = controller.reviews(user, 10L, 3L);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertTrue(response.getBody().isEmpty());
+    }
+
+    @Test
+    void generateSummary_shouldReturnSummary() {
+        CardSummaryResponse summary = mock(CardSummaryResponse.class);
+        when(generateCardSummaryUseCase.execute(10L, 1L, 3L)).thenReturn(summary);
+
+        ResponseEntity<CardSummaryResponse> response = controller.generateSummary(user, 10L, 3L);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertSame(summary, response.getBody());
+    }
+
+    @Test
+    void summary_shouldReturnLastSummary() {
+        CardSummaryResponse summary = mock(CardSummaryResponse.class);
+        when(getCardSummaryUseCase.execute(10L, 1L, 3L)).thenReturn(summary);
+
+        ResponseEntity<CardSummaryResponse> response = controller.summary(user, 10L, 3L);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertSame(summary, response.getBody());
     }
 
     @Test

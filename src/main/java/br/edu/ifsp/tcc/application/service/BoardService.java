@@ -5,6 +5,7 @@ import br.edu.ifsp.tcc.application.dto.CardMovementResponse;
 import br.edu.ifsp.tcc.application.dto.CardResponse;
 import br.edu.ifsp.tcc.application.dto.CardTaskResponse;
 import br.edu.ifsp.tcc.application.dto.MovedByResponse;
+import br.edu.ifsp.tcc.application.dto.ReviewStatus;
 import br.edu.ifsp.tcc.application.dto.TaskAssigneeResponse;
 import br.edu.ifsp.tcc.application.entity.*;
 import br.edu.ifsp.tcc.application.repository.BoardColumnRepository;
@@ -193,6 +194,11 @@ public class BoardService {
     }
 
     public CardResponse toCardResponse(KanbanItem item, Long columnId, List<CardTask> tasks, LocalDateTime columnSince) {
+        return toCardResponse(item, columnId, tasks, columnSince, ReviewStatus.NONE);
+    }
+
+    public CardResponse toCardResponse(KanbanItem item, Long columnId, List<CardTask> tasks, LocalDateTime columnSince,
+                                       ReviewStatus reviewStatus) {
         int done = (int) tasks.stream().filter(t -> Boolean.TRUE.equals(t.getCompleted())).count();
         boolean idea = item.getState() == KanbanItemState.IDEATION;
         Tag tag = item.getTag();
@@ -201,7 +207,7 @@ public class BoardService {
                 progressOf(tasks), tasks.size(), done, item.getTargetAudience(), item.getPedagogicalObjective(),
                 tasks.stream().map(this::toTaskResponse).toList(), tag != null ? tag.getName() : null,
                 item.getDueDate(), 0, false, item.getCreatedAt(), item.getUpdatedAt(),
-                tag != null ? tag.getId() : null, tag != null ? tag.getColor() : null, columnSince);
+                tag != null ? tag.getId() : null, tag != null ? tag.getColor() : null, columnSince, reviewStatus);
     }
 
     public CardTaskResponse toTaskResponse(CardTask task) {

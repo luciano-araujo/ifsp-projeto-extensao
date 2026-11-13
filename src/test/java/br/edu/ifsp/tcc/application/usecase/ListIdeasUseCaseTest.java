@@ -1,6 +1,7 @@
 package br.edu.ifsp.tcc.application.usecase;
 
 import br.edu.ifsp.tcc.application.dto.CardResponse;
+import br.edu.ifsp.tcc.application.dto.ReviewStatus;
 import br.edu.ifsp.tcc.application.entity.IdeaVote;
 import br.edu.ifsp.tcc.application.entity.KanbanItem;
 import br.edu.ifsp.tcc.application.entity.KanbanItemState;
@@ -61,7 +62,7 @@ class ListIdeasUseCaseTest {
 
     private CardResponse emptyResponse(Long id) {
         return new CardResponse(id, "uuid-" + id, 10L, "Ideia", null, "IDEA", null, 0, 0, 0, 0, null, null,
-                List.of(), null, null, 0, false, null, null, null, null, null);
+                List.of(), null, null, 0, false, null, null, null, null, null, ReviewStatus.NONE);
     }
 
     private void givenResponses() {
@@ -124,8 +125,8 @@ class ListIdeasUseCaseTest {
     void execute_shouldSearchTitleAndDescriptionIgnoringCase() {
         KanbanItem inTitle = idea(1L, "Planilhas com PROCV", null, null);
         KanbanItem inDescription = idea(2L, "Outra", "usa o procv e o procx", null);
-        KanbanItem noMatch = idea(3L, "Podcast", "sem relação", null);
-        KanbanItem noText = idea(4L, "Sem descrição", null, null);
+        KanbanItem noMatch = idea(3L, "Podcast", "sem relaÃ§Ã£o", null);
+        KanbanItem noText = idea(4L, "Sem descriÃ§Ã£o", null, null);
         when(kanbanItemService.findByTeamId(10L)).thenReturn(List.of(inTitle, inDescription, noMatch, noText));
         when(boardService.findVotes(List.of(inTitle, inDescription))).thenReturn(List.of());
         givenResponses();

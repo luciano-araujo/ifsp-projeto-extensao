@@ -45,4 +45,7 @@ public class CardResponse {
     /** When the card entered its current column; null for ideas. */
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'")
     private LocalDateTime columnSince;
+
+    /** NONE until a reviewer decides; then the decision of the latest review. Ideas are always NONE. */
+    private ReviewStatus reviewStatus;
 }
