@@ -22,6 +22,22 @@ class AccountIT extends AbstractIT {
     }
 
     @Test
+    @DisplayName("IT-ACC-00 PUT /users/{id} changes only the name: e-mail and password in the body are ignored")
+    void updateUserIgnoresEmailAndPassword() {
+        Person user = person("upd");
+
+        Resp updated = api.put("/api/v1/users/" + user.id(), user.token(),
+                map("name", "Nome Novo", "email", newEmail(), "password", "OutraSenha@789"));
+
+        assertEquals(200, updated.status(), updated.body());
+        assertEquals("Nome Novo", updated.text("name"));
+        assertEquals(user.email(), updated.text("email"));
+        assertEquals(user.email(), api.get("/api/v1/users/" + user.id(), user.token()).text("email"));
+        assertEquals(200, login(user.email(), PASSWORD).status());
+        assertEquals(401, login(user.email(), "OutraSenha@789").status());
+    }
+
+    @Test
     @DisplayName("IT-ACC-01 PUT password: 204, the new password logs in, the old one does not, the session stays valid")
     void changePassword() {
         Person user = person("pwd");
