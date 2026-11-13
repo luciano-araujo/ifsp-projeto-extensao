@@ -21,6 +21,7 @@ class AuthControllerTest {
     @Mock private ConfirmRegistrationUseCase confirmRegistrationUseCase;
     @Mock private RequestPasswordResetUseCase requestPasswordResetUseCase;
     @Mock private ResetPasswordUseCase resetPasswordUseCase;
+    @Mock private GetInviteByTokenUseCase getInviteByTokenUseCase;
     @InjectMocks private AuthController controller;
 
     @Test
@@ -79,5 +80,16 @@ class AuthControllerTest {
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody().getMessage());
         verify(resetPasswordUseCase).execute(request);
+    }
+
+    @Test
+    void getInvite_shouldReturnPublicInvite() {
+        PublicInviteResponse invite = new PublicInviteResponse("Equipe", null, "ana@teste.com", "Bia", null);
+        when(getInviteByTokenUseCase.execute("tok")).thenReturn(invite);
+
+        ResponseEntity<PublicInviteResponse> response = controller.getInvite("tok");
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertSame(invite, response.getBody());
     }
 }

@@ -1,10 +1,8 @@
 package br.edu.ifsp.tcc.application.controller;
 
-import br.edu.ifsp.tcc.application.dto.UpdateUserDTO;
+import br.edu.ifsp.tcc.application.dto.*;
 import br.edu.ifsp.tcc.application.entity.User;
-import br.edu.ifsp.tcc.application.usecase.DeleteUserUseCase;
-import br.edu.ifsp.tcc.application.usecase.GetUserByIdUseCase;
-import br.edu.ifsp.tcc.application.usecase.UpdateUserUseCase;
+import br.edu.ifsp.tcc.application.usecase.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -25,6 +23,9 @@ class UserControllerTest {
     @Mock private GetUserByIdUseCase getUserByIdUseCase;
     @Mock private DeleteUserUseCase deleteUserUseCase;
     @Mock private UpdateUserUseCase updateUserUseCase;
+    @Mock private ChangePasswordUseCase changePasswordUseCase;
+    @Mock private RequestEmailChangeUseCase requestEmailChangeUseCase;
+    @Mock private ConfirmEmailChangeUseCase confirmEmailChangeUseCase;
     @InjectMocks private UserController controller;
 
     private User user;
@@ -74,5 +75,39 @@ class UserControllerTest {
 
         assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
         verify(deleteUserUseCase).execute(1L, 1L);
+    }
+
+    @Test
+    void changePassword_shouldReturnNoContent() {
+        ChangePasswordDTO dto = new ChangePasswordDTO();
+
+        ResponseEntity<Void> response = controller.changePassword(user, 1L, dto);
+
+        assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
+        verify(changePasswordUseCase).execute(1L, 1L, dto);
+    }
+
+    @Test
+    void requestEmailChange_shouldReturnMessage() {
+        RequestEmailChangeDTO dto = new RequestEmailChangeDTO();
+        MessageResponse message = new MessageResponse("ok");
+        when(requestEmailChangeUseCase.execute(1L, 1L, dto)).thenReturn(message);
+
+        ResponseEntity<MessageResponse> response = controller.requestEmailChange(user, 1L, dto);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertSame(message, response.getBody());
+    }
+
+    @Test
+    void confirmEmailChange_shouldReturnUser() {
+        ConfirmEmailChangeDTO dto = new ConfirmEmailChangeDTO();
+        User updated = new User();
+        when(confirmEmailChangeUseCase.execute(1L, 1L, dto)).thenReturn(updated);
+
+        ResponseEntity<User> response = controller.confirmEmailChange(user, 1L, dto);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertSame(updated, response.getBody());
     }
 }

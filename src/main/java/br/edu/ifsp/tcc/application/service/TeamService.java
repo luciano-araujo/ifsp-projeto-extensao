@@ -61,8 +61,18 @@ public class TeamService {
 
     /** Creates the team, its first ADMIN and the default columns. */
     public TeamMember createTeamWithAdmin(User user, String name) {
+        return createTeam(user, name, false);
+    }
+
+    /** The automatic personal team of a user (cannot be deleted, see requireDeletable). */
+    public TeamMember createPersonalTeam(User user) {
+        return createTeam(user, personalTeamName(user), true);
+    }
+
+    private TeamMember createTeam(User user, String name, boolean personal) {
         Team team = new Team();
         team.setName(name);
+        team.setPersonal(personal);
         team = teamRepository.save(team);
 
         TeamMember admin = new TeamMember();
@@ -80,6 +90,22 @@ public class TeamService {
         }
         tagService.createDefaultTags(team);
         return admin;
+    }
+
+
+    public Team renameTeam(Team team, String name) {
+        team.setName(name);
+        return teamRepository.save(team);
+    }
+
+    /**
+     * Product rule confirmed by Luciano: the personal team cannot be deleted. To change the rule,
+     * remove or edit this single check.
+     */
+    public void requireDeletable(Team team) {
+        if (team.isPersonal()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "A equipe pessoal não pode ser excluída.");
+        }
     }
 
     /**
@@ -127,6 +153,11 @@ public class TeamService {
         return teamMemberRepository.findByIdAndTeam_Id(memberId, teamId);
     }
 
+    /** Members of all the given teams, users included, in one query. */
+    public List<TeamMember> findMembersOfTeams(java.util.Collection<Long> teamIds) {
+        return teamMemberRepository.findByTeamIdsWithUser(teamIds);
+    }
+
     public int countMembers(Long teamId) {
         return teamMemberRepository.countByTeam_Id(teamId);
     }
@@ -148,7 +179,7 @@ public class TeamService {
     public TeamResponse toTeamResponse(TeamMember membership) {
         Team team = membership.getTeam();
         return new TeamResponse(team.getId(), team.getName(), membership.getRole(),
-                countMembers(team.getId()), team.getCreatedAt());
+                countMembers(team.getId()), team.getCreatedAt(), team.isPersonal());
     }
 
     public TeamMemberResponse toMemberResponse(TeamMember member) {
