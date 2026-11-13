@@ -159,6 +159,7 @@ class SetCardVideoUseCaseTest {
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
                 () -> useCase.execute(10L, 1L, 1L, dto(URL_A)));
         assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        assertEquals("Converta a ideia em projeto antes de vincular um vídeo.", ex.getReason());
         verify(kanbanItemService, never()).save(any());
     }
 

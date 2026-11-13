@@ -2,7 +2,9 @@ package br.edu.ifsp.tcc.application.usecase;
 
 import br.edu.ifsp.tcc.application.dto.VideoStatsResponse;
 import br.edu.ifsp.tcc.application.entity.KanbanItem;
+import br.edu.ifsp.tcc.application.exception.TooManyRequestsException;
 import br.edu.ifsp.tcc.application.service.BoardService;
+import br.edu.ifsp.tcc.application.service.RateLimitService;
 import br.edu.ifsp.tcc.application.service.TeamService;
 import br.edu.ifsp.tcc.application.service.VideoStats;
 import br.edu.ifsp.tcc.application.service.VideoStatsService;
@@ -12,6 +14,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.Duration;
 import java.util.List;
 
 @Component
@@ -21,16 +24,22 @@ public class RefreshCardVideoStatsUseCase {
     private final BoardService boardService;
     private final VideoStatsService videoStatsService;
     private final YouTubeClient youTubeClient;
+    private final RateLimitService rateLimitService;
 
     @Value("${app.youtube.cache-minutes:15}")
     private long cacheMinutes = 15;
 
+    @Value("${app.youtube.refresh-per-team-hour:30}")
+    private int maxPerTeamHour = 30;
+
     public RefreshCardVideoStatsUseCase(TeamService teamService, BoardService boardService,
-                                        VideoStatsService videoStatsService, YouTubeClient youTubeClient) {
+                                        VideoStatsService videoStatsService, YouTubeClient youTubeClient,
+                                        RateLimitService rateLimitService) {
         this.teamService = teamService;
         this.boardService = boardService;
         this.videoStatsService = videoStatsService;
         this.youTubeClient = youTubeClient;
+        this.rateLimitService = rateLimitService;
     }
 
     /**
@@ -41,11 +50,17 @@ public class RefreshCardVideoStatsUseCase {
         teamService.requireMember(teamId, userId);
         KanbanItem item = boardService.findCard(teamId, cardId);
         String videoId = videoStatsService.requireVideoId(item);
-        boolean cached = videoStatsService.findLatest(cardId)
+        boolean cached = videoStatsService.findLatest(cardId, videoId)
                 .filter(latest -> VideoStatsService.isFresh(latest, cacheMinutes)).isPresent();
         if (!cached) {
             if (!youTubeClient.isConfigured()) {
-                throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Integração com o YouTube não configurada.");
+                throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, VideoStatsService.NOT_CONFIGURED);
+            }
+            // Counted only for refreshes that reach YouTube (cache hits are free), per team (the path id)
+            long retryAfter = rateLimitService.registerAttempt("youtube:" + teamId, maxPerTeamHour, Duration.ofHours(1));
+            if (retryAfter > 0) {
+                throw new TooManyRequestsException(
+                        "Limite de atualizações do YouTube atingido para esta equipe. Tente novamente mais tarde.", retryAfter);
             }
             VideoStats stats = youTubeClient.fetch(List.of(videoId)).get(videoId);
             if (stats == null) {

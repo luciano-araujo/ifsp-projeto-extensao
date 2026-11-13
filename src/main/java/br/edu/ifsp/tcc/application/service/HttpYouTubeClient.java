@@ -22,14 +22,14 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Calls GET {base}/videos?part=statistics,snippet&id=a,b&key=... of the YouTube Data API v3.
- * The key and the URL (which carries the key) are never logged and never put in an exception.
+ * Calls GET {base}/videos?part=statistics,snippet&id=a,b of the YouTube Data API v3, the key in the X-Goog-Api-Key header.
+ * The key is never logged and never put in an exception.
  */
 @Service
 public class HttpYouTubeClient implements YouTubeClient {
 
+    static final String FIELDS = "items(id,snippet(title,publishedAt),statistics(viewCount,likeCount,commentCount))";
     static final String UNAVAILABLE = "Não foi possível consultar o YouTube agora. Tente novamente.";
-    static final String NOT_CONFIGURED = "Integração com o YouTube não configurada.";
 
     private static final Logger log = LoggerFactory.getLogger(HttpYouTubeClient.class);
 
@@ -58,13 +58,14 @@ public class HttpYouTubeClient implements YouTubeClient {
     @Override
     public Map<String, VideoStats> fetch(List<String> videoIds) {
         if (!isConfigured()) {
-            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, NOT_CONFIGURED);
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, VideoStatsService.NOT_CONFIGURED);
         }
         Map<String, Object> reply;
         try {
             reply = restClient.get()
                     .uri(uri -> uri.path("/videos").queryParam("part", "statistics,snippet")
-                            .queryParam("id", String.join(",", videoIds)).queryParam("key", apiKey).build())
+                            .queryParam("fields", FIELDS).queryParam("id", String.join(",", videoIds)).build())
+                    .header("X-Goog-Api-Key", apiKey)
                     .retrieve()
                     .body(new ParameterizedTypeReference<Map<String, Object>>() { });
         } catch (RestClientResponseException e) {

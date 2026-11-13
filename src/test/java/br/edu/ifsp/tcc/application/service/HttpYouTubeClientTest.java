@@ -26,6 +26,7 @@ class HttpYouTubeClientTest {
     private final AtomicReference<String> receivedMethod = new AtomicReference<>();
     private final AtomicReference<String> receivedPath = new AtomicReference<>();
     private final AtomicReference<String> receivedQuery = new AtomicReference<>();
+    private final AtomicReference<String> receivedKeyHeader = new AtomicReference<>();
 
     @BeforeEach
     void startServer() throws IOException {
@@ -43,6 +44,7 @@ class HttpYouTubeClientTest {
             receivedMethod.set(exchange.getRequestMethod());
             receivedPath.set(exchange.getRequestURI().getPath());
             receivedQuery.set(exchange.getRequestURI().getRawQuery());
+            receivedKeyHeader.set(exchange.getRequestHeaders().getFirst("X-Goog-Api-Key"));
             try {
                 Thread.sleep(delayMs);
             } catch (InterruptedException e) {
@@ -85,7 +87,11 @@ class HttpYouTubeClientTest {
         assertEquals("/youtube/v3/videos", receivedPath.get());
         assertTrue(receivedQuery.get().contains("part=statistics,snippet") || receivedQuery.get().contains("part=statistics%2Csnippet"));
         assertTrue(receivedQuery.get().contains("id=dQw4w9WgXcQ"));
-        assertTrue(receivedQuery.get().contains("key=secret-key"));
+        assertEquals("secret-key", receivedKeyHeader.get());
+        assertFalse(receivedQuery.get().contains("key="), "the key travels in a header, never in the URL");
+        assertFalse(receivedQuery.get().contains("secret-key"));
+        assertTrue(receivedQuery.get().contains("fields=items"));
+        assertTrue(receivedQuery.get().contains("viewCount,likeCount,commentCount") || receivedQuery.get().contains("viewCount%2ClikeCount%2CcommentCount"));
         VideoStats stats = result.get("dQw4w9WgXcQ");
         assertEquals(1234L, stats.viewCount());
         assertEquals(56L, stats.likeCount());

@@ -27,6 +27,7 @@ public class VideoStatsService {
 
     public static final String INVALID_URL = "Informe um link válido do YouTube.";
     public static final String NO_VIDEO = "Este projeto não tem vídeo do YouTube vinculado.";
+    public static final String NOT_CONFIGURED = "Integração com o YouTube não configurada.";
     static final int MAX_URL_LENGTH = 500;
     static final int MAX_TITLE_LENGTH = 255;
 
@@ -58,8 +59,8 @@ public class VideoStatsService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, NO_VIDEO));
     }
 
-    public Optional<VideoStatSnapshot> findLatest(Long cardId) {
-        return snapshotRepository.findFirstByKanbanItem_IdOrderByCapturedAtDescIdDesc(cardId);
+    public Optional<VideoStatSnapshot> findLatest(Long cardId, String videoId) {
+        return snapshotRepository.findFirstByKanbanItem_IdAndVideoIdOrderByCapturedAtDescIdDesc(cardId, videoId);
     }
 
     public static boolean isFresh(VideoStatSnapshot snapshot, long cacheMinutes) {
@@ -93,7 +94,7 @@ public class VideoStatsService {
     /** The response of GET/refresh: latest snapshot plus the history (oldest first, at most 60). */
     public VideoStatsResponse toResponse(KanbanItem item) {
         String videoId = requireVideoId(item);
-        List<VideoStatSnapshot> recentFirst = snapshotRepository.findTop60ByKanbanItem_IdOrderByCapturedAtDescIdDesc(item.getId());
+        List<VideoStatSnapshot> recentFirst = snapshotRepository.findTop60ByKanbanItem_IdAndVideoIdOrderByCapturedAtDescIdDesc(item.getId(), videoId);
         VideoStatSnapshot latest = recentFirst.isEmpty() ? null : recentFirst.get(0);
         List<VideoStatSnapshot> oldestFirst = new ArrayList<>(recentFirst);
         Collections.reverse(oldestFirst);

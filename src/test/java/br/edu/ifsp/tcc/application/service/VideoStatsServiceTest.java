@@ -82,9 +82,9 @@ class VideoStatsServiceTest {
     @Test
     void findLatest_shouldDelegate() {
         VideoStatSnapshot s = snapshot(1, LocalDateTime.now());
-        when(snapshotRepository.findFirstByKanbanItem_IdOrderByCapturedAtDescIdDesc(7L)).thenReturn(Optional.of(s));
+        when(snapshotRepository.findFirstByKanbanItem_IdAndVideoIdOrderByCapturedAtDescIdDesc(7L, "dQw4w9WgXcQ")).thenReturn(Optional.of(s));
 
-        assertSame(s, service.findLatest(7L).orElseThrow());
+        assertSame(s, service.findLatest(7L, "dQw4w9WgXcQ").orElseThrow());
     }
 
     @Test
@@ -145,7 +145,7 @@ class VideoStatsServiceTest {
     @Test
     void toResponse_shouldReturnHistoryOldestFirstAndLatestFromTheNewest() {
         LocalDateTime now = LocalDateTime.of(2025, 5, 1, 12, 0, 0);
-        when(snapshotRepository.findTop60ByKanbanItem_IdOrderByCapturedAtDescIdDesc(7L))
+        when(snapshotRepository.findTop60ByKanbanItem_IdAndVideoIdOrderByCapturedAtDescIdDesc(7L, "dQw4w9WgXcQ"))
                 .thenReturn(List.of(snapshot(30, now), snapshot(20, now.minusDays(1)), snapshot(10, now.minusDays(2))));
 
         VideoStatsResponse response = service.toResponse(card("https://youtu.be/dQw4w9WgXcQ"));
@@ -161,7 +161,7 @@ class VideoStatsServiceTest {
 
     @Test
     void toResponse_shouldHaveNullLatestAndEmptyHistoryBeforeTheFirstRefresh() {
-        when(snapshotRepository.findTop60ByKanbanItem_IdOrderByCapturedAtDescIdDesc(7L)).thenReturn(List.of());
+        when(snapshotRepository.findTop60ByKanbanItem_IdAndVideoIdOrderByCapturedAtDescIdDesc(7L, "dQw4w9WgXcQ")).thenReturn(List.of());
 
         VideoStatsResponse response = service.toResponse(card("https://youtu.be/dQw4w9WgXcQ"));
 

@@ -15,5 +15,5 @@ CREATE TABLE video_stat_snapshots (
     published_at TIMESTAMP NULL,
     captured_at TIMESTAMP NOT NULL,
     CONSTRAINT fk_video_stat_snapshots_kanban_item FOREIGN KEY (kanban_item_id) REFERENCES kanban_items (id) ON DELETE CASCADE,
-    INDEX idx_video_stat_snapshots_item_captured (kanban_item_id, captured_at)
+    INDEX idx_video_stat_snapshots_item_video_captured (kanban_item_id, video_id, captured_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

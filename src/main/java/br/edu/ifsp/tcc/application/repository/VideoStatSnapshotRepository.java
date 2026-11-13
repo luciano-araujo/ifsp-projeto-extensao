@@ -13,10 +13,10 @@ import java.util.Optional;
 @Repository
 public interface VideoStatSnapshotRepository extends JpaRepository<VideoStatSnapshot, Long> {
 
-    Optional<VideoStatSnapshot> findFirstByKanbanItem_IdOrderByCapturedAtDescIdDesc(Long kanbanItemId);
+    Optional<VideoStatSnapshot> findFirstByKanbanItem_IdAndVideoIdOrderByCapturedAtDescIdDesc(Long kanbanItemId, String videoId);
 
-    /** The 60 most recent snapshots, newest first. */
-    List<VideoStatSnapshot> findTop60ByKanbanItem_IdOrderByCapturedAtDescIdDesc(Long kanbanItemId);
+    /** The 60 most recent snapshots of the card for that video, newest first (snapshots of a previous video never show). */
+    List<VideoStatSnapshot> findTop60ByKanbanItem_IdAndVideoIdOrderByCapturedAtDescIdDesc(Long kanbanItemId, String videoId);
 
     @Modifying(flushAutomatically = true)
     @Query("DELETE FROM VideoStatSnapshot s WHERE s.kanbanItem.id = :cardId")

@@ -2,7 +2,9 @@ package br.edu.ifsp.tcc.application.it;
 
 import br.edu.ifsp.tcc.application.service.VideoStats;
 import br.edu.ifsp.tcc.application.service.YouTubeClient;
+import br.edu.ifsp.tcc.application.usecase.RefreshAllVideoStatsUseCase;
 import org.junit.jupiter.api.BeforeEach;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -142,6 +144,7 @@ class YouTubeStatsIT extends AbstractIT {
         long idea = ideaId(team, "Ideia sem vídeo");
         Resp onIdea = api.put(videoPath(team, idea), ana.token(), map("url", URL));
         assertEquals(400, onIdea.status(), onIdea.body());
+        assertEquals("Converta a ideia em projeto antes de vincular um vídeo.", onIdea.message());
     }
 
     @Test
@@ -299,5 +302,57 @@ class YouTubeStatsIT extends AbstractIT {
         assertEquals(404, api.post(statsPath(other, mine) + "/refresh", bia.token(), null).status());
         assertEquals(404, api.get(statsPath(team, 999999999L), ana.token()).status());
         assertEquals(0, CALLS.get());
+    }
+
+    @Test
+    @DisplayName("IT-YT-10 A snapshot of the previous video saved late never shows for the new link")
+    void lateSnapshotOfPreviousVideoIsIgnored() {
+        Team team = newTeam();
+        long card = linkedProject(team, "Corrida");
+        assertEquals(200, api.post(statsPath(team, card) + "/refresh", ana.token(), null).status());
+
+        assertEquals(200, api.put(videoPath(team, card), ana.token(), map("url", OTHER_URL)).status());
+        // a refresh in flight (or the daily job) finishing after the change saves a row of video A
+        jdbc.update("INSERT INTO video_stat_snapshots (kanban_item_id, video_id, view_count, title, captured_at) VALUES (?, ?, ?, ?, ?)",
+                card, VIDEO, 5000, "Velho", LocalDateTime.now().withNano(0));
+
+        Resp got = api.get(statsPath(team, card), ana.token());
+        assertEquals(200, got.status(), got.body());
+        assertEquals("aaaaaaaaaaa", got.text("videoId"));
+        assertTrue(got.at("latest").isNull());
+        assertEquals(0, got.at("history").size());
+        assertTrue(got.at("title").isNull());
+
+        // and the cache does not treat it as fresh data of the new video
+        CALLS.set(0);
+        Resp refreshed = api.post(statsPath(team, card) + "/refresh", ana.token(), null);
+        assertEquals(200, refreshed.status(), refreshed.body());
+        assertEquals(1, CALLS.get());
+        assertEquals(1, refreshed.at("history").size());
+    }
+
+    @Autowired
+    private RefreshAllVideoStatsUseCase refreshAllVideoStatsUseCase;
+
+    @Test
+    @DisplayName("IT-YT-11 Daily job: one batch, one snapshot per card with a link (two cards share a video)")
+    void dailyJob() {
+        Team team = newTeam();
+        long a1 = linkedProject(team, "Job A1");
+        long a2 = linkedProject(team, "Job A2");
+        long b = projectId(team, "Job B");
+        assertEquals(200, api.put(videoPath(team, b), ana.token(), map("url", OTHER_URL)).status());
+        CALLS.set(0);
+
+        int saved = refreshAllVideoStatsUseCase.execute();
+
+        // cards of other ITs that keep a link are part of the same run, so at least ours
+        assertTrue(saved >= 3, "saved " + saved);
+        assertEquals(1, CALLS.get(), "one batch for all the videos");
+        for (long card : new long[]{a1, a2, b}) {
+            assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM video_stat_snapshots WHERE kanban_item_id = ?", Integer.class, card));
+        }
+        assertEquals(VIDEO, jdbc.queryForObject("SELECT video_id FROM video_stat_snapshots WHERE kanban_item_id = ?", String.class, a2));
+        assertEquals("aaaaaaaaaaa", jdbc.queryForObject("SELECT video_id FROM video_stat_snapshots WHERE kanban_item_id = ?", String.class, b));
     }
 }
