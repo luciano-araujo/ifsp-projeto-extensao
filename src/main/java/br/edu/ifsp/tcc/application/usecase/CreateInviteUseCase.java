@@ -10,6 +10,7 @@ import br.edu.ifsp.tcc.application.entity.User;
 import br.edu.ifsp.tcc.application.service.AfterCommit;
 import br.edu.ifsp.tcc.application.service.EmailService;
 import br.edu.ifsp.tcc.application.service.InviteService;
+import br.edu.ifsp.tcc.application.service.PlanService;
 import br.edu.ifsp.tcc.application.service.TeamService;
 import br.edu.ifsp.tcc.application.service.UserService;
 import org.springframework.http.HttpStatus;
@@ -26,15 +27,18 @@ public class CreateInviteUseCase {
     private final UserService userService;
     private final InviteService inviteService;
     private final EmailService emailService;
+    private final PlanService planService;
 
     public CreateInviteUseCase(TeamService teamService,
                                UserService userService,
                                InviteService inviteService,
-                               EmailService emailService) {
+                               EmailService emailService,
+                               PlanService planService) {
         this.teamService = teamService;
         this.userService = userService;
         this.inviteService = inviteService;
         this.emailService = emailService;
+        this.planService = planService;
     }
 
     /**
@@ -55,6 +59,8 @@ public class CreateInviteUseCase {
         if (pending.stream().anyMatch(TeamInvite::isOpen)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Já existe um convite pendente para este e-mail.");
         }
+        // Same order as adding a member: the 409 conflicts win over the plan limit (402)
+        planService.requireCanInvite(admin.getTeam());
         inviteService.deleteAll(pending);
 
         TeamRole role = dto.getRole() != null ? dto.getRole() : TeamRole.CREATOR;

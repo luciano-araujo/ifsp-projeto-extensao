@@ -43,7 +43,7 @@ class M4ServicesTest {
 
     private TeamService teamService() {
         return new TeamService(teamRepository, teamMemberRepository, boardColumnRepository, tagService,
-                materialService, kanbanItemService);
+                materialService, kanbanItemService, mock(PlanService.class));
     }
 
     // --- TeamService ---

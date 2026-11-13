@@ -32,7 +32,7 @@ class RenameTeamUseCaseTest {
         admin.setRole(TeamRole.ADMIN);
         RenameTeamDTO dto = new RenameTeamDTO();
         dto.setName("  Office Resolve Cursos ");
-        TeamResponse response = new TeamResponse(10L, "Office Resolve Cursos", TeamRole.ADMIN, 3, null, false);
+        TeamResponse response = new TeamResponse(10L, "Office Resolve Cursos", TeamRole.ADMIN, 3, null, false, null, null, null);
         when(teamService.requireRole(10L, 1L, TeamRole.ADMIN)).thenReturn(admin);
         when(teamService.toTeamResponse(admin)).thenReturn(response);
 

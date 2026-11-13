@@ -7,6 +7,7 @@ import br.edu.ifsp.tcc.application.entity.TeamRole;
 import br.edu.ifsp.tcc.application.entity.User;
 import br.edu.ifsp.tcc.application.service.BoardService;
 import br.edu.ifsp.tcc.application.service.MaterialService;
+import br.edu.ifsp.tcc.application.service.PlanService;
 import br.edu.ifsp.tcc.application.service.TeamService;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
@@ -20,11 +21,14 @@ public class UploadMaterialUseCase {
     private final TeamService teamService;
     private final BoardService boardService;
     private final MaterialService materialService;
+    private final PlanService planService;
 
-    public UploadMaterialUseCase(TeamService teamService, BoardService boardService, MaterialService materialService) {
+    public UploadMaterialUseCase(TeamService teamService, BoardService boardService, MaterialService materialService,
+                                 PlanService planService) {
         this.teamService = teamService;
         this.boardService = boardService;
         this.materialService = materialService;
+        this.planService = planService;
     }
 
     /** Attaches a file to a project card. Editors only; ideas cannot have materials. */
@@ -39,6 +43,8 @@ public class UploadMaterialUseCase {
         if (file == null || file.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Envie um arquivo não vazio no campo \"file\".");
         }
+        MaterialService.requireAllowedType(MaterialService.sanitizeFileName(file.getOriginalFilename()), file.getContentType());
+        planService.requireStorage(card.getTeam(), file.getSize());
         return materialService.toResponse(materialService.attach(card, user, file), teamId);
     }
 }

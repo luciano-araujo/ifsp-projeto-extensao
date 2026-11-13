@@ -10,6 +10,7 @@ import br.edu.ifsp.tcc.application.service.BoardService;
 import br.edu.ifsp.tcc.application.service.CardSummaryService;
 import br.edu.ifsp.tcc.application.service.ScriptService;
 import br.edu.ifsp.tcc.application.service.SummaryGenerator;
+import br.edu.ifsp.tcc.application.service.PlanService;
 import br.edu.ifsp.tcc.application.service.TeamService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -35,6 +36,7 @@ class GenerateCardSummaryUseCaseTest {
     @Mock private ScriptService scriptService;
     @Mock private CardSummaryService cardSummaryService;
     @Mock private SummaryGenerator summaryGenerator;
+    @Mock private PlanService planService;
     @InjectMocks private GenerateCardSummaryUseCase useCase;
 
     private KanbanItem project;
@@ -154,5 +156,28 @@ class GenerateCardSummaryUseCaseTest {
         ResponseStatusException ex = assertThrows(ResponseStatusException.class, () -> useCase.execute(10L, 1L, 3L));
         assertEquals(HttpStatus.SERVICE_UNAVAILABLE, ex.getStatusCode());
         verifyNoInteractions(cardSummaryService);
+    }
+
+
+    @Test
+    void execute_shouldRefuseIdeasBeforeThePlanCheck() {
+        project.setState(KanbanItemState.IDEATION);
+        when(boardService.findCard(10L, 3L)).thenReturn(project);
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class, () -> useCase.execute(10L, 1L, 3L));
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        verifyNoInteractions(planService);
+    }
+
+    @Test
+    void execute_shouldStopWith402WhenThePlanHasNoAutomaticSummary() {
+        br.edu.ifsp.tcc.application.entity.Team team = new br.edu.ifsp.tcc.application.entity.Team();
+        project.setTeam(team);
+        when(boardService.findCard(10L, 3L)).thenReturn(project);
+        doThrow(new ResponseStatusException(HttpStatus.PAYMENT_REQUIRED, "limite")).when(planService).requireCanSummarize(team);
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class, () -> useCase.execute(10L, 1L, 3L));
+        assertEquals(HttpStatus.PAYMENT_REQUIRED, ex.getStatusCode());
+        verifyNoInteractions(summaryGenerator, cardSummaryService, scriptService);
     }
 }

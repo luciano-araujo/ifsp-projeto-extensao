@@ -5,6 +5,7 @@ import br.edu.ifsp.tcc.application.entity.TeamInvite;
 import br.edu.ifsp.tcc.application.entity.TeamMember;
 import br.edu.ifsp.tcc.application.entity.User;
 import br.edu.ifsp.tcc.application.service.InviteService;
+import br.edu.ifsp.tcc.application.service.PlanService;
 import br.edu.ifsp.tcc.application.service.TeamService;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
@@ -17,7 +18,10 @@ public class AcceptInviteUseCase {
     private final TeamService teamService;
     private final InviteService inviteService;
 
-    public AcceptInviteUseCase(TeamService teamService, InviteService inviteService) {
+    private final PlanService planService;
+
+    public AcceptInviteUseCase(TeamService teamService, InviteService inviteService, PlanService planService) {
+        this.planService = planService;
         this.teamService = teamService;
         this.inviteService = inviteService;
     }
@@ -33,6 +37,7 @@ public class AcceptInviteUseCase {
         if (teamService.findMemberByTeamIdAndUserId(teamId, user.getId()).isPresent()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Você já faz parte desta equipe.");
         }
+        planService.requireCanAddMember(invite.getTeam());
 
         TeamMember member = new TeamMember();
         member.setTeam(invite.getTeam());

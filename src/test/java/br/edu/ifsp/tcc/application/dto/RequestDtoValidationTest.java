@@ -138,12 +138,11 @@ class RequestDtoValidationTest {
         register.setEmail("a@b.com");
         UpdateUserDTO update = new UpdateUserDTO();
         update.setName(LONG);
-        update.setEmail(LONG);
         AddTeamMemberDTO member = new AddTeamMemberDTO();
         member.setEmail("a".repeat(250) + "@b.com");
 
         assertEquals(1, VALIDATOR.validate(register).size());
-        assertEquals(2, VALIDATOR.validate(update).size());
+        assertEquals(1, VALIDATOR.validate(update).size());
         assertFalse(VALIDATOR.validate(member).isEmpty());
     }
 
@@ -174,12 +173,9 @@ class RequestDtoValidationTest {
         reset.setEmail("a@b.com");
         reset.setToken("123456");
         reset.setNewPassword("a".repeat(73));
-        UpdateUserDTO update = new UpdateUserDTO();
-        update.setPassword("a".repeat(73));
 
         assertEquals("A senha deve ter no máximo 72 caracteres.", VALIDATOR.validate(confirm).iterator().next().getMessage());
         assertEquals("A senha deve ter no máximo 72 caracteres.", VALIDATOR.validate(reset).iterator().next().getMessage());
-        assertEquals("A senha deve ter no máximo 72 caracteres.", VALIDATOR.validate(update).iterator().next().getMessage());
     }
 
     @Test

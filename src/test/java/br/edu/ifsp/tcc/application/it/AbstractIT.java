@@ -123,9 +123,15 @@ public abstract class AbstractIT {
     }
 
     protected Team newTeamFor(Person admin, String name, Person creator, Person reviewer) {
+        // Plans: the scenarios build teams with several members and many projects, so the fixture teams run on
+        // the top plan (set straight in the database). Existing teams of the admin are upgraded first because a
+        // person may administer only one team on Gratuito; PlanIT checks the real limits on Gratuito teams.
+        jdbc.update("UPDATE teams SET plan = 'AGENCIA', plan_source = 'MANUAL', plan_expires_at = NULL WHERE id IN "
+                + "(SELECT team_id FROM team_members WHERE user_id = ? AND role = 'ADMIN')", admin.id());
         Resp created = api.post("/api/v1/teams", admin.token(), map("name", name));
         assertEquals(200, created.status(), created.body());
         long teamId = created.num("id");
+        setPlan(teamId, "AGENCIA");
         long adminMemberId = membersOf(teamId, admin).stream().findFirst().orElseThrow();
         long creatorMemberId = 0;
         long reviewerMemberId = 0;
@@ -148,6 +154,12 @@ public abstract class AbstractIT {
         List<Long> tagIds = new ArrayList<>();
         tags.json().forEach(t -> tagIds.add(t.path("id").asLong()));
         return new Team(teamId, adminMemberId, creatorMemberId, reviewerMemberId, columns, tagIds);
+    }
+
+    /** Sets the plan of a team straight in the database (a manual activation without expiry). */
+    protected void setPlan(long teamId, String plan) {
+        jdbc.update("UPDATE teams SET plan = ?, plan_source = ?, plan_expires_at = NULL WHERE id = ?",
+                plan, "GRATUITO".equals(plan) ? "FREE" : "MANUAL", teamId);
     }
 
     private List<Long> membersOf(long teamId, Person who) {

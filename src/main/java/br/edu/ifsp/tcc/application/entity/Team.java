@@ -14,6 +14,9 @@ public class Team {
     @Column(nullable = false, length = 120)
     private String name;
 
+    @Embedded
+    private TeamSubscription subscription = new TeamSubscription();
+
     // The personal team created on the first access of a user; it cannot be deleted
     @Column(nullable = false)
     private boolean personal = false;
@@ -31,6 +34,9 @@ public class Team {
 
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
+
+    public TeamSubscription getSubscription() { return subscription; }
+    public void setSubscription(TeamSubscription subscription) { this.subscription = subscription; }
 
     public boolean isPersonal() { return personal; }
     public void setPersonal(boolean personal) { this.personal = personal; }

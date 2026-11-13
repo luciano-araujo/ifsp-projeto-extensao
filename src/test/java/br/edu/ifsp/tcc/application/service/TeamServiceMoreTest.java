@@ -32,6 +32,7 @@ class TeamServiceMoreTest {
     @Mock private BoardColumnRepository boardColumnRepository;
     @Mock private MaterialService materialService;
     @Mock private KanbanItemService kanbanItemService;
+    @Mock private PlanService planService;
     @InjectMocks private TeamService service;
 
     private Team team(Long id) {
@@ -158,12 +159,32 @@ class TeamServiceMoreTest {
     void toTeamResponse_shouldUseMembershipRoleAndMemberCount() {
         TeamMember membership = member(1L, team(10L), user(1L, "Ana"), TeamRole.ADMIN);
         when(teamMemberRepository.countByTeam_Id(10L)).thenReturn(4);
+        when(planService.now()).thenReturn(java.time.LocalDateTime.of(2026, 11, 13, 10, 0));
 
         TeamResponse response = service.toTeamResponse(membership);
 
         assertEquals(10L, response.getId());
         assertEquals(TeamRole.ADMIN, response.getRole());
         assertEquals(4, response.getMembersCount());
+        assertEquals(br.edu.ifsp.tcc.application.entity.PlanType.GRATUITO, response.getPlan());
+        assertEquals(br.edu.ifsp.tcc.application.entity.PlanSource.FREE, response.getPlanSource());
+    }
+
+    @Test
+    void toTeamResponse_shouldShowGratuitoWhenTheTrialHasExpired() {
+        Team team = team(10L);
+        var subscription = team.getSubscription();
+        subscription.setPlan(br.edu.ifsp.tcc.application.entity.PlanType.PRO);
+        subscription.setSource(br.edu.ifsp.tcc.application.entity.PlanSource.TRIAL);
+        subscription.setExpiresAt(java.time.LocalDateTime.of(2026, 11, 1, 0, 0));
+        when(teamMemberRepository.countByTeam_Id(10L)).thenReturn(1);
+        when(planService.now()).thenReturn(java.time.LocalDateTime.of(2026, 11, 13, 10, 0));
+
+        TeamResponse response = service.toTeamResponse(member(1L, team, user(1L, "Ana"), TeamRole.ADMIN));
+
+        assertEquals(br.edu.ifsp.tcc.application.entity.PlanType.GRATUITO, response.getPlan());
+        assertEquals(br.edu.ifsp.tcc.application.entity.PlanSource.FREE, response.getPlanSource());
+        org.junit.jupiter.api.Assertions.assertNull(response.getPlanExpiresAt());
     }
 
     @Test

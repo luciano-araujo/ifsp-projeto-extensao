@@ -10,6 +10,7 @@ import br.edu.ifsp.tcc.application.entity.TeamRole;
 import br.edu.ifsp.tcc.application.entity.User;
 import br.edu.ifsp.tcc.application.service.BoardService;
 import br.edu.ifsp.tcc.application.service.KanbanItemService;
+import br.edu.ifsp.tcc.application.service.PlanService;
 import br.edu.ifsp.tcc.application.service.TeamService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,6 +34,7 @@ class ConvertIdeaUseCaseTest {
     @Mock private TeamService teamService;
     @Mock private BoardService boardService;
     @Mock private KanbanItemService kanbanItemService;
+    @Mock private PlanService planService;
     @InjectMocks private ConvertIdeaUseCase useCase;
 
     private User user;
@@ -159,5 +161,24 @@ class ConvertIdeaUseCaseTest {
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
                 () -> useCase.execute(10L, 1L, 1L, null, null));
         assertEquals("O título deve ter pelo menos 3 caracteres.", ex.getReason());
+    }
+
+
+    @Test
+    void execute_shouldStopWith402WhenTheProjectLimitIsReached() {
+        KanbanItem idea = idea();
+        br.edu.ifsp.tcc.application.entity.Team team = new br.edu.ifsp.tcc.application.entity.Team();
+        idea.setTeam(team);
+        idea.setTargetAudience("Iniciantes");
+        idea.setPedagogicalObjective("Entender BFS");
+        when(boardService.findCard(10L, 1L)).thenReturn(idea);
+        when(boardService.resolveColumn(10L, 101L)).thenReturn(column(101L));
+        doThrow(new ResponseStatusException(HttpStatus.PAYMENT_REQUIRED, "limite")).when(planService).requireCanCreateProject(team);
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> useCase.execute(10L, 1L, 1L, 101L, null));
+        assertEquals(HttpStatus.PAYMENT_REQUIRED, ex.getStatusCode());
+        assertEquals(KanbanItemState.IDEATION, idea.getState());
+        verify(kanbanItemService, never()).save(any());
     }
 }
