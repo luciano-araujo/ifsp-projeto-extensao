@@ -18,14 +18,14 @@ Decisões:
 
 ## Pré-requisitos (máquina local, Git Bash)
 - AWS CLI v2 com credenciais válidas em `~/.aws/credentials` (perfil `default`); `~/.ssh/labsuser.pem` (key pair `vockey`).
-- `deploy/aws/.state/secrets.env` com quatro linhas (valores sem aspas): `DB_PASSWORD=`, `JWT_SECRET=`, `MAIL_USERNAME=`, `MAIL_PASSWORD=`.
+- `deploy/aws/.state/secrets.env` com quatro linhas (valores sem aspas): `DB_PASSWORD=`, `JWT_SECRET=`, `MAIL_USERNAME=`, `MAIL_PASSWORD=`. A linha `DEMO_PASSWORD=` (senha das contas de demonstração) é gerada sozinha na primeira execução; o repositório não contém essa senha.
 
 ## Scripts (`deploy/aws/`, rodar com `bash` no Git Bash, na raiz do repositório)
 | Script | O que faz |
 |---|---|
 | `up.sh` | Cria/completa ECR, S3 (privado, criptografado), log group, RDS, EKS + node group, builder; depois chama `redeploy.sh`. Idempotente. `--no-deploy` só cria a infraestrutura. |
-| `redeploy.sh` | Empacota o backend (ref `release/v3`; `BACKEND_REF=` troca), clona o frontend (`release/v3` do GitHub), constrói as 3 imagens no builder, envia ao ECR, recria os Secrets/ConfigMap e faz o rollout (kubectl local). `SKIP_BUILD=1` só reaplica os manifestos com as últimas imagens. Procura a chave do Claude em `automation/.env`. |
-| `seed.sh` | Insere Ana (ADMIN), Bia (CREATOR) e Rui (REVIEWER) `@creatorworkbench.test` direto no RDS (senha `Teste@123`) e popula equipe, ideias, projetos, roteiro e curso pela API. Rode uma vez por banco novo. |
+| `redeploy.sh` | Empacota o backend (ref `release/v3`; `BACKEND_REF=` troca), clona o frontend (`release/v3` do GitHub), constrói as 3 imagens no builder, envia ao ECR, recria os Secrets/ConfigMap e faz o rollout (kubectl local) e redefine a senha das 4 contas de demonstração para a `DEMO_PASSWORD` atual (idempotente). `SKIP_BUILD=1` só reaplica os manifestos com as últimas imagens. Procura a chave do Claude em `automation/.env`. |
+| `seed.sh` | Insere Ana (ADMIN), Bia (CREATOR) e Rui (REVIEWER) `@creatorworkbench.test` direto no RDS (senha aleatória por ambiente: `DEMO_PASSWORD` em `deploy/aws/.state/secrets.env`, gerada na primeira execução) e popula equipe, ideias, projetos, roteiro e curso pela API. Rode uma vez por banco novo. |
 | `status.sh` | Estado de EKS, nós, RDS, builder, pods, URL do ELB, HTTP 200/401 e custo/hora. |
 | `teardown.sh` | Apaga só o que tem a tag do projeto/nomes conhecidos (namespace+ELB, node group, cluster, RDS sem snapshot, builder, ECR, S3, logs, launch template, tags de sub-rede) e lista o que sobrou. Mantém os itens gratuitos (SGs, DB subnet group, key pair). |
 
@@ -60,4 +60,4 @@ O ELB atende **HTTP na porta 80** e **HTTPS na 443** (TLS termina no ELB; do ELB
 - Segredos e chaves nunca vão para o git (`.state/`, Secrets do Kubernetes criados pelo script).
 
 ## Planos (M5)
-Depois do rollout, `redeploy.sh` e `seed.sh` executam `apply_plans`: se a coluna `teams.plan` existir (migration do M5 já aplicada), a equipe "Equipe Office Resolve" recebe `plan='AGENCIA'`, `plan_source='MANUAL'`, `plan_expires_at=NULL`. É idempotente e não faz nada antes da migration. O segredo do backend também recebe `APP_ADMIN_EMAILS=admin.sistema@creatorworkbench.test` (usuário criado por `seed-users.sql`, senha `Teste@123`).
+Depois do rollout, `redeploy.sh` e `seed.sh` executam `apply_plans`: se a coluna `teams.plan` existir (migration do M5 já aplicada), a equipe "Equipe Office Resolve" recebe `plan='AGENCIA'`, `plan_source='MANUAL'`, `plan_expires_at=NULL`. É idempotente e não faz nada antes da migration. O segredo do backend também recebe `APP_ADMIN_EMAILS=admin.sistema@creatorworkbench.test` (usuário criado por `seed-users.sql`, senha `DEMO_PASSWORD` de `deploy/aws/.state/secrets.env`).
