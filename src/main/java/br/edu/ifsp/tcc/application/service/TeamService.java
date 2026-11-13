@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -27,19 +28,22 @@ public class TeamService {
     private final TagService tagService;
     private final MaterialService materialService;
     private final KanbanItemService kanbanItemService;
+    private final PlanService planService;
 
     public TeamService(TeamRepository teamRepository,
                        TeamMemberRepository teamMemberRepository,
                        BoardColumnRepository boardColumnRepository,
                        TagService tagService,
                        MaterialService materialService,
-                       KanbanItemService kanbanItemService) {
+                       KanbanItemService kanbanItemService,
+                       PlanService planService) {
         this.teamRepository = teamRepository;
         this.teamMemberRepository = teamMemberRepository;
         this.boardColumnRepository = boardColumnRepository;
         this.tagService = tagService;
         this.materialService = materialService;
         this.kanbanItemService = kanbanItemService;
+        this.planService = planService;
     }
 
     // --- Access verification ---
@@ -178,8 +182,11 @@ public class TeamService {
 
     public TeamResponse toTeamResponse(TeamMember membership) {
         Team team = membership.getTeam();
+        TeamSubscription subscription = team.getSubscription();
+        LocalDateTime now = planService.now();
         return new TeamResponse(team.getId(), team.getName(), membership.getRole(),
-                countMembers(team.getId()), team.getCreatedAt(), team.isPersonal());
+                countMembers(team.getId()), team.getCreatedAt(), team.isPersonal(), subscription.effectivePlan(now),
+                subscription.effectiveSource(now), subscription.effectiveExpiresAt(now));
     }
 
     public TeamMemberResponse toMemberResponse(TeamMember member) {

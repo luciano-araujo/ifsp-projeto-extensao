@@ -3,6 +3,7 @@ package br.edu.ifsp.tcc.application.usecase;
 import br.edu.ifsp.tcc.application.dto.TeamResponse;
 import br.edu.ifsp.tcc.application.entity.*;
 import br.edu.ifsp.tcc.application.service.InviteService;
+import br.edu.ifsp.tcc.application.service.PlanService;
 import br.edu.ifsp.tcc.application.service.TeamService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -25,6 +26,7 @@ class AcceptInviteUseCaseTest {
 
     @Mock private TeamService teamService;
     @Mock private InviteService inviteService;
+    @Mock private PlanService planService;
     @InjectMocks private AcceptInviteUseCase useCase;
 
     private User carla;
@@ -45,7 +47,7 @@ class AcceptInviteUseCaseTest {
 
     @Test
     void execute_shouldJoinWithTheRoleOfTheInviteAndMarkItAccepted() {
-        TeamResponse response = new TeamResponse(10L, "Equipe", TeamRole.REVIEWER, 2, null, false);
+        TeamResponse response = new TeamResponse(10L, "Equipe", TeamRole.REVIEWER, 2, null, false, null, null, null);
         when(inviteService.findOpenByToken("tok")).thenReturn(invite);
         when(teamService.findMemberByTeamIdAndUserId(10L, 5L)).thenReturn(Optional.empty());
         when(teamService.saveMember(any(TeamMember.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -94,5 +96,17 @@ class AcceptInviteUseCaseTest {
 
         assertEquals(HttpStatus.NOT_FOUND, ex.getStatusCode());
         verifyNoInteractions(teamService);
+    }
+
+    @Test
+    void execute_shouldStopWith402WhenTheTeamIsFull() {
+        when(inviteService.findOpenByToken("tok")).thenReturn(invite);
+        when(teamService.findMemberByTeamIdAndUserId(10L, 5L)).thenReturn(Optional.empty());
+        doThrow(new ResponseStatusException(HttpStatus.PAYMENT_REQUIRED, "limite")).when(planService).requireCanAddMember(invite.getTeam());
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class, () -> useCase.execute("tok", carla));
+        assertEquals(HttpStatus.PAYMENT_REQUIRED, ex.getStatusCode());
+        verify(teamService, never()).saveMember(any());
+        verify(inviteService, never()).markAccepted(any());
     }
 }

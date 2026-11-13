@@ -23,6 +23,9 @@ public interface TeamInviteRepository extends JpaRepository<TeamInvite, Long> {
     List<TeamInvite> findByTeam_IdAndStatusAndExpiresAtAfterOrderByCreatedAtDescIdDesc(
             Long teamId, InviteStatus status, LocalDateTime now);
 
+    /** Open invites of the team: pending and not expired. */
+    int countByTeam_IdAndStatusAndExpiresAtAfter(Long teamId, InviteStatus status, LocalDateTime now);
+
     Optional<TeamInvite> findByIdAndTeam_Id(Long id, Long teamId);
 
     List<TeamInvite> findByTeam_IdAndEmailIgnoreCaseAndStatus(Long teamId, String email, InviteStatus status);

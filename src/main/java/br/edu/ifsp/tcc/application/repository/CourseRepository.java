@@ -10,5 +10,6 @@ import java.util.Optional;
 @Repository
 public interface CourseRepository extends JpaRepository<Course, Long> {
     List<Course> findByTeam_IdOrderByCreatedAtDesc(Long teamId);
+    int countByTeam_Id(Long teamId);
     Optional<Course> findByIdAndTeam_Id(Long id, Long teamId);
 }

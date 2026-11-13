@@ -10,6 +10,7 @@ import br.edu.ifsp.tcc.application.entity.TeamRole;
 import br.edu.ifsp.tcc.application.entity.User;
 import br.edu.ifsp.tcc.application.service.BoardService;
 import br.edu.ifsp.tcc.application.service.KanbanItemService;
+import br.edu.ifsp.tcc.application.service.PlanService;
 import br.edu.ifsp.tcc.application.service.TeamService;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
@@ -24,11 +25,14 @@ public class ConvertIdeaUseCase {
     private final TeamService teamService;
     private final BoardService boardService;
     private final KanbanItemService kanbanItemService;
+    private final PlanService planService;
 
-    public ConvertIdeaUseCase(TeamService teamService, BoardService boardService, KanbanItemService kanbanItemService) {
+    public ConvertIdeaUseCase(TeamService teamService, BoardService boardService, KanbanItemService kanbanItemService,
+                              PlanService planService) {
         this.teamService = teamService;
         this.boardService = boardService;
         this.kanbanItemService = kanbanItemService;
+        this.planService = planService;
     }
 
     /** RN01: an idea only becomes a project with a target audience and a pedagogical objective. */
@@ -48,6 +52,7 @@ public class ConvertIdeaUseCase {
         KanbanItemService.requireProjectFields(item.getTitle(), item.getTargetAudience(), item.getPedagogicalObjective());
 
         BoardColumn column = boardService.resolveColumn(teamId, targetColumnId);
+        planService.requireCanCreateProject(item.getTeam());
         item.setColumn(column);
         item.setSortOrder(boardService.nextSortOrder(teamId, column.getId()));
         item.setState(KanbanItemState.IN_PRODUCTION);

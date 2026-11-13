@@ -6,6 +6,7 @@ import br.edu.ifsp.tcc.application.entity.*;
 import br.edu.ifsp.tcc.application.service.EmailService;
 import br.edu.ifsp.tcc.application.service.InviteService;
 import br.edu.ifsp.tcc.application.service.TeamService;
+import br.edu.ifsp.tcc.application.service.PlanService;
 import br.edu.ifsp.tcc.application.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,6 +34,7 @@ class CreateInviteUseCaseTest {
     @Mock private UserService userService;
     @Mock private InviteService inviteService;
     @Mock private EmailService emailService;
+    @Mock private PlanService planService;
     @InjectMocks private CreateInviteUseCase useCase;
 
     private TeamMember admin;
@@ -196,5 +198,32 @@ class CreateInviteUseCaseTest {
         } finally {
             org.springframework.transaction.support.TransactionSynchronizationManager.clearSynchronization();
         }
+    }
+
+    @Test
+    void execute_shouldStopWith402WhenMembersAndPendingInvitesFillThePlan() {
+        when(teamService.requireRole(10L, 1L, TeamRole.ADMIN)).thenReturn(admin);
+        doThrow(new ResponseStatusException(HttpStatus.PAYMENT_REQUIRED, "limite")).when(planService).requireCanInvite(admin.getTeam());
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> useCase.execute(10L, 1L, dto("carla@exemplo.test", TeamRole.CREATOR)));
+        assertEquals(HttpStatus.PAYMENT_REQUIRED, ex.getStatusCode());
+        // only the pending-invite lookup ran; nothing was deleted, created or e-mailed
+        verify(inviteService).findPendingByTeamAndEmail(10L, "carla@exemplo.test");
+        verifyNoMoreInteractions(inviteService);
+        verifyNoInteractions(emailService);
+    }
+
+    @Test
+    void execute_shouldReportAnOpenInviteAs409EvenWhenThePlanIsFull() {
+        when(teamService.requireRole(10L, 1L, TeamRole.ADMIN)).thenReturn(admin);
+        TeamInvite open = mock(TeamInvite.class);
+        when(open.isOpen()).thenReturn(true);
+        when(inviteService.findPendingByTeamAndEmail(10L, "carla@exemplo.test")).thenReturn(List.of(open));
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> useCase.execute(10L, 1L, dto("carla@exemplo.test", TeamRole.CREATOR)));
+        assertEquals(HttpStatus.CONFLICT, ex.getStatusCode());
+        verify(planService, never()).requireCanInvite(any());
     }
 }

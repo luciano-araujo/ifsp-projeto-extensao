@@ -7,6 +7,7 @@ import br.edu.ifsp.tcc.application.entity.Script;
 import br.edu.ifsp.tcc.application.entity.TeamRole;
 import br.edu.ifsp.tcc.application.service.BoardService;
 import br.edu.ifsp.tcc.application.service.CardSummaryService;
+import br.edu.ifsp.tcc.application.service.PlanService;
 import br.edu.ifsp.tcc.application.service.ScriptService;
 import br.edu.ifsp.tcc.application.service.SummaryGenerator;
 import br.edu.ifsp.tcc.application.service.TeamService;
@@ -24,15 +25,17 @@ public class GenerateCardSummaryUseCase {
     private final ScriptService scriptService;
     private final CardSummaryService cardSummaryService;
     private final SummaryGenerator summaryGenerator;
+    private final PlanService planService;
 
     public GenerateCardSummaryUseCase(TeamService teamService, BoardService boardService,
                                       ScriptService scriptService, CardSummaryService cardSummaryService,
-                                      SummaryGenerator summaryGenerator) {
+                                      SummaryGenerator summaryGenerator, PlanService planService) {
         this.teamService = teamService;
         this.boardService = boardService;
         this.scriptService = scriptService;
         this.cardSummaryService = cardSummaryService;
         this.summaryGenerator = summaryGenerator;
+        this.planService = planService;
     }
 
     /**
@@ -46,6 +49,7 @@ public class GenerateCardSummaryUseCase {
         if (item.getState() == KanbanItemState.IDEATION) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ideias não possuem roteiro para resumir.");
         }
+        planService.requireCanSummarize(item.getTeam());
         String plainText = scriptService.findByKanbanItemId(cardId).map(Script::getContent)
                 .map(CardSummaryService::plainText).orElse("");
         if (CardSummaryService.countWords(plainText) < MIN_WORDS) {

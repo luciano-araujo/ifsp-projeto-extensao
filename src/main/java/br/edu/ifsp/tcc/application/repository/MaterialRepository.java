@@ -33,6 +33,10 @@ public interface MaterialRepository extends JpaRepository<Material, Long> {
             + "WHERE m.kanbanItem.id IN :cardIds GROUP BY m.kanbanItem.id")
     List<CardCount> countByCards(@Param("cardIds") Collection<Long> cardIds);
 
+    /** Total size in bytes of the materials of all the cards of a team (0 when there are none). */
+    @Query("SELECT COALESCE(SUM(m.sizeBytes), 0) FROM Material m WHERE m.kanbanItem.team.id = :teamId")
+    long sumSizeBytesByTeam(@Param("teamId") Long teamId);
+
     /** Materials linked to lessons of courses published on or before the limit, not archived yet (RN04). */
     @Query("SELECT DISTINCT m FROM LessonMaterial lm JOIN lm.material m JOIN lm.lesson l JOIN l.module mo JOIN mo.course c "
             + "WHERE c.status = br.edu.ifsp.tcc.application.entity.CourseStatus.PUBLISHED "

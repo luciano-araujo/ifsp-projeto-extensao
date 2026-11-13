@@ -111,6 +111,8 @@ class InvitesIT extends AbstractIT {
     @DisplayName("IT-INV-05 GET invites lists pending ones newest first, without the accepted and the expired")
     void list() {
         Team team = newTeam();
+        // Plans: members + pending invites must fit the 5 seats of the fixture plan, so make room first
+        jdbc.update("DELETE FROM team_members WHERE id IN (?, ?)", team.creatorMemberId(), team.reviewerMemberId());
         long first = invite(team, email("l1"), "CREATOR").num("id");
         long second = invite(team, email("l2"), "REVIEWER").num("id");
         Person dora = person("dora");

@@ -69,7 +69,7 @@ class InviteControllerTest {
 
     @Test
     void accept_shouldReturnTeam() {
-        TeamResponse team = new TeamResponse(10L, "Equipe", null, 2, null, false);
+        TeamResponse team = new TeamResponse(10L, "Equipe", null, 2, null, false, null, null, null);
         when(acceptInviteUseCase.execute("tok", user)).thenReturn(team);
 
         ResponseEntity<TeamResponse> response = controller.accept(user, "tok");
