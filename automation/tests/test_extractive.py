@@ -17,6 +17,33 @@ def test_keeps_original_order(long_text):
     assert picked
     positions = [summary.index(s) for s in picked]
     assert positions == sorted(positions)
+    assert picked == [s for s in SENTENCES if s in picked]
+
+
+def test_repetitive_input_has_no_duplicate_sentences():
+    summary = summarize_extractive(make_text(repeats=10))
+    for s in SENTENCES:
+        assert summary.count(s) <= 1
+
+
+def test_dedup_ignores_case_spacing_and_trailing_punctuation():
+    text = "Gato bonito  mora aqui! gato bonito mora aqui. Cachorro feio mora lá."
+    summary = summarize_extractive(text)
+    assert summary.lower().count("gato bonito") == 1
+
+
+def test_splits_on_line_breaks():
+    assert split_sentences("Cena 1\nO apresentador entra…\n\nFim") == [
+        "Cena 1", "O apresentador entra…", "Fim"]
+
+
+def test_closing_quotes_and_parentheses_after_punctuation():
+    assert split_sentences('Ele disse "fim." Depois saiu (rápido.) Voltou') == [
+        'Ele disse "fim."', "Depois saiu (rápido.)", "Voltou"]
+
+
+def test_empty_after_dedup_returns_empty():
+    assert summarize_extractive("...") == ""
 
 
 def test_abbreviations_and_decimals_do_not_split():

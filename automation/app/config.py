@@ -34,11 +34,11 @@ def _positive_float(name: str, default: float) -> float:
 
 def get_settings() -> Settings:
     engine = os.environ.get("SUMMARY_ENGINE", "auto").strip().lower()
-    if engine not in ("auto", "claude", "extractive"):
+    if engine not in ("auto", "extractive"):
         engine = "auto"
     return Settings(
         api_key=(os.environ.get("ANTHROPIC_API_KEY") or "").strip() or None,
         model=os.environ.get("SUMMARY_MODEL", "claude-sonnet-5-5"),
-        timeout_seconds=_positive_float("SUMMARY_TIMEOUT_SECONDS", 25),
+        timeout_seconds=_positive_float("SUMMARY_TIMEOUT_SECONDS", 20),
         engine=engine,
     )

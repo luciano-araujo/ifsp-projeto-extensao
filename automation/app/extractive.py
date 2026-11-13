@@ -22,8 +22,30 @@ _ABBREVIATIONS = ("sr", "sra", "srta", "dr", "dra", "prof", "profa", "exmo", "ex
 _PLACEHOLDER = "\u0001"
 _ABBR_RE = re.compile(r"\b(" + "|".join(_ABBREVIATIONS) + r")\.", re.IGNORECASE)
 _DECIMAL_RE = re.compile(r"(?<=\d)\.(?=\d)")
-_SENTENCE_END_RE = re.compile(r"(?<=[.!?…])\s+")
+_SENTENCE_END_RE = re.compile(
+    r"\s*\n\s*|(?:(?<=[.!?…])|(?<=[.!?…][\"'”’)\]]))\s+")
+_TAG_RE = re.compile(r"<[^>]*>")
+_KEY_STRIP = " .!?…,;:\"'”“’)(]["
 _WORD_RE = re.compile(r"[^\W\d_]+", re.UNICODE)
+
+
+def strip_html(text: str) -> str:
+    return _TAG_RE.sub(" ", text)
+
+
+def _dedup_key(sentence: str) -> str:
+    return " ".join(sentence.lower().split()).strip(_KEY_STRIP)
+
+
+def _unique(sentences: list[str]) -> list[str]:
+    seen: set[str] = set()
+    out = []
+    for s in sentences:
+        key = _dedup_key(s)
+        if key and key not in seen:
+            seen.add(key)
+            out.append(s)
+    return out
 
 
 def split_sentences(text: str) -> list[str]:
@@ -43,7 +65,9 @@ def _truncate(sentence: str, limit: int) -> str:
 
 
 def summarize_extractive(text: str, max_words: int = MAX_SUMMARY_WORDS) -> str:
-    sentences = split_sentences(text)
+    sentences = _unique(split_sentences(text))
+    if not sentences:
+        return ""
     tokens = [_content_words(s) for s in sentences]
     freq = Counter(w for ws in tokens for w in ws)
     if not freq:

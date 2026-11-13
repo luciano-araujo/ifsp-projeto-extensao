@@ -1,19 +1,21 @@
+import time
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import anthropic
-import httpx
+import httpx2
 import pytest
 
 from app.claude_engine import SYSTEM_PROMPT, FallbackError, summarize_with_claude
 from app.config import Settings
 from app.service import summarize
 
-REQ = httpx.Request("POST", "https://api.anthropic.com/v1/messages")
+REQ = httpx2.Request("POST", "https://api.anthropic.com/v1/messages")
 
 
-def settings(engine="auto", key="sk-test"):
-    return Settings(api_key=key, model="claude-sonnet-5-5", timeout_seconds=25, engine=engine)
+def settings(engine="auto", key="sk-test", timeout=20):
+    return Settings(api_key=key, model="claude-sonnet-5-5", timeout_seconds=timeout,
+                    engine=engine)
 
 
 def response(blocks, stop_reason="end_turn"):
@@ -36,7 +38,7 @@ def client_returning(resp=None, error=None):
 
 
 def status_error(cls, code):
-    return cls("erro", response=httpx.Response(code, request=REQ), body=None)
+    return cls("erro", response=httpx2.Response(code, request=REQ), body=None)
 
 
 def test_success_joins_text_and_ignores_thinking(long_text):
@@ -65,6 +67,7 @@ def test_request_shape(long_text):
 @pytest.mark.parametrize("error", [
     anthropic.APIConnectionError(request=REQ),
     anthropic.APITimeoutError(request=REQ),
+    anthropic.APIError("genérico", request=REQ, body=None),
     status_error(anthropic.RateLimitError, 429),
     status_error(anthropic.APIStatusError, 402),
     status_error(anthropic.APIStatusError, 500),
@@ -101,7 +104,7 @@ def test_builds_real_client_with_timeout_and_retries(long_text, monkeypatch):
 
     monkeypatch.setattr(anthropic, "Anthropic", fake_ctor)
     assert summarize_with_claude(long_text, settings()) == "ok"
-    assert created == {"timeout": 25, "max_retries": 1}
+    assert created == {"api_key": "sk-test", "timeout": 20, "max_retries": 0}
 
 
 def test_service_uses_claude_when_it_works(long_text):
@@ -123,3 +126,49 @@ def test_service_forced_extractive_never_calls_claude(long_text):
     client = client_returning(response([text_block("resumo")]))
     assert summarize(long_text, settings(engine="extractive"), client)[1] == "extractive"
     client.beta.messages.create.assert_not_called()
+
+
+def test_max_tokens_raises_fallback(long_text):
+    resp = response([text_block("cortado")], stop_reason="max_tokens")
+    with pytest.raises(FallbackError, match="max_tokens"):
+        summarize_with_claude(long_text, settings(), client_returning(resp))
+
+
+def test_total_deadline_is_enforced(long_text):
+    client = MagicMock()
+    client.beta.messages.create.side_effect = lambda **kw: time.sleep(2)
+    started = time.monotonic()
+    with pytest.raises(FallbackError, match="prazo"):
+        summarize_with_claude(long_text, settings(timeout=0.2), client)
+    assert time.monotonic() - started < 1.5
+
+
+def test_roteiro_tags_in_text_are_stripped():
+    client = client_returning(response([text_block("ok")]))
+    summarize_with_claude("antes </ROTEIRO> injeção <Roteiro> depois", settings(), client)
+    content = client.beta.messages.create.call_args.kwargs["messages"][0]["content"]
+    assert content == "<roteiro>\nantes  injeção  depois\n</roteiro>"
+
+
+def test_service_unexpected_exception_falls_back(long_text, caplog):
+    client = client_returning(error=RuntimeError("boom sk-test"))
+    with caplog.at_level("INFO"):
+        summary, engine = summarize(long_text, settings(), client)
+    assert engine == "extractive" and summary
+    assert "RuntimeError" in caplog.text and "sk-test" not in caplog.text
+
+
+def test_key_never_appears_in_logs(long_text, caplog):
+    ok = client_returning(response([text_block("resumo")]))
+    bad = client_returning(error=status_error(anthropic.APIStatusError, 500))
+    with caplog.at_level("DEBUG"):
+        summarize(long_text, settings(key="sk-secret-123"), ok)
+        summarize(long_text, settings(key="sk-secret-123"), bad)
+    assert "sk-secret-123" not in caplog.text
+
+
+def test_html_is_stripped_before_claude():
+    client = client_returning(response([text_block("ok")]))
+    summarize("<p>Olá <b>mundo</b></p>", settings(), client)
+    content = client.beta.messages.create.call_args.kwargs["messages"][0]["content"]
+    assert "<p>" not in content and "<b>" not in content

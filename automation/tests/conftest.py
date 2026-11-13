@@ -27,3 +27,5 @@ def no_real_key(monkeypatch):
     """Garante que nenhum teste enxergue uma chave real da máquina."""
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     monkeypatch.delenv("SUMMARY_ENGINE", raising=False)
+    monkeypatch.delenv("SUMMARY_MODEL", raising=False)
+    monkeypatch.delenv("SUMMARY_TIMEOUT_SECONDS", raising=False)
