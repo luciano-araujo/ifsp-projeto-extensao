@@ -97,6 +97,15 @@ public class TeamService {
     }
 
 
+    /**
+     * Locks the team row until the end of the transaction, so that work on the same team (invites) runs one at a time.
+     * Call it before any other read of the transaction: the locking read does not fix the snapshot, the later reads see
+     * what the previous holder committed. A missing team is left to the caller (403 from the role check).
+     */
+    public void lockTeam(Long teamId) {
+        teamRepository.findByIdForUpdate(teamId);
+    }
+
     public Team renameTeam(Team team, String name) {
         team.setName(name);
         return teamRepository.save(team);

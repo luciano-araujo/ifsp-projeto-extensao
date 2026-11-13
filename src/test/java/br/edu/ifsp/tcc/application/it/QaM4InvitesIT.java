@@ -2,7 +2,6 @@ package br.edu.ifsp.tcc.application.it;
 
 import br.edu.ifsp.tcc.application.entity.User;
 import br.edu.ifsp.tcc.application.service.InviteService;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.annotation.Import;
@@ -151,7 +150,6 @@ class QaM4InvitesIT extends AbstractIT {
     }
 
     @Test
-    @Disabled("BUG QA4-01 (open): concurrent POST invites to the same e-mail create several PENDING rows; remove this line when fixed")
     @DisplayName("IT-INV-16 Two invites to the same e-mail at the same time: only one stays pending (409 for the other)")
     void createTwiceAtTheSameTime() throws Exception {
         Team team = newTeam();

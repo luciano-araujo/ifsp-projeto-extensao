@@ -75,13 +75,13 @@ class ConfirmEmailChangeUseCaseTest {
         EmailChangeToken token = pending(1, LocalDateTime.now().plusMinutes(5));
         when(userService.findById(1L)).thenReturn(Optional.of(ana));
         when(emailChangeTokenService.findByUserId(1L)).thenReturn(Optional.of(token));
+        when(emailChangeTokenService.registerWrongAttempt(any(), eq(ConfirmEmailChangeUseCase.MAX_ATTEMPTS - 1))).thenReturn(true);
 
         ResponseStatusException ex = thrown(1L, 1L, "000000");
 
         assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
         assertEquals("Código inválido.", ex.getReason());
-        assertEquals(2, token.getAttempts());
-        verify(emailChangeTokenService).save(token);
+        verify(emailChangeTokenService).registerWrongAttempt(any(), eq(ConfirmEmailChangeUseCase.MAX_ATTEMPTS - 1));
         assertEquals("ana@exemplo.test", ana.getEmail());
     }
 
@@ -90,6 +90,7 @@ class ConfirmEmailChangeUseCaseTest {
         when(userService.findById(1L)).thenReturn(Optional.of(ana));
         when(emailChangeTokenService.findByUserId(1L)).thenReturn(Optional.of(
                 pending(ConfirmEmailChangeUseCase.MAX_ATTEMPTS - 1, LocalDateTime.now().plusMinutes(5))));
+        when(emailChangeTokenService.registerWrongAttempt(any(), eq(ConfirmEmailChangeUseCase.MAX_ATTEMPTS - 1))).thenReturn(false);
 
         ResponseStatusException ex = thrown(1L, 1L, "000000");
 

@@ -66,12 +66,12 @@ class ResetPasswordUseCaseTest {
     void execute_shouldCountWrongCodeAndKeepPassword() {
         PasswordResetToken current = token(1, LocalDateTime.now().plusMinutes(5));
         when(passwordResetTokenService.findLatestByEmail("ana@example.com")).thenReturn(Optional.of(current));
+        when(passwordResetTokenService.registerWrongAttempt(any(), eq(ResetPasswordUseCase.MAX_ATTEMPTS - 1))).thenReturn(true);
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class, () -> useCase.execute(request("000000")));
 
         assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
-        assertEquals(2, current.getAttempts());
-        verify(passwordResetTokenService).save(current);
+        verify(passwordResetTokenService).registerWrongAttempt(any(), eq(ResetPasswordUseCase.MAX_ATTEMPTS - 1));
         verify(userService, never()).update(any());
     }
 
@@ -79,6 +79,7 @@ class ResetPasswordUseCaseTest {
     void execute_shouldDiscardCodeAfterMaxAttempts() {
         PasswordResetToken current = token(ResetPasswordUseCase.MAX_ATTEMPTS - 1, LocalDateTime.now().plusMinutes(5));
         when(passwordResetTokenService.findLatestByEmail("ana@example.com")).thenReturn(Optional.of(current));
+        when(passwordResetTokenService.registerWrongAttempt(any(), eq(ResetPasswordUseCase.MAX_ATTEMPTS - 1))).thenReturn(false);
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class, () -> useCase.execute(request("000000")));
 

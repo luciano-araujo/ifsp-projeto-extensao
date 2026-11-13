@@ -2,7 +2,6 @@ package br.edu.ifsp.tcc.application.it;
 
 import br.edu.ifsp.tcc.application.usecase.SendDeadlineDigestUseCase;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -122,7 +121,6 @@ class QaM4AlertsIT extends AbstractIT {
     }
 
     @Test
-    @Disabled("BUG QA4-04 (open): a card title with a line break forges extra lines in the digest e-mail; remove this line when fixed")
     @DisplayName("IT-ALR-06 Digest: a card title cannot forge extra lines of the e-mail (line breaks are refused or stay inside one line)")
     void digestLineForging() {
         Team team = newTeam();

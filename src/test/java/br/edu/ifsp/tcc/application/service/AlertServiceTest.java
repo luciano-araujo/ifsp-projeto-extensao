@@ -211,4 +211,22 @@ class AlertServiceTest {
         assertEquals("[Equipe] Projeto \"Aula 1\": vence amanhã (14/11/2026)", service.describe("Equipe", tomorrow));
         assertEquals("[Equipe] Projeto \"Aula 1\": vence em 3 dias (16/11/2026)", service.describe("Equipe", later));
     }
+
+    @Test
+    void describe_shouldNeverLetALineBreakInATitleForgeAnotherLine() {
+        AlertResponse alert = new AlertResponse(AlertType.TASK_DUE_SOON, 1L, "Projeto\r\nAVISO: falso", 7L, "Tarefa\tcom\ntab",
+                TODAY, 0);
+
+        String line = service.describe("Equipe\nX", alert);
+
+        assertFalse(line.contains("\n") || line.contains("\r") || line.contains("\t"), line);
+        assertTrue(line.contains("Projeto  AVISO: falso"));
+    }
+
+    @Test
+    void describe_shouldCopeWithMissingTitles() {
+        AlertResponse alert = new AlertResponse(AlertType.CARD_DUE_SOON, 1L, null, null, null, TODAY, 0);
+
+        assertEquals("[Equipe] Projeto \"\": vence hoje (13/11/2026)", service.describe("Equipe", alert));
+    }
 }

@@ -1,6 +1,5 @@
 package br.edu.ifsp.tcc.application.it;
 
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.annotation.Import;
@@ -163,7 +162,6 @@ class QaM4AccountIT extends AbstractIT {
     }
 
     @Test
-    @Disabled("BUG QA4-02 (open): parallel wrong guesses are not capped at 5 (31 of 40 were counted as plain wrong codes); remove this line when fixed")
     @DisplayName("IT-ACC-12 / SEC-23 Parallel wrong guesses cannot go beyond 5 attempts: afterwards even the right code is refused")
     void attemptsLimitUnderParallelGuesses() throws Exception {
         Person user = person("mail");
@@ -187,7 +185,6 @@ class QaM4AccountIT extends AbstractIT {
     }
 
     @Test
-    @Disabled("BUG QA4-03 (open): PUT /users/{id}/password has no rate limit; remove this line when fixed")
     @DisplayName("IT-ACC-13 / SEC-23 The password route is limited like the auth routes: repeated wrong current passwords end in 429")
     void passwordGuessingIsLimited() {
         Person user = person("pw");
@@ -201,7 +198,6 @@ class QaM4AccountIT extends AbstractIT {
     }
 
     @Test
-    @Disabled("BUG QA4-03 (open): POST /users/{id}/email-change has no rate limit (mail to arbitrary addresses); remove this line when fixed")
     @DisplayName("IT-ACC-14 / SEC-23 Requests of an e-mail change are limited: 40 requests in a row for other addresses end in 429")
     void emailChangeRequestsAreLimited() {
         Person user = person("mail");

@@ -47,6 +47,8 @@ public class CreateInviteUseCase {
      */
     @Transactional
     public InviteResponse execute(Long teamId, Long userId, CreateInviteDTO dto) {
+        // Serialize per team before any read: two parallel invites to the same e-mail must see each other
+        teamService.lockTeam(teamId);
         TeamMember admin = teamService.requireRole(teamId, userId, TeamRole.ADMIN);
         String email = dto.getEmail().trim();
 

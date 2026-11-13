@@ -27,7 +27,7 @@ class RateLimitFilterTest {
     @Mock private FilterChain chain;
 
     private RateLimitFilter filter(boolean enabled) {
-        return new RateLimitFilter(rateLimitService, enabled, 10, 100, PROXIES);
+        return new RateLimitFilter(rateLimitService, enabled, 10, 100, 10, PROXIES);
     }
 
     private MockHttpServletRequest post(String path, String body) {
@@ -196,5 +196,52 @@ class RateLimitFilterTest {
         assertTrue(RateLimitFilter.LIMITED_PATHS.contains("/api/auth/register/confirm"));
         assertTrue(RateLimitFilter.LIMITED_PATHS.contains("/api/auth/register/request-token"));
         assertTrue(RateLimitFilter.LIMITED_PATHS.contains("/api/auth/password/reset"));
+    }
+
+    private MockHttpServletRequest user(String method, String path) {
+        MockHttpServletRequest request = new MockHttpServletRequest(method, path);
+        request.setRemoteAddr("203.0.113.5");
+        request.setServletPath(path);
+        request.setContent("{}".getBytes(StandardCharsets.UTF_8));
+        return request;
+    }
+
+    @Test
+    void shouldLimitThePasswordAndEmailChangeRoutesPerUserAndIp() throws Exception {
+        when(rateLimitService.registerAttempt(anyString(), anyInt())).thenReturn(0L);
+
+        filter(true).doFilter(user("PUT", "/api/v1/users/7/password"), new MockHttpServletResponse(), chain);
+        filter(true).doFilter(user("POST", "/api/v1/users/7/email-change"), new MockHttpServletResponse(), chain);
+
+        verify(rateLimitService).registerAttempt("user|/api/v1/users/7/password|203.0.113.5", 10);
+        verify(rateLimitService).registerAttempt("ip|/api/v1/users/{id}/password|203.0.113.5", 100);
+        verify(rateLimitService).registerAttempt("user|/api/v1/users/7/email-change|203.0.113.5", 10);
+        verify(rateLimitService).registerAttempt("ip|/api/v1/users/{id}/email-change|203.0.113.5", 100);
+        verify(chain, times(2)).doFilter(any(), any());
+    }
+
+    @Test
+    void shouldAnswer429ForTheUserRoutesWithTheSameBodyAsTheAuthRoutes() throws Exception {
+        when(rateLimitService.registerAttempt(anyString(), anyInt())).thenReturn(0L, 45L);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        filter(true).doFilter(user("PUT", "/api/v1/users/7/password"), response, chain);
+
+        assertEquals(429, response.getStatus());
+        assertEquals("45", response.getHeader("Retry-After"));
+        assertTrue(response.getContentAsString(StandardCharsets.UTF_8).contains(RateLimitFilter.MESSAGE));
+        verifyNoInteractions(chain);
+    }
+
+    @Test
+    void shouldNotLimitTheEmailConfirmationOrOtherMethodsOrOtherUserRoutes() throws Exception {
+        filter(true).doFilter(user("POST", "/api/v1/users/7/email-change/confirm"), new MockHttpServletResponse(), chain);
+        filter(true).doFilter(user("GET", "/api/v1/users/7/password"), new MockHttpServletResponse(), chain);
+        filter(true).doFilter(user("POST", "/api/v1/users/7/password"), new MockHttpServletResponse(), chain);
+        filter(true).doFilter(user("PUT", "/api/v1/users/7"), new MockHttpServletResponse(), chain);
+        filter(true).doFilter(user("PUT", "/api/v1/users/abc/password"), new MockHttpServletResponse(), chain);
+
+        verify(chain, times(5)).doFilter(any(), any());
+        verifyNoInteractions(rateLimitService);
     }
 }

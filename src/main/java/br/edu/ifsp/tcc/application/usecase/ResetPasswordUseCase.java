@@ -44,13 +44,11 @@ public class ResetPasswordUseCase {
         }
 
         if (!token.getToken().equals(request.getToken())) {
-            int attempts = token.getAttempts() + 1;
-            if (attempts >= MAX_ATTEMPTS) {
+            // Atomic: parallel guesses cannot all read the same counter and slip past the limit
+            if (!passwordResetTokenService.registerWrongAttempt(token.getId(), MAX_ATTEMPTS - 1)) {
                 passwordResetTokenService.deleteByEmail(email);
                 throw invalid("Muitas tentativas. Solicite um novo código.");
             }
-            token.setAttempts(attempts);
-            passwordResetTokenService.save(token);
             throw invalid("Código inválido.");
         }
 

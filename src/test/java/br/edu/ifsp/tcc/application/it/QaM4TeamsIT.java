@@ -1,6 +1,5 @@
 package br.edu.ifsp.tcc.application.it;
 
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.annotation.Import;
@@ -205,7 +204,6 @@ class QaM4TeamsIT extends AbstractIT {
     }
 
     @Test
-    @Disabled("BUG QA4-05 (open): team names accept CR/LF/tab/NUL; remove this line when fixed")
     @DisplayName("IT-TEAM-09 Team names: no control characters (CR/LF would reach the subject of the invite e-mail)")
     void namesWithControlCharacters() {
         Person user = person("names");

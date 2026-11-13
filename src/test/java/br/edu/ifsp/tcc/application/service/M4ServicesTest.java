@@ -171,4 +171,20 @@ class M4ServicesTest {
         assertTrue(message.getText().contains("linha 1\nlinha 2"));
         assertTrue(message.getSubject().contains("Prazos"));
     }
+
+    @Test
+    void emailChangeRegisterWrongAttempt_shouldBeFalseWhenTheLimitWasReached() {
+        EmailChangeTokenService service = new EmailChangeTokenService(emailChangeTokenRepository);
+        when(emailChangeTokenRepository.incrementAttempts(3L, 4)).thenReturn(1, 0);
+
+        assertTrue(service.registerWrongAttempt(3L, 4));
+        assertFalse(service.registerWrongAttempt(3L, 4));
+    }
+
+    @Test
+    void lockTeam_shouldTakeTheRowLock() {
+        teamService().lockTeam(10L);
+
+        verify(teamRepository).findByIdForUpdate(10L);
+    }
 }

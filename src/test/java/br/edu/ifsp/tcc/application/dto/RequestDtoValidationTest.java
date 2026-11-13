@@ -194,4 +194,33 @@ class RequestDtoValidationTest {
             });
         }
     }
+
+    @Test
+    void titlesAndTeamNames_shouldRefuseControlCharactersWithOneMessage() {
+        String message = "O texto não pode conter quebras de linha ou caracteres de controle.";
+        for (String bad : new String[] {"a\nb", "a\rb", "a\tb", "a\u0000b"}) {
+            CreateCardDTO card = new CreateCardDTO();
+            card.setTitle(bad);
+            UpdateKanbanItemDTO update = new UpdateKanbanItemDTO();
+            update.setTitle(bad);
+            ConvertCardDTO convert = new ConvertCardDTO();
+            convert.setTitle(bad);
+            CreateTaskDTO task = new CreateTaskDTO();
+            task.setTitle(bad);
+            UpdateTaskDTO taskUpdate = new UpdateTaskDTO();
+            taskUpdate.setTitle(bad);
+            CreateTeamDTO team = new CreateTeamDTO();
+            team.setName(bad);
+            RenameTeamDTO rename = new RenameTeamDTO();
+            rename.setName(bad);
+            for (Object dto : new Object[] {card, update, convert, task, taskUpdate, team, rename}) {
+                var violations = VALIDATOR.validate(dto);
+                assertEquals(1, violations.size(), dto.getClass().getSimpleName());
+                assertEquals(message, violations.iterator().next().getMessage());
+            }
+        }
+        CreateTeamDTO ok = new CreateTeamDTO();
+        ok.setName("Núcleo <b>& \"Cia\"");
+        assertTrue(VALIDATOR.validate(ok).isEmpty());
+    }
 }

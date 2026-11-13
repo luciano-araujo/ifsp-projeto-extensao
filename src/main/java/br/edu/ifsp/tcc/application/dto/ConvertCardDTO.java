@@ -1,5 +1,6 @@
 package br.edu.ifsp.tcc.application.dto;
 
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
@@ -7,6 +8,7 @@ import lombok.Data;
 @Data
 public class ConvertCardDTO {
     @Size(max = 255, message = "O título deve ter no máximo 255 caracteres.")
+    @Pattern(regexp = "[^\\p{Cntrl}]*", message = "O texto não pode conter quebras de linha ou caracteres de controle.")
     private String title;
     @Size(max = 255, message = "O público-alvo deve ter no máximo 255 caracteres.")
     private String targetAudience;

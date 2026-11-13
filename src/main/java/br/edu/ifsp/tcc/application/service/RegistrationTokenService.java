@@ -36,4 +36,9 @@ public class RegistrationTokenService {
     public int deleteExpired(LocalDateTime now) {
         return registrationTokenRepository.deleteExpired(now);
     }
+
+    /** Counts one wrong attempt atomically; false when the limit was already reached (the code must be discarded). */
+    public boolean registerWrongAttempt(Long tokenId, int limit) {
+        return registrationTokenRepository.incrementAttempts(tokenId, limit) > 0;
+    }
 }

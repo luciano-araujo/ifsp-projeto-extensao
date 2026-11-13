@@ -105,14 +105,14 @@ class ConfirmRegistrationUseCaseTest {
     void execute_shouldCountWrongCodeAndNotCreateAccount() {
         RegistrationToken current = token("x@x.com", LocalDateTime.now().plusMinutes(5), 2);
         when(registrationTokenService.findLatestByEmail("x@x.com")).thenReturn(Optional.of(current));
+        when(registrationTokenService.registerWrongAttempt(any(), eq(ConfirmRegistrationUseCase.MAX_ATTEMPTS - 1))).thenReturn(true);
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
                 () -> useCase.execute(request("x@x.com", "000000", "pass")));
 
         assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
         assertTrue(ex.getReason().contains("inválido"));
-        assertEquals(3, current.getAttempts());
-        verify(registrationTokenService).save(current);
+        verify(registrationTokenService).registerWrongAttempt(any(), eq(ConfirmRegistrationUseCase.MAX_ATTEMPTS - 1));
         verify(userService, never()).save(any());
     }
 
@@ -120,6 +120,7 @@ class ConfirmRegistrationUseCaseTest {
     void execute_shouldDiscardCodeAfterMaxAttempts() {
         RegistrationToken current = token("x@x.com", LocalDateTime.now().plusMinutes(5),
                 ConfirmRegistrationUseCase.MAX_ATTEMPTS - 1);
+        when(registrationTokenService.registerWrongAttempt(any(), eq(ConfirmRegistrationUseCase.MAX_ATTEMPTS - 1))).thenReturn(false);
         when(registrationTokenService.findLatestByEmail("x@x.com")).thenReturn(Optional.of(current));
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
