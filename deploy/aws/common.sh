@@ -128,6 +128,7 @@ export MYSQL_PWD='$(secret DB_PASSWORD)'
 command -v mysql >/dev/null || sudo dnf install -y mariadb105 >/dev/null
 Q="mysql -h $(rds_endpoint) -u admin -N db_tcc"
 if [ "\$(\$Q -e "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema='db_tcc' AND table_name='teams' AND column_name='plan'")" != "0" ]; then
+  \$Q -e "INSERT INTO users (email, password, name) SELECT 'admin.sistema@creatorworkbench.test', '\\\$2a\\\$10\\\$ezeOSqVguD0LQe77yUcfcOcdyALnGM81r.0zSk/dlX22Fn9OFiu3i', 'Admin do Sistema' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM users WHERE email='admin.sistema@creatorworkbench.test')"
   \$Q -e "UPDATE teams SET plan='AGENCIA', plan_source='MANUAL', plan_expires_at=NULL WHERE name='Equipe Office Resolve'" && echo "plano AGENCIA aplicado (se a equipe existe)"
 else
   echo "teams.plan ainda nao existe: nada a fazer"
