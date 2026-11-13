@@ -208,7 +208,7 @@ public class BoardService {
                 tasks.stream().map(this::toTaskResponse).toList(), tag != null ? tag.getName() : null,
                 item.getDueDate(), 0, false, item.getCreatedAt(), item.getUpdatedAt(),
                 tag != null ? tag.getId() : null, tag != null ? tag.getColor() : null, columnSince, materialsCount,
-                reviewStatus);
+                reviewStatus, item.getVideoUrl());
     }
 
     public CardTaskResponse toTaskResponse(CardTask task) {

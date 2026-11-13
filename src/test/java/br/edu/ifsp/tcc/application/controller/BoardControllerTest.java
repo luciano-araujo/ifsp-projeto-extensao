@@ -42,6 +42,9 @@ class BoardControllerTest {
     @Mock private ListCardReviewsUseCase listCardReviewsUseCase;
     @Mock private GenerateCardSummaryUseCase generateCardSummaryUseCase;
     @Mock private GetCardSummaryUseCase getCardSummaryUseCase;
+    @Mock private SetCardVideoUseCase setCardVideoUseCase;
+    @Mock private GetCardVideoStatsUseCase getCardVideoStatsUseCase;
+    @Mock private RefreshCardVideoStatsUseCase refreshCardVideoStatsUseCase;
     @InjectMocks private BoardController controller;
 
     private User user;
@@ -293,5 +296,33 @@ class BoardControllerTest {
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertSame(history, response.getBody());
+    }
+
+    @Test
+    void setVideo_shouldReturnCard() {
+        SetVideoDTO dto = new SetVideoDTO();
+        CardResponse card = mock(CardResponse.class);
+        when(setCardVideoUseCase.execute(10L, 1L, 3L, dto)).thenReturn(card);
+
+        ResponseEntity<CardResponse> response = controller.setVideo(user, 10L, 3L, dto);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertSame(card, response.getBody());
+    }
+
+    @Test
+    void videoStats_shouldReturnStats() {
+        VideoStatsResponse stats = mock(VideoStatsResponse.class);
+        when(getCardVideoStatsUseCase.execute(10L, 1L, 3L)).thenReturn(stats);
+
+        assertSame(stats, controller.videoStats(user, 10L, 3L).getBody());
+    }
+
+    @Test
+    void refreshVideoStats_shouldReturnStats() {
+        VideoStatsResponse stats = mock(VideoStatsResponse.class);
+        when(refreshCardVideoStatsUseCase.execute(10L, 1L, 3L)).thenReturn(stats);
+
+        assertSame(stats, controller.refreshVideoStats(user, 10L, 3L).getBody());
     }
 }
