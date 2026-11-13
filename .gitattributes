@@ -1,0 +1,6 @@
+# Scripts and SQL run on Linux (builder, containers): always check them out with LF
+*.sh text eol=lf
+*.sql text eol=lf
+mvnw text eol=lf
+deploy/** text eol=lf
+automation/**/*.py text eol=lf

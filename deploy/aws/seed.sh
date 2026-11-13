@@ -4,7 +4,7 @@
 # A senha do banco nunca vai na linha de comando: segue por stdin (MYSQL_PWD). Uso: bash deploy/aws/seed.sh   (senha = DEMO_PASSWORD de .state/secrets.env, gerada na 1a vez; nunca impressa)
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 ensure_demo_password
-PASS="${1:-$(secret DEMO_PASSWORD)}"
+PASS="$(secret DEMO_PASSWORD)"
 IP="$(builder_ip)"; [ -n "$IP" ] || { echo "Builder desligado" >&2; exit 1; }
 ELB="$(cat "$STATE_DIR/elb_host" 2>/dev/null)"; [ -n "$ELB" ] || { echo "Rode redeploy.sh antes" >&2; exit 1; }
 scp_b "$HERE/seed-users.sql" "ec2-user@$IP:seed-users.sql"
