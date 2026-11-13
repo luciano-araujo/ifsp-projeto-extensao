@@ -96,4 +96,5 @@ for f in 20-configmap 30-summary 40-web 50-fluent-bit; do render "$K/$f.yaml" | 
 "${NSK[@]}" rollout status daemonset/fluent-bit --timeout=180s || true
 "${NSK[@]}" get pods -o wide
 apply_plans
+set_demo_passwords
 log "PRONTO: http://$ELB_HOST (imagens $IMAGE_TAG)"

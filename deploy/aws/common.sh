@@ -120,15 +120,53 @@ ensure_builder_sg() {
   echo "$sg"
 }
 
+# Senha das contas de demonstracao: gerada uma vez por ambiente e guardada em .state/secrets.env (DEMO_PASSWORD). Nunca e impressa.
+# 18 letras/digitos + "_" (a politica do app so limita a 72 bytes; "_" nao tem significado especial em shell, SQL ou ssh).
+ensure_demo_password() {
+  ensure_secrets
+  [ -n "$(secret DEMO_PASSWORD || true)" ] && return 0
+  local p
+  p="$(LC_ALL=C tr -dc 'A-Za-z0-9' < /dev/urandom | head -c 18)"
+  [ "${#p}" -ge 18 ] || { echo "Falha ao gerar a senha de demonstracao" >&2; return 1; }
+  [ -z "$(tail -c1 "$STATE_DIR/secrets.env")" ] || echo >> "$STATE_DIR/secrets.env"
+  echo "DEMO_PASSWORD=${p}_9" >> "$STATE_DIR/secrets.env"
+  log "DEMO_PASSWORD gerada e guardada em deploy/aws/.state/secrets.env"
+}
+
+# Hash BCrypt da DEMO_PASSWORD, calculado no builder; a senha segue por stdin (htpasswd -i), nunca na linha de comando.
+# Imprime o hash com prefixo $2a$ (o htpasswd gera $2y$, equivalente).
+demo_hash() {
+  [ -n "$(builder_ip)" ] || { echo "Builder desligado: nao foi possivel calcular o hash" >&2; return 1; }
+  ensure_demo_password
+  ssh_b 'command -v htpasswd >/dev/null || sudo dnf install -y httpd-tools >/dev/null 2>&1' </dev/null
+  local h
+  h="$(secret DEMO_PASSWORD | ssh_b 'htpasswd -inBC 10 u' | cut -d: -f2- | tr -d '[:space:]' | sed 's/^[$]2y[$]/$2a$/')"
+  case "$h" in '$2a$10$'*) echo "$h" ;; *) echo "Hash BCrypt invalido" >&2; return 1 ;; esac
+}
+
+# UPDATE idempotente da senha das 4 contas de demonstracao (usuarios ausentes sao ignorados). Hash e senha do banco seguem por stdin.
+set_demo_passwords() {
+  local h; h="$(demo_hash)" || return 1
+  ssh_b 'bash -s' <<SQL
+export MYSQL_PWD='$(secret DB_PASSWORD)'
+HASH='$h'
+command -v mysql >/dev/null || sudo dnf install -y mariadb105 >/dev/null
+mysql -h $(rds_endpoint) -u admin db_tcc -e "UPDATE users SET password='\$HASH' WHERE email IN ('ana.admin@creatorworkbench.test','bia.criadora@creatorworkbench.test','rui.revisor@creatorworkbench.test','admin.sistema@creatorworkbench.test')"
+echo "senhas de demonstracao atualizadas"
+SQL
+}
+
 # Aplica o plano AGENCIA a "Equipe Office Resolve" se a coluna teams.plan existir (idempotente; apos o Flyway do M5).
 apply_plans() {
   [ -n "$(builder_ip)" ] || { log "Builder desligado: plano da equipe nao aplicado (rode seed/redeploy com o builder ligado)"; return 0; }
+  local h; h="$(demo_hash)" || return 1
   ssh_b 'bash -s' <<SQL
 export MYSQL_PWD='$(secret DB_PASSWORD)'
+HASH='$h'
 command -v mysql >/dev/null || sudo dnf install -y mariadb105 >/dev/null
 Q="mysql -h $(rds_endpoint) -u admin -N db_tcc"
 if [ "\$(\$Q -e "SELECT COUNT(*) FROM information_schema.columns WHERE table_schema='db_tcc' AND table_name='teams' AND column_name='plan'")" != "0" ]; then
-  \$Q -e "INSERT INTO users (email, password, name) SELECT 'admin.sistema@creatorworkbench.test', '\\\$2a\\\$10\\\$ezeOSqVguD0LQe77yUcfcOcdyALnGM81r.0zSk/dlX22Fn9OFiu3i', 'Admin do Sistema' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM users WHERE email='admin.sistema@creatorworkbench.test')"
+  \$Q -e "INSERT INTO users (email, password, name) SELECT 'admin.sistema@creatorworkbench.test', '\$HASH', 'Admin do Sistema' FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM users WHERE email='admin.sistema@creatorworkbench.test')"
   \$Q -e "UPDATE teams SET plan='AGENCIA', plan_source='MANUAL', plan_expires_at=NULL WHERE name='Equipe Office Resolve'" && echo "plano AGENCIA aplicado (se a equipe existe)"
 else
   echo "teams.plan ainda nao existe: nada a fazer"
