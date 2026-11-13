@@ -137,8 +137,10 @@ class TeamServiceMoreTest {
 
         service.deleteTeam(team);
 
-        // Files are scheduled, then the cards go in their own statement, then the team
-        var order = inOrder(materialService, kanbanItemService, teamRepository);
+        // The team row is locked first (same lock order as the other team use cases), files are scheduled,
+        // then the cards go in their own statement, then the team
+        var order = inOrder(teamRepository, materialService, kanbanItemService);
+        order.verify(teamRepository).findByIdForUpdate(10L);
         order.verify(materialService).scheduleFileRemovalOfTeam(10L);
         order.verify(kanbanItemService).deleteAllByTeamId(10L);
         order.verify(teamRepository).delete(team);

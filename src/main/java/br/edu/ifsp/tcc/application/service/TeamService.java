@@ -130,8 +130,13 @@ public class TeamService {
      * innodb_native_foreign_keys=OFF, so foreign keys are enforced in the SQL layer, and in that diamond the cascade
      * from cards to their children stopped before the end: rows were left pointing to cards that no longer existed.
      * Deleting the cards first keeps each cascade to a single path. Every team deletion must go through this method.
+     * <p>
+     * The team row is locked first, like every other use case that locks the team (create card, convert, upload,
+     * invites, trial). Otherwise this method would hold the card locks while waiting for the team row, and those
+     * use cases hold the team row while waiting for a card or the team_id gap: a deadlock.
      */
     public void deleteTeam(Team team) {
+        lockTeam(team.getId());
         materialService.scheduleFileRemovalOfTeam(team.getId());
         kanbanItemService.deleteAllByTeamId(team.getId());
         teamRepository.delete(team);
