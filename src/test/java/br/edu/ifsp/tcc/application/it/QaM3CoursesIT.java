@@ -180,7 +180,6 @@ class QaM3CoursesIT extends AbstractIT {
     }
 
     @Test
-    @org.junit.jupiter.api.Disabled("BUG QA3-01 (low): control characters (NUL) are accepted in contentUrl; the DTO regex uses [^\\s/]+ for the host")
     @DisplayName("QA-M3-RN06c contentUrl with a NUL character is refused on save")
     void controlCharacterInLink() {
         Team team = newTeam();
@@ -297,7 +296,7 @@ class QaM3CoursesIT extends AbstractIT {
         Resp blankTitle = api.patch(base + "/modules/" + m + "/lessons/" + l, ana.token(), map("title", "  "));
         // Contract: a blank title must never wipe the lesson title
         assertEquals("L", api.get(base, ana.token()).text("modules.0.lessons.0.title"));
-        assertTrue(blankTitle.status() == 200 || blankTitle.status() == 400, "blank lesson title status " + blankTitle.status());
+        assertEquals(400, blankTitle.status(), "blank lesson title status " + blankTitle.status());
         assertEquals(400, api.patch(base + "/modules/" + m + "/lessons/" + l, ana.token(), map("description", "d".repeat(5001))).status());
         assertEquals(200, api.patch(base + "/modules/" + m + "/lessons/" + l, ana.token(), map("description", "d".repeat(5000))).status());
         // 500 exactly is accepted, 501 refused (contentUrl)

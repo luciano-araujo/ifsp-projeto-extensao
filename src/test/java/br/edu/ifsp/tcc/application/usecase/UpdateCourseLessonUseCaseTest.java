@@ -42,6 +42,24 @@ class UpdateCourseLessonUseCaseTest {
     }
 
     @Test
+    void execute_shouldRefuseABlankTitleWithoutSaving() {
+        CourseLesson lesson = new CourseLesson();
+        lesson.setTitle("BFS");
+        when(courseService.findLesson(30L, 40L)).thenReturn(lesson);
+        UpdateCourseLessonDTO dto = new UpdateCourseLessonDTO();
+        dto.setTitle("   ");
+
+        org.springframework.web.server.ResponseStatusException e = assertThrows(
+                org.springframework.web.server.ResponseStatusException.class,
+                () -> useCase.execute(10L, 1L, 20L, 30L, 40L, dto));
+
+        assertEquals(400, e.getStatusCode().value());
+        assertEquals("O título da aula não pode ser vazio.", e.getReason());
+        assertEquals("BFS", lesson.getTitle());
+        verify(courseService, never()).saveLesson(lesson);
+    }
+
+    @Test
     void execute_shouldSetDescriptionAndLink() {
         CourseLesson lesson = new CourseLesson();
         when(courseService.findLesson(30L, 40L)).thenReturn(lesson);
