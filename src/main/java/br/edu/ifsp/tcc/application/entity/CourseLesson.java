@@ -25,6 +25,13 @@ public class CourseLesson {
     @Column(nullable = false)
     private String title;
 
+    @Column(columnDefinition = "TEXT")
+    private String description;
+
+    // External content (YouTube, Vimeo or LMS); only validated against RN06 when the course is published
+    @Column(name = "content_url", length = 2048)
+    private String contentUrl;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private LessonType type = LessonType.VIDEO;
@@ -62,6 +69,12 @@ public class CourseLesson {
 
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }
+
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
+
+    public String getContentUrl() { return contentUrl; }
+    public void setContentUrl(String contentUrl) { this.contentUrl = contentUrl; }
 
     public LessonType getType() { return type; }
     public void setType(LessonType type) { this.type = type; }

@@ -28,6 +28,14 @@ public class Course {
     @Column(columnDefinition = "TEXT")
     private String description;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private CourseStatus status = CourseStatus.DRAFT;
+
+    // Set when the course is published, cleared when it goes back to draft
+    @Column(name = "published_at")
+    private LocalDateTime publishedAt;
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
@@ -53,6 +61,12 @@ public class Course {
 
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
+
+    public CourseStatus getStatus() { return status; }
+    public void setStatus(CourseStatus status) { this.status = status; }
+
+    public LocalDateTime getPublishedAt() { return publishedAt; }
+    public void setPublishedAt(LocalDateTime publishedAt) { this.publishedAt = publishedAt; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
 }

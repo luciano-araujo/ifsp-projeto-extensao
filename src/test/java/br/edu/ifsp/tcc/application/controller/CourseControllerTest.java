@@ -31,7 +31,79 @@ class CourseControllerTest {
     @Mock private DeleteCourseLessonUseCase deleteCourseLessonUseCase;
     @Mock private LinkLessonMaterialUseCase linkLessonMaterialUseCase;
     @Mock private UnlinkLessonMaterialUseCase unlinkLessonMaterialUseCase;
+    @Mock private UpdateCourseUseCase updateCourseUseCase;
+    @Mock private UpdateCourseModuleUseCase updateCourseModuleUseCase;
+    @Mock private ReorderCourseModulesUseCase reorderCourseModulesUseCase;
+    @Mock private ReorderCourseLessonsUseCase reorderCourseLessonsUseCase;
+    @Mock private GetPublicationCheckUseCase getPublicationCheckUseCase;
+    @Mock private PublishCourseUseCase publishCourseUseCase;
+    @Mock private UnpublishCourseUseCase unpublishCourseUseCase;
+    @Mock private ExportCourseUseCase exportCourseUseCase;
     @InjectMocks private CourseController controller;
+
+    @Test
+    void update_shouldReturnTheCourse() {
+        UpdateCourseDTO dto = new UpdateCourseDTO();
+        CourseResponse updated = mock(CourseResponse.class);
+        when(updateCourseUseCase.execute(10L, 1L, 2L, dto)).thenReturn(updated);
+
+        assertSame(updated, controller.update(user, 10L, 2L, dto).getBody());
+    }
+
+    @Test
+    void updateModule_shouldReturnTheModule() {
+        UpdateModuleDTO dto = new UpdateModuleDTO();
+        CourseModuleResponse updated = mock(CourseModuleResponse.class);
+        when(updateCourseModuleUseCase.execute(10L, 1L, 2L, 3L, dto)).thenReturn(updated);
+
+        assertSame(updated, controller.updateModule(user, 10L, 2L, 3L, dto).getBody());
+    }
+
+    @Test
+    void reorderModules_shouldReturnTheOrderedList() {
+        ReorderModulesDTO dto = new ReorderModulesDTO();
+        List<CourseModuleResponse> ordered = List.of(mock(CourseModuleResponse.class));
+        when(reorderCourseModulesUseCase.execute(10L, 1L, 2L, dto)).thenReturn(ordered);
+
+        assertSame(ordered, controller.reorderModules(user, 10L, 2L, dto).getBody());
+    }
+
+    @Test
+    void reorderLessons_shouldReturnTheOrderedList() {
+        ReorderLessonsDTO dto = new ReorderLessonsDTO();
+        List<CourseLessonResponse> ordered = List.of(mock(CourseLessonResponse.class));
+        when(reorderCourseLessonsUseCase.execute(10L, 1L, 2L, 3L, dto)).thenReturn(ordered);
+
+        assertSame(ordered, controller.reorderLessons(user, 10L, 2L, 3L, dto).getBody());
+    }
+
+    @Test
+    void publicationCheck_publish_unpublish_shouldDelegate() {
+        PublicationCheckResponse check = mock(PublicationCheckResponse.class);
+        CourseResponse published = mock(CourseResponse.class);
+        CourseResponse draft = mock(CourseResponse.class);
+        when(getPublicationCheckUseCase.execute(10L, 1L, 2L)).thenReturn(check);
+        when(publishCourseUseCase.execute(10L, 1L, 2L)).thenReturn(published);
+        when(unpublishCourseUseCase.execute(10L, 1L, 2L)).thenReturn(draft);
+
+        assertSame(check, controller.publicationCheck(user, 10L, 2L).getBody());
+        assertSame(published, controller.publish(user, 10L, 2L).getBody());
+        assertSame(draft, controller.unpublish(user, 10L, 2L).getBody());
+    }
+
+    @Test
+    void export_shouldSetContentTypeAndDisposition() {
+        byte[] csv = {1};
+        when(exportCourseUseCase.execute(10L, 1L, 2L, "csv"))
+                .thenReturn(new CourseExportFile("curso-2.csv", "text/csv; charset=UTF-8", csv));
+
+        ResponseEntity<Object> response = controller.export(user, 10L, 2L, "csv");
+
+        assertSame(csv, response.getBody());
+        assertEquals("text/csv;charset=UTF-8", response.getHeaders().getContentType().toString());
+        assertEquals("attachment; filename=\"curso-2.csv\"; filename*=UTF-8''curso-2.csv",
+                response.getHeaders().getFirst("Content-Disposition"));
+    }
 
     private User user;
 

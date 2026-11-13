@@ -1,5 +1,6 @@
 package br.edu.ifsp.tcc.application.service;
 
+import br.edu.ifsp.tcc.application.dto.CourseDetailResponse;
 import br.edu.ifsp.tcc.application.dto.CourseLessonResponse;
 import br.edu.ifsp.tcc.application.dto.CourseModuleResponse;
 import br.edu.ifsp.tcc.application.dto.CourseResponse;
@@ -14,6 +15,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -126,7 +128,40 @@ public class CourseService {
 
     public CourseResponse toCourseResponse(Course course) {
         return new CourseResponse(course.getId(), course.getUuid(), course.getTeamId(), course.getTitle(), course.getDescription(),
-                countModules(course.getId()), course.getCreatedAt());
+                course.getStatus(), course.getPublishedAt(), countModules(course.getId()), course.getCreatedAt());
+    }
+
+    /** The whole course tree (modules and lessons in order, with their materials). */
+    public CourseDetailResponse toDetailResponse(Long teamId, Course course) {
+        List<CourseModule> modules = findModules(course.getId());
+        return new CourseDetailResponse(course.getId(), course.getUuid(), teamId, course.getTitle(), course.getDescription(),
+                course.getStatus(), course.getPublishedAt(), modules.size(), toModuleResponses(teamId, modules), course.getCreatedAt());
+    }
+
+    /** Modules with their lessons and materials (a few queries for all of them). */
+    public List<CourseModuleResponse> toModuleResponses(Long teamId, List<CourseModule> modules) {
+        Map<Long, List<CourseLesson>> lessonsByModule = findLessonsByModule(modules);
+        Map<Long, List<MaterialResponse>> materialsByLesson = findMaterialsByLesson(teamId, lessonsByModule);
+        return modules.stream()
+                .map(module -> toModuleResponse(module, lessonsByModule.getOrDefault(module.getId(), List.of()), materialsByLesson))
+                .toList();
+    }
+
+    /** The lessons of a module, in order. */
+    public List<CourseLesson> findLessons(Long moduleId) {
+        return lessonRepository.findByModule_IdInOrderBySortOrderAscIdAsc(List.of(moduleId));
+    }
+
+    /** Trimmed text, or null when blank (an empty text clears an optional field). */
+    public static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    /** A reorder request must list each existing id exactly once (no missing, extra or repeated ids). */
+    public void requireExactIds(List<Long> requested, List<Long> existing, String message) {
+        if (requested.size() != existing.size() || !Set.copyOf(requested).equals(Set.copyOf(existing))) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, message);
+        }
     }
 
     public CourseModuleResponse toModuleResponse(CourseModule module, List<CourseLesson> lessons) {
@@ -146,7 +181,7 @@ public class CourseService {
     }
 
     public CourseLessonResponse toLessonResponse(CourseLesson lesson, List<MaterialResponse> materials) {
-        return new CourseLessonResponse(lesson.getId(), lesson.getUuid(), lesson.getModuleId(), lesson.getTitle(), lesson.getType(),
+        return new CourseLessonResponse(lesson.getId(), lesson.getUuid(), lesson.getModuleId(), lesson.getTitle(), lesson.getDescription(), lesson.getContentUrl(), lesson.getType(),
                 Boolean.TRUE.equals(lesson.getPublished()), lesson.getSortOrder() != null ? lesson.getSortOrder() : 0,
                 lesson.getProjectId(), lesson.getCreatedAt(), materials);
     }
