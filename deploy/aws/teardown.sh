@@ -11,8 +11,8 @@ fi
 chk() { local rc=$1; shift; if [ "$rc" = 0 ]; then log "ok: $*"; else log "FALHOU/nao existia: $*"; fi; }
 
 # 1) Service LoadBalancer (remove o ELB e o SG dele antes do cluster)
-if [ -n "$(builder_ip)" ] && [ "$(cluster_status)" != "ABSENT" ]; then
-  ssh_b "aws eks update-kubeconfig --name $CLUSTER --region $REGION >/dev/null && kubectl delete namespace $NS --timeout=300s" ; chk $? "namespace/ELB"
+if [ "$(cluster_status)" = "ACTIVE" ]; then ensure_kubectl; aws eks update-kubeconfig --name $CLUSTER >/dev/null 2>&1
+  kubectl delete namespace $NS --timeout=300s ; chk $? "namespace/ELB"
 fi
 # ELBs classicos remanescentes com a tag do projeto
 for lb in $(aws elb describe-load-balancers --query 'LoadBalancerDescriptions[].LoadBalancerName' --output text); do

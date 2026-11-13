@@ -74,3 +74,12 @@ scp_b() { scp "${SSH_OPTS[@]}" "$@"; }   # uso: scp_b origem... ec2-user@IP:dest
 cluster_status() { aws eks describe-cluster --name "$CLUSTER" --query cluster.status --output text 2>/dev/null || echo ABSENT; }
 rds_status() { aws rds describe-db-instances --db-instance-identifier "$RDS_ID" --query 'DBInstances[0].DBInstanceStatus' --output text 2>/dev/null || echo ABSENT; }
 rds_endpoint() { aws rds describe-db-instances --db-instance-identifier "$RDS_ID" --query 'DBInstances[0].Endpoint.Address' --output text; }
+
+# kubectl local (a maquina nao tem): baixa para ~/bin se faltar
+export PATH="$PATH:$HOME/bin"
+ensure_kubectl() {
+  command -v kubectl >/dev/null && return
+  mkdir -p "$HOME/bin"
+  curl -sL -o "$HOME/bin/kubectl.exe" "https://dl.k8s.io/release/$(curl -sL https://dl.k8s.io/release/stable.txt)/bin/windows/amd64/kubectl.exe"
+  chmod +x "$HOME/bin/kubectl.exe"
+}

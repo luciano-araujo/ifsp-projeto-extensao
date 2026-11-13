@@ -5,7 +5,7 @@
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 PASS="${1:-Teste@123}"
 IP="$(builder_ip)"; [ -n "$IP" ] || { echo "Builder desligado" >&2; exit 1; }
-ELB="$(ssh_b 'cat ~/elb_host')"
+ELB="$(cat "$STATE_DIR/elb_host" 2>/dev/null)"
 scp_b "$HERE/seed-users.sql" "ec2-user@$IP:seed-users.sql"
 ssh_b "command -v mysql >/dev/null || sudo dnf install -y mariadb105 >/dev/null; \
   mysql -h $(rds_endpoint) -u admin -p'$(secret DB_PASSWORD)' db_tcc < ~/seed-users.sql && \

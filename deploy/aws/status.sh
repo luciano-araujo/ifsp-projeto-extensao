@@ -13,10 +13,10 @@ aws ec2 describe-instances --filters Name=tag:Project,Values=$PROJECT "Name=inst
 echo "== S3:         $(aws s3 ls "s3://$BUCKET" --summarize 2>/dev/null | tail -2 | tr '\n' ' ')"
 echo "== ECR:        $(aws ecr describe-repositories --query 'repositories[?starts_with(repositoryName,`creator-workbench/`)].repositoryName' --output text)"
 echo "== Logs:       $(aws logs describe-log-groups --log-group-name-prefix $LOG_GROUP --query 'logGroups[].[logGroupName,retentionInDays,storedBytes]' --output text)"
-if [ -n "$(builder_ip)" ]; then
+if [ "$(cluster_status)" = ACTIVE ]; then
   echo "== Pods:"
-  ssh_b "kubectl -n $NS get pods,svc -o wide 2>&1 | head -30"
-  ELB="$(ssh_b 'cat ~/elb_host 2>/dev/null')"
+  ensure_kubectl; aws eks update-kubeconfig --name $CLUSTER >/dev/null 2>&1; kubectl -n $NS get pods,svc -o wide 2>&1 | head -30
+  ELB="$(kubectl -n $NS get svc web -o jsonpath="{.status.loadBalancer.ingress[0].hostname}" 2>/dev/null)"
   [ -n "$ELB" ] && { echo "== URL: http://$ELB"; echo "   HTTP: $(curl -s -o /dev/null -m 10 -w '%{http_code}' http://$ELB/)  /api/v1/teams sem token: $(curl -s -o /dev/null -m 10 -w '%{http_code}' http://$ELB/api/v1/teams)"; }
 fi
 echo "== Custo/hora aproximado (us-east-1): EKS 0,10 + 2 x t3.medium 0,0832 + builder t3.medium 0,0416 + RDS t3.micro 0,017 + ELB 0,025 = ~0,27 USD/h"
