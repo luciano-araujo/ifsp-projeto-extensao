@@ -7,6 +7,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 
 import java.util.List;
+import java.io.IOException;
+import java.util.Comparator;
+import java.util.ArrayList;
+import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
+import org.springframework.core.io.Resource;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -34,18 +39,32 @@ class DatabaseSchemaIT extends AbstractIT {
     }
 
     @Test
-    @DisplayName("DB-01 Flyway builds every migration V1..Vn from an empty database and Hibernate ddl-auto=validate accepts it")
-    void flywayCleanBuild() throws java.io.IOException {
+    @DisplayName("DB-01 Flyway builds every migration V1..Vn, with no gaps, from an empty database and Hibernate ddl-auto=validate accepts it")
+    void flywayCleanBuild() {
         List<Map<String, Object>> history = jdbc.queryForList(
                 "SELECT version, success FROM flyway_schema_history WHERE version IS NOT NULL ORDER BY installed_rank");
-        int migrationFiles = new org.springframework.core.io.support.PathMatchingResourcePatternResolver()
-                .getResources("classpath:db/migration/V*__*.sql").length;
-        assertEquals(migrationFiles, history.size(), "migrations applied: " + history);
+        // Every migration file of the project, in version order; they must be exactly V1..Vn
+        List<String> expected = new ArrayList<>();
+        try {
+            for (Resource file : new PathMatchingResourcePatternResolver()
+                    .getResources("classpath:db/migration/V*__*.sql")) {
+                String name = file.getFilename();
+                expected.add(name.substring(1, name.indexOf("__")));
+            }
+        } catch (IOException e) {
+            throw new IllegalStateException(e);
+        }
+        expected.sort(Comparator.comparingInt(Integer::parseInt));
+        for (int i = 0; i < expected.size(); i++) {
+            assertEquals(String.valueOf(i + 1), expected.get(i), "migration versions must be contiguous: " + expected);
+        }
+        assertTrue(expected.size() >= 21, "expected at least V1..V21: " + expected);
+        assertEquals(expected.size(), history.size(), "migrations applied: " + history);
         for (int i = 0; i < history.size(); i++) {
-            assertEquals(String.valueOf(i + 1), history.get(i).get("version"));
+            assertEquals(expected.get(i), history.get(i).get("version"));
             Object success = history.get(i).get("success");
             assertTrue(Boolean.TRUE.equals(success) || (success instanceof Number n && n.intValue() == 1),
-                    "V" + (i + 1) + " failed");
+                    "V" + expected.get(i) + " failed");
         }
         // The context only starts when Hibernate validates every entity against the migrated schema
         assertNotNull(context);

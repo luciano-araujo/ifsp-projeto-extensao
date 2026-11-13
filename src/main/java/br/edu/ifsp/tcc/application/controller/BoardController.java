@@ -32,6 +32,10 @@ public class BoardController {
     private final ReorderCardTasksUseCase reorderCardTasksUseCase;
     private final ReorderColumnsUseCase reorderColumnsUseCase;
     private final GetCardHistoryUseCase getCardHistoryUseCase;
+    private final CreateCardReviewUseCase createCardReviewUseCase;
+    private final ListCardReviewsUseCase listCardReviewsUseCase;
+    private final GenerateCardSummaryUseCase generateCardSummaryUseCase;
+    private final GetCardSummaryUseCase getCardSummaryUseCase;
 
     public BoardController(GetBoardUseCase getBoardUseCase,
                            ListIdeasUseCase listIdeasUseCase,
@@ -50,7 +54,11 @@ public class BoardController {
                            UpdateCardTaskUseCase updateCardTaskUseCase,
                            ReorderCardTasksUseCase reorderCardTasksUseCase,
                            ReorderColumnsUseCase reorderColumnsUseCase,
-                           GetCardHistoryUseCase getCardHistoryUseCase) {
+                           GetCardHistoryUseCase getCardHistoryUseCase,
+                           CreateCardReviewUseCase createCardReviewUseCase,
+                           ListCardReviewsUseCase listCardReviewsUseCase,
+                           GenerateCardSummaryUseCase generateCardSummaryUseCase,
+                           GetCardSummaryUseCase getCardSummaryUseCase) {
         this.getBoardUseCase = getBoardUseCase;
         this.listIdeasUseCase = listIdeasUseCase;
         this.createIdeaUseCase = createIdeaUseCase;
@@ -69,6 +77,10 @@ public class BoardController {
         this.reorderCardTasksUseCase = reorderCardTasksUseCase;
         this.reorderColumnsUseCase = reorderColumnsUseCase;
         this.getCardHistoryUseCase = getCardHistoryUseCase;
+        this.createCardReviewUseCase = createCardReviewUseCase;
+        this.listCardReviewsUseCase = listCardReviewsUseCase;
+        this.generateCardSummaryUseCase = generateCardSummaryUseCase;
+        this.getCardSummaryUseCase = getCardSummaryUseCase;
     }
 
     @GetMapping("/board")
@@ -140,6 +152,37 @@ public class BoardController {
                                                               @PathVariable Long teamId,
                                                               @PathVariable Long cardId) {
         return ResponseEntity.ok(getCardHistoryUseCase.execute(teamId, user.getId(), cardId));
+    }
+
+    // --- Reviews and summary ---
+
+    @PostMapping("/cards/{cardId}/reviews")
+    public ResponseEntity<CardReviewResponse> createReview(@AuthenticationPrincipal User user,
+                                                           @PathVariable Long teamId,
+                                                           @PathVariable Long cardId,
+                                                           @Valid @RequestBody CreateReviewDTO dto) {
+        return ResponseEntity.ok(createCardReviewUseCase.execute(teamId, user.getId(), cardId, dto));
+    }
+
+    @GetMapping("/cards/{cardId}/reviews")
+    public ResponseEntity<List<CardReviewResponse>> reviews(@AuthenticationPrincipal User user,
+                                                            @PathVariable Long teamId,
+                                                            @PathVariable Long cardId) {
+        return ResponseEntity.ok(listCardReviewsUseCase.execute(teamId, user.getId(), cardId));
+    }
+
+    @PostMapping("/cards/{cardId}/summary")
+    public ResponseEntity<CardSummaryResponse> generateSummary(@AuthenticationPrincipal User user,
+                                                               @PathVariable Long teamId,
+                                                               @PathVariable Long cardId) {
+        return ResponseEntity.ok(generateCardSummaryUseCase.execute(teamId, user.getId(), cardId));
+    }
+
+    @GetMapping("/cards/{cardId}/summary")
+    public ResponseEntity<CardSummaryResponse> summary(@AuthenticationPrincipal User user,
+                                                       @PathVariable Long teamId,
+                                                       @PathVariable Long cardId) {
+        return ResponseEntity.ok(getCardSummaryUseCase.execute(teamId, user.getId(), cardId));
     }
 
     // --- Columns ---

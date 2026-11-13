@@ -1,6 +1,7 @@
 package br.edu.ifsp.tcc.application.service;
 
 import br.edu.ifsp.tcc.application.dto.CardResponse;
+import br.edu.ifsp.tcc.application.dto.ReviewStatus;
 import br.edu.ifsp.tcc.application.entity.CardTask;
 import br.edu.ifsp.tcc.application.entity.KanbanItem;
 import br.edu.ifsp.tcc.application.entity.KanbanItemState;
@@ -44,7 +45,10 @@ class BoardServiceTest {
         project.setId(1L);
         project.setState(KanbanItemState.IN_PRODUCTION);
 
-        assertEquals(3, boardService.toCardResponse(project, 100L, List.of(), null, 3).getMaterialsCount());
+        CardResponse full = boardService.toCardResponse(project, 100L, List.of(), null, 3, ReviewStatus.APPROVED);
+        assertEquals(3, full.getMaterialsCount());
+        assertEquals(ReviewStatus.APPROVED, full.getReviewStatus());
+        assertEquals(ReviewStatus.NONE, boardService.toCardResponse(project, 100L, List.of()).getReviewStatus());
         assertEquals(0, boardService.toCardResponse(project, 100L, List.of(), null).getMaterialsCount());
         assertEquals(0, boardService.toCardResponse(project, 100L, List.of()).getMaterialsCount());
     }

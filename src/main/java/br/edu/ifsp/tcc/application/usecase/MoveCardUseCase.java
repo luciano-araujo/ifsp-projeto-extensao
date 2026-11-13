@@ -7,7 +7,9 @@ import br.edu.ifsp.tcc.application.entity.KanbanItem;
 import br.edu.ifsp.tcc.application.entity.KanbanItemState;
 import br.edu.ifsp.tcc.application.entity.TeamRole;
 import br.edu.ifsp.tcc.application.entity.User;
+import br.edu.ifsp.tcc.application.dto.ReviewStatus;
 import br.edu.ifsp.tcc.application.service.BoardService;
+import br.edu.ifsp.tcc.application.service.CardReviewService;
 import br.edu.ifsp.tcc.application.service.KanbanItemService;
 import br.edu.ifsp.tcc.application.service.MaterialService;
 import br.edu.ifsp.tcc.application.service.TeamService;
@@ -26,13 +28,15 @@ public class MoveCardUseCase {
     private final BoardService boardService;
     private final KanbanItemService kanbanItemService;
     private final MaterialService materialService;
+    private final CardReviewService cardReviewService;
 
     public MoveCardUseCase(TeamService teamService, BoardService boardService, KanbanItemService kanbanItemService,
-                           MaterialService materialService) {
+                           MaterialService materialService, CardReviewService cardReviewService) {
         this.teamService = teamService;
         this.boardService = boardService;
         this.kanbanItemService = kanbanItemService;
         this.materialService = materialService;
+        this.cardReviewService = cardReviewService;
     }
 
     @Transactional
@@ -56,7 +60,9 @@ public class MoveCardUseCase {
         LocalDateTime columnSince = columnChanged
                 ? boardService.recordMovement(saved, column, user).getEnteredAt()
                 : boardService.findColumnSince(List.of(saved)).get(saved.getId());
+        ReviewStatus reviewStatus = cardReviewService.findStatuses(List.of(saved))
+                .getOrDefault(saved.getId(), ReviewStatus.NONE);
         return boardService.toCardResponse(saved, column.getId(), boardService.findTasks(saved), columnSince,
-                materialService.countByCard(saved.getId()));
+                materialService.countByCard(saved.getId()), reviewStatus);
     }
 }

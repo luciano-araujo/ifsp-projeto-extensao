@@ -48,4 +48,6 @@ public class CardResponse {
 
     /** Number of attached materials (always 0 for ideas). */
     private Integer materialsCount;
+    /** NONE until a reviewer decides; then the decision of the latest review. Ideas are always NONE. */
+    private ReviewStatus reviewStatus;
 }

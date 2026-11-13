@@ -2,7 +2,9 @@ package br.edu.ifsp.tcc.application.usecase;
 
 import br.edu.ifsp.tcc.application.dto.BoardResponse;
 import br.edu.ifsp.tcc.application.entity.*;
+import br.edu.ifsp.tcc.application.dto.ReviewStatus;
 import br.edu.ifsp.tcc.application.service.BoardService;
+import br.edu.ifsp.tcc.application.service.CardReviewService;
 import br.edu.ifsp.tcc.application.service.KanbanItemService;
 import br.edu.ifsp.tcc.application.service.MaterialService;
 import br.edu.ifsp.tcc.application.service.TeamService;
@@ -27,6 +29,7 @@ class GetBoardUseCaseTest {
     @Mock private BoardService boardService;
     @Mock private KanbanItemService kanbanItemService;
     @Mock private MaterialService materialService;
+    @Mock private CardReviewService cardReviewService;
     @InjectMocks private GetBoardUseCase useCase;
 
     private BoardColumn column(Long id) {
@@ -62,6 +65,8 @@ class GetBoardUseCaseTest {
         when(kanbanItemService.findByTeamId(10L)).thenReturn(List.of(idea, inPesquisa, withoutColumn, inRoteiro));
         when(boardService.findTasksByCard(anyList())).thenReturn(Map.of());
         LocalDateTime since = LocalDateTime.of(2026, 11, 1, 14, 10);
+        when(cardReviewService.findStatuses(List.of(inPesquisa, withoutColumn, inRoteiro)))
+                .thenReturn(Map.of(4L, ReviewStatus.CHANGES_REQUESTED));
         when(boardService.findColumnSince(List.of(inPesquisa, withoutColumn, inRoteiro))).thenReturn(Map.of(2L, since));
 
         when(materialService.countByCards(List.of(inPesquisa, withoutColumn, inRoteiro))).thenReturn(Map.of(2L, 3));
@@ -71,11 +76,12 @@ class GetBoardUseCaseTest {
         assertEquals("Equipe", board.getTeamName());
         // Projects without a column fall into the first column; the idea is not on the board.
         // columnSince comes from one batch query, null for a card with no movement yet.
-        verify(boardService).toCardResponse(inPesquisa, 100L, List.of(), since, 3);
-        verify(boardService).toCardResponse(withoutColumn, 100L, List.of(), null, 0);
-        verify(boardService).toCardResponse(inRoteiro, 101L, List.of(), null, 0);
-        verify(boardService, never()).toCardResponse(eq(idea), any(), any(), any(), anyInt());
+        verify(boardService).toCardResponse(inPesquisa, 100L, List.of(), since, 3, ReviewStatus.NONE);
+        verify(boardService).toCardResponse(withoutColumn, 100L, List.of(), null, 0, ReviewStatus.NONE);
+        verify(boardService).toCardResponse(inRoteiro, 101L, List.of(), null, 0, ReviewStatus.CHANGES_REQUESTED);
+        verify(boardService, never()).toCardResponse(eq(idea), any(), any(), any(), anyInt(), any());
         verify(boardService, times(1)).findColumnSince(anyList());
+        verify(cardReviewService, times(1)).findStatuses(anyList());
         verify(boardService, times(2)).toColumnResponse(any(BoardColumn.class), anyList());
     }
 }

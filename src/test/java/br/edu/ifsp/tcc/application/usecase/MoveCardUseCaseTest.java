@@ -8,7 +8,9 @@ import br.edu.ifsp.tcc.application.entity.KanbanItemState;
 import br.edu.ifsp.tcc.application.entity.TeamMember;
 import br.edu.ifsp.tcc.application.entity.TeamRole;
 import br.edu.ifsp.tcc.application.entity.User;
+import br.edu.ifsp.tcc.application.dto.ReviewStatus;
 import br.edu.ifsp.tcc.application.service.BoardService;
+import br.edu.ifsp.tcc.application.service.CardReviewService;
 import br.edu.ifsp.tcc.application.service.KanbanItemService;
 import br.edu.ifsp.tcc.application.service.MaterialService;
 import br.edu.ifsp.tcc.application.service.TeamService;
@@ -36,6 +38,7 @@ class MoveCardUseCaseTest {
     @Mock private BoardService boardService;
     @Mock private KanbanItemService kanbanItemService;
     @Mock private MaterialService materialService;
+    @Mock private CardReviewService cardReviewService;
     @InjectMocks private MoveCardUseCase useCase;
 
     private User user;
@@ -111,7 +114,7 @@ class MoveCardUseCaseTest {
         assertSame(roteiro, project.getColumn());
         assertEquals(0, project.getSortOrder());
         verify(boardService).recordMovement(project, roteiro, user);
-        verify(boardService).toCardResponse(project, 101L, List.of(), enteredAt, 2);
+        verify(boardService).toCardResponse(project, 101L, List.of(), enteredAt, 2, ReviewStatus.NONE);
     }
 
     @Test
@@ -128,7 +131,7 @@ class MoveCardUseCaseTest {
         useCase.execute(10L, 1L, 1L, dto(100L));
 
         verify(boardService, never()).recordMovement(any(), any(), any());
-        verify(boardService).toCardResponse(project, 100L, List.of(), since, 2);
+        verify(boardService).toCardResponse(project, 100L, List.of(), since, 2, ReviewStatus.NONE);
     }
 
     @Test
@@ -177,6 +180,6 @@ class MoveCardUseCaseTest {
         useCase.execute(10L, 1L, 1L, dto(101L));
 
         verify(boardService, never()).recordMovement(any(), any(), any());
-        verify(boardService).toCardResponse(project, 101L, List.of(), since, 2);
+        verify(boardService).toCardResponse(project, 101L, List.of(), since, 2, ReviewStatus.NONE);
     }
 }
