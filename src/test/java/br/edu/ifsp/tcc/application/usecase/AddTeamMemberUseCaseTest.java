@@ -5,6 +5,7 @@ import br.edu.ifsp.tcc.application.entity.Team;
 import br.edu.ifsp.tcc.application.entity.TeamMember;
 import br.edu.ifsp.tcc.application.entity.TeamRole;
 import br.edu.ifsp.tcc.application.entity.User;
+import br.edu.ifsp.tcc.application.service.PlanService;
 import br.edu.ifsp.tcc.application.service.TeamService;
 import br.edu.ifsp.tcc.application.service.UserService;
 import org.junit.jupiter.api.Test;
@@ -27,6 +28,7 @@ class AddTeamMemberUseCaseTest {
 
     @Mock private TeamService teamService;
     @Mock private UserService userService;
+    @Mock private PlanService planService;
     @InjectMocks private AddTeamMemberUseCase useCase;
 
     private TeamMember admin() {
@@ -90,5 +92,22 @@ class AddTeamMemberUseCaseTest {
 
         assertThrows(ResponseStatusException.class, () -> useCase.execute(10L, 2L, dto("x@test.com", TeamRole.CREATOR)));
         verifyNoInteractions(userService);
+    }
+
+
+    @Test
+    void execute_shouldStopWith402WhenThePlanHasNoRoomForAnotherMember() {
+        TeamMember admin = admin();
+        User rui = new User();
+        rui.setId(2L);
+        when(teamService.requireRole(10L, 1L, TeamRole.ADMIN)).thenReturn(admin);
+        when(userService.findByEmail("rui@test.com")).thenReturn(Optional.of(rui));
+        when(teamService.findMemberByTeamIdAndUserId(10L, 2L)).thenReturn(Optional.empty());
+        doThrow(new ResponseStatusException(HttpStatus.PAYMENT_REQUIRED, "limite")).when(planService).assertCanAddMember(admin.getTeam());
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> useCase.execute(10L, 1L, dto("rui@test.com", TeamRole.REVIEWER)));
+        assertEquals(HttpStatus.PAYMENT_REQUIRED, ex.getStatusCode());
+        verify(teamService, never()).saveMember(any());
     }
 }

@@ -6,6 +6,7 @@ import br.edu.ifsp.tcc.application.entity.Team;
 import br.edu.ifsp.tcc.application.entity.TeamMember;
 import br.edu.ifsp.tcc.application.entity.TeamRole;
 import br.edu.ifsp.tcc.application.service.CourseService;
+import br.edu.ifsp.tcc.application.service.PlanService;
 import br.edu.ifsp.tcc.application.service.TeamService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -25,6 +26,7 @@ class CreateCourseUseCaseTest {
 
     @Mock private TeamService teamService;
     @Mock private CourseService courseService;
+    @Mock private PlanService planService;
     @InjectMocks private CreateCourseUseCase useCase;
 
     private CreateCourseDTO dto(String title) {
@@ -55,6 +57,21 @@ class CreateCourseUseCaseTest {
                 .thenThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "Seu papel na equipe não permite esta ação."));
 
         assertThrows(ResponseStatusException.class, () -> useCase.execute(10L, 2L, dto("Curso")));
+        verify(courseService, never()).saveCourse(any());
+    }
+
+
+    @Test
+    void execute_shouldStopWith402WhenTheCourseLimitIsReached() {
+        Team team = new Team();
+        TeamMember admin = new TeamMember();
+        admin.setTeam(team);
+        when(teamService.requireRole(10L, 1L, TeamRole.ADMIN, TeamRole.CREATOR)).thenReturn(admin);
+        doThrow(new ResponseStatusException(HttpStatus.PAYMENT_REQUIRED, "limite")).when(planService).assertCanCreateCourse(team);
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> useCase.execute(10L, 1L, dto("Curso")));
+        assertEquals(HttpStatus.PAYMENT_REQUIRED, ex.getStatusCode());
         verify(courseService, never()).saveCourse(any());
     }
 }

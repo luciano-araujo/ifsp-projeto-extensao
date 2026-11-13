@@ -5,6 +5,7 @@ import br.edu.ifsp.tcc.application.dto.TeamMemberResponse;
 import br.edu.ifsp.tcc.application.entity.TeamMember;
 import br.edu.ifsp.tcc.application.entity.TeamRole;
 import br.edu.ifsp.tcc.application.entity.User;
+import br.edu.ifsp.tcc.application.service.PlanService;
 import br.edu.ifsp.tcc.application.service.TeamService;
 import br.edu.ifsp.tcc.application.service.UserService;
 import org.springframework.http.HttpStatus;
@@ -17,10 +18,12 @@ public class AddTeamMemberUseCase {
 
     private final TeamService teamService;
     private final UserService userService;
+    private final PlanService planService;
 
-    public AddTeamMemberUseCase(TeamService teamService, UserService userService) {
+    public AddTeamMemberUseCase(TeamService teamService, UserService userService, PlanService planService) {
         this.teamService = teamService;
         this.userService = userService;
+        this.planService = planService;
     }
 
     @Transactional
@@ -34,6 +37,8 @@ public class AddTeamMemberUseCase {
         if (teamService.findMemberByTeamIdAndUserId(teamId, newUser.getId()).isPresent()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Este usuário já faz parte da equipe.");
         }
+
+        planService.assertCanAddMember(admin.getTeam());
 
         TeamMember member = new TeamMember();
         member.setTeam(admin.getTeam());

@@ -9,6 +9,7 @@ import br.edu.ifsp.tcc.application.entity.TeamRole;
 import br.edu.ifsp.tcc.application.entity.User;
 import br.edu.ifsp.tcc.application.service.BoardService;
 import br.edu.ifsp.tcc.application.service.MaterialService;
+import br.edu.ifsp.tcc.application.service.PlanService;
 import br.edu.ifsp.tcc.application.service.TeamService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,6 +30,7 @@ class UploadMaterialUseCaseTest {
     @Mock private TeamService teamService;
     @Mock private BoardService boardService;
     @Mock private MaterialService materialService;
+    @Mock private PlanService planService;
     @InjectMocks private UploadMaterialUseCase useCase;
 
     private final MockMultipartFile file = new MockMultipartFile("file", "a.pdf", "application/pdf", "abc".getBytes());
@@ -122,6 +124,22 @@ class UploadMaterialUseCaseTest {
                 () -> useCase.execute(10L, 1L, 3L, file));
 
         assertEquals(HttpStatus.NOT_FOUND, ex.getStatusCode());
+        verifyNoInteractions(materialService);
+    }
+
+
+    @Test
+    void execute_shouldStopWith402WhenTheStorageOfThePlanWouldBeExceeded() {
+        editor();
+        KanbanItem card = card(KanbanItemState.IN_PRODUCTION);
+        br.edu.ifsp.tcc.application.entity.Team team = new br.edu.ifsp.tcc.application.entity.Team();
+        card.setTeam(team);
+        when(boardService.findCard(10L, 3L)).thenReturn(card);
+        doThrow(new ResponseStatusException(HttpStatus.PAYMENT_REQUIRED, "limite")).when(planService).assertCanStoreMaterial(team, 3L);
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> useCase.execute(10L, 1L, 3L, file));
+        assertEquals(HttpStatus.PAYMENT_REQUIRED, ex.getStatusCode());
         verifyNoInteractions(materialService);
     }
 }

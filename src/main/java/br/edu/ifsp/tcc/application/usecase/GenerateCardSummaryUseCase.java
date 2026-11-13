@@ -7,6 +7,7 @@ import br.edu.ifsp.tcc.application.entity.Script;
 import br.edu.ifsp.tcc.application.entity.TeamRole;
 import br.edu.ifsp.tcc.application.service.BoardService;
 import br.edu.ifsp.tcc.application.service.CardSummaryService;
+import br.edu.ifsp.tcc.application.service.PlanService;
 import br.edu.ifsp.tcc.application.service.ScriptService;
 import br.edu.ifsp.tcc.application.service.SummaryGenerator;
 import br.edu.ifsp.tcc.application.service.TeamService;
@@ -24,15 +25,17 @@ public class GenerateCardSummaryUseCase {
     private final ScriptService scriptService;
     private final CardSummaryService cardSummaryService;
     private final SummaryGenerator summaryGenerator;
+    private final PlanService planService;
 
     public GenerateCardSummaryUseCase(TeamService teamService, BoardService boardService,
                                       ScriptService scriptService, CardSummaryService cardSummaryService,
-                                      SummaryGenerator summaryGenerator) {
+                                      SummaryGenerator summaryGenerator, PlanService planService) {
         this.teamService = teamService;
         this.boardService = boardService;
         this.scriptService = scriptService;
         this.cardSummaryService = cardSummaryService;
         this.summaryGenerator = summaryGenerator;
+        this.planService = planService;
     }
 
     /**
@@ -43,6 +46,7 @@ public class GenerateCardSummaryUseCase {
     public CardSummaryResponse execute(Long teamId, Long userId, Long cardId) {
         teamService.requireRole(teamId, userId, TeamRole.ADMIN, TeamRole.CREATOR);
         KanbanItem item = boardService.findCard(teamId, cardId);
+        planService.assertCanGenerateSummary(item.getTeam());
         if (item.getState() == KanbanItemState.IDEATION) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ideias não possuem roteiro para resumir.");
         }

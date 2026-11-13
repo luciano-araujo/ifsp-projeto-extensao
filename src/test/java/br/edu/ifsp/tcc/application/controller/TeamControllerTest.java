@@ -1,6 +1,8 @@
 package br.edu.ifsp.tcc.application.controller;
 
 import br.edu.ifsp.tcc.application.dto.*;
+import br.edu.ifsp.tcc.application.entity.PlanSource;
+import br.edu.ifsp.tcc.application.entity.PlanType;
 import br.edu.ifsp.tcc.application.entity.TeamRole;
 import br.edu.ifsp.tcc.application.entity.User;
 import br.edu.ifsp.tcc.application.usecase.*;
@@ -39,7 +41,7 @@ class TeamControllerTest {
     }
 
     private TeamResponse team() {
-        return new TeamResponse(10L, "Equipe", TeamRole.ADMIN, 1, LocalDateTime.now());
+        return new TeamResponse(10L, "Equipe", TeamRole.ADMIN, 1, LocalDateTime.now(), PlanType.GRATUITO, PlanSource.FREE, null);
     }
 
     private TeamMemberResponse member() {

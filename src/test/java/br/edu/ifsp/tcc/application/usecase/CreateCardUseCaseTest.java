@@ -14,6 +14,7 @@ import br.edu.ifsp.tcc.application.entity.User;
 import br.edu.ifsp.tcc.application.service.BoardService;
 import br.edu.ifsp.tcc.application.service.KanbanItemService;
 import br.edu.ifsp.tcc.application.service.TagService;
+import br.edu.ifsp.tcc.application.service.PlanService;
 import br.edu.ifsp.tcc.application.service.TeamService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -37,6 +38,7 @@ class CreateCardUseCaseTest {
     @Mock private BoardService boardService;
     @Mock private KanbanItemService kanbanItemService;
     @Mock private TagService tagService;
+    @Mock private PlanService planService;
     @InjectMocks private CreateCardUseCase useCase;
 
     private User user;
@@ -127,6 +129,24 @@ class CreateCardUseCaseTest {
                 () -> useCase.execute(10L, user, shortObjective));
         assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
         assertEquals("Informe o objetivo pedagógico com pelo menos 10 caracteres.", ex.getReason());
+        verify(kanbanItemService, never()).save(any());
+    }
+
+
+    @Test
+    void execute_shouldStopWith402WhenTheProjectLimitIsReached() {
+        user = new User();
+        user.setId(1L);
+        Team team = new Team();
+        team.setId(10L);
+        TeamMember member = new TeamMember();
+        member.setTeam(team);
+        when(teamService.requireRole(10L, 1L, TeamRole.ADMIN, TeamRole.CREATOR)).thenReturn(member);
+        when(boardService.resolveColumn(10L, 2L)).thenReturn(new BoardColumn());
+        doThrow(new ResponseStatusException(HttpStatus.PAYMENT_REQUIRED, "limite")).when(planService).assertCanCreateActiveProject(team);
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class, () -> useCase.execute(10L, user, dto()));
+        assertEquals(HttpStatus.PAYMENT_REQUIRED, ex.getStatusCode());
         verify(kanbanItemService, never()).save(any());
     }
 }

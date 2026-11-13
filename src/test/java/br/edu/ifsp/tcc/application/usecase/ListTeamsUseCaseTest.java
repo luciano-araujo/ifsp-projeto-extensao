@@ -59,7 +59,7 @@ class ListTeamsUseCaseTest {
         Team team = new Team();
         team.setId(10L);
         TeamMember member = membership(team);
-        TeamResponse response = new TeamResponse(10L, "Estúdio de Ana", TeamRole.ADMIN, 1, null);
+        TeamResponse response = new TeamResponse(10L, "Estúdio de Ana", TeamRole.ADMIN, 1, null, null, null, null);
         when(teamService.findMembershipsByUserId(1L)).thenReturn(List.of(member));
         when(teamService.toTeamResponse(member)).thenReturn(response);
 

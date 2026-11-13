@@ -14,6 +14,9 @@ public class Team {
     @Column(nullable = false, length = 120)
     private String name;
 
+    @Embedded
+    private TeamSubscription subscription = new TeamSubscription();
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
@@ -27,6 +30,9 @@ public class Team {
 
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
+
+    public TeamSubscription getSubscription() { return subscription; }
+    public void setSubscription(TeamSubscription subscription) { this.subscription = subscription; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
 }
