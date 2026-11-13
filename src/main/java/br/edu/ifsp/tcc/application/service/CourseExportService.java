@@ -19,7 +19,7 @@ public class CourseExportService {
             "modulo_ordem;modulo_titulo;aula_ordem;aula_titulo;aula_tipo;aula_publicada;aula_link;projeto_id;materiais";
 
     /** UTF-8 byte order mark, so Excel opens the accents correctly. */
-    public static final String BOM = "﻿";
+    public static final String BOM = "\uFEFF";
 
     public byte[] toCsv(CourseDetailResponse course) {
         StringBuilder csv = new StringBuilder(BOM).append(CSV_HEADER).append("\r\n");
