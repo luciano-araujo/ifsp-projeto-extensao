@@ -176,4 +176,25 @@ class CreateInviteUseCaseTest {
         assertEquals(HttpStatus.FORBIDDEN, ex.getStatusCode());
         verifyNoInteractions(inviteService, emailService, userService);
     }
+
+    @Test
+    void execute_shouldSendTheEmailOnlyAfterTheTransactionCommits() {
+        when(teamService.requireRole(10L, 1L, TeamRole.ADMIN)).thenReturn(admin);
+        when(userService.findByEmail("carla@exemplo.test")).thenReturn(Optional.empty());
+        when(inviteService.findPendingByTeamAndEmail(10L, "carla@exemplo.test")).thenReturn(List.of());
+        when(inviteService.generateToken()).thenReturn("tok");
+        when(inviteService.create(any(TeamInvite.class), eq("tok"))).thenAnswer(inv -> inv.getArgument(0));
+        org.springframework.transaction.support.TransactionSynchronizationManager.initSynchronization();
+        try {
+            useCase.execute(10L, 1L, dto("carla@exemplo.test", TeamRole.CREATOR));
+
+            verifyNoInteractions(emailService);
+            var synchronizations = org.springframework.transaction.support.TransactionSynchronizationManager.getSynchronizations();
+            assertEquals(1, synchronizations.size());
+            synchronizations.get(0).afterCommit();
+            verify(emailService).sendTeamInvite("carla@exemplo.test", "Ana Admin", "Equipe Office", "Criador", "tok");
+        } finally {
+            org.springframework.transaction.support.TransactionSynchronizationManager.clearSynchronization();
+        }
+    }
 }

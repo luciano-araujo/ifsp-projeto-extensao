@@ -28,6 +28,11 @@ public interface KanbanItemRepository extends JpaRepository<KanbanItem, Long> {
             + "AND k.dueDate IS NOT NULL AND k.dueDate <= :limit")
     List<KanbanItem> findProjectsDueUntil(@Param("teamId") Long teamId, @Param("limit") java.time.LocalDate limit);
 
+    // Same, for every team at once (daily digest); the team comes in the same query
+    @Query("SELECT k FROM KanbanItem k JOIN FETCH k.team WHERE k.state = br.edu.ifsp.tcc.application.entity.KanbanItemState.IN_PRODUCTION "
+            + "AND k.dueDate IS NOT NULL AND k.dueDate <= :limit")
+    List<KanbanItem> findAllProjectsDueUntil(@Param("limit") java.time.LocalDate limit);
+
     // The item, only when the user is a member of the item's team
     @Query("SELECT k FROM KanbanItem k WHERE k.id = :id AND k.team.id IN "
             + "(SELECT m.team.id FROM TeamMember m WHERE m.user.id = :userId)")

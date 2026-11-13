@@ -94,11 +94,11 @@ class M4ServicesTest {
     }
 
     @Test
-    void findAllTeams_shouldListEveryTeam() {
-        List<Team> teams = List.of(new Team());
-        when(teamRepository.findAll()).thenReturn(teams);
+    void findMembersOfTeams_shouldLoadAllMembersWithTheirUsersInOneQuery() {
+        List<TeamMember> members = List.of(new TeamMember());
+        when(teamMemberRepository.findByTeamIdsWithUser(List.of(10L, 20L))).thenReturn(members);
 
-        assertSame(teams, teamService().findAllTeams());
+        assertSame(members, teamService().findMembersOfTeams(List.of(10L, 20L)));
     }
 
     // --- EmailChangeTokenService ---

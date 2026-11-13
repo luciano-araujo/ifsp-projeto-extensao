@@ -7,6 +7,7 @@ import br.edu.ifsp.tcc.application.entity.TeamInvite;
 import br.edu.ifsp.tcc.application.entity.TeamMember;
 import br.edu.ifsp.tcc.application.entity.TeamRole;
 import br.edu.ifsp.tcc.application.entity.User;
+import br.edu.ifsp.tcc.application.service.AfterCommit;
 import br.edu.ifsp.tcc.application.service.EmailService;
 import br.edu.ifsp.tcc.application.service.InviteService;
 import br.edu.ifsp.tcc.application.service.TeamService;
@@ -66,8 +67,10 @@ public class CreateInviteUseCase {
         String token = inviteService.generateToken();
         invite = inviteService.create(invite, token);
 
-        emailService.sendTeamInvite(email, admin.getUser().getName(), admin.getTeam().getName(),
-                roleLabel(role), token);
+        String inviterName = admin.getUser().getName();
+        String teamName = admin.getTeam().getName();
+        AfterCommit.run(() -> emailService.sendTeamInvite(email, inviterName, teamName,
+                roleLabel(role), token));
         return inviteService.toInviteResponse(invite);
     }
 

@@ -92,9 +92,6 @@ public class TeamService {
         return admin;
     }
 
-    public List<Team> findAllTeams() {
-        return teamRepository.findAll();
-    }
 
     public Team renameTeam(Team team, String name) {
         team.setName(name);
@@ -154,6 +151,11 @@ public class TeamService {
     /** The member of the team, or empty when the id does not belong to it. */
     public Optional<TeamMember> findMemberOfTeam(Long teamId, Long memberId) {
         return teamMemberRepository.findByIdAndTeam_Id(memberId, teamId);
+    }
+
+    /** Members of all the given teams, users included, in one query. */
+    public List<TeamMember> findMembersOfTeams(java.util.Collection<Long> teamIds) {
+        return teamMemberRepository.findByTeamIdsWithUser(teamIds);
     }
 
     public int countMembers(Long teamId) {

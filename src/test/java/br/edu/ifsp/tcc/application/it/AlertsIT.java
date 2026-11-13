@@ -143,9 +143,9 @@ class AlertsIT extends AbstractIT {
         assertEquals(1, toAna.size());
         List<String> lines = mine(toAna.get(0), teamA, teamB, quiet);
         assertEquals(3, lines.size(), lines.toString());
-        assertTrue(lines.stream().anyMatch(l -> l.contains("Projeto \"Projeto A\": atrasado há 2 dias")), lines.toString());
+        assertTrue(lines.stream().anyMatch(l -> l.contains("Projeto \"Projeto A\": venceu há 2 dias")), lines.toString());
         assertTrue(lines.stream().anyMatch(l -> l.contains("Tarefa \"Tarefa sem dono\" (projeto \"Projeto A\"): vence em 2 dias")));
-        assertTrue(lines.stream().anyMatch(l -> l.contains("Projeto \"Projeto B\": vence em 1 dia")));
+        assertTrue(lines.stream().anyMatch(l -> l.contains("Projeto \"Projeto B\": vence amanhã")));
         assertTrue(lines.stream().noneMatch(l -> l.contains("Tarefa do Carlos")), "assigned to Carlos only");
         assertTrue(lines.stream().noneMatch(l -> l.contains("Sem prazos")));
         assertEquals("Ana Teste", toAna.get(0).name());
@@ -161,6 +161,40 @@ class AlertsIT extends AbstractIT {
         // people outside these teams get nothing
         assertTrue(MailCapture.digestsTo(bia.email()).isEmpty());
         assertTrue(MailCapture.digestsTo(loner.email()).isEmpty());
+    }
+
+    @Test
+    @DisplayName("IT-ALERT-05 Decision 19: approved projects and their tasks produce no alerts; changes requested or no review still do")
+    void onlyActiveProjects() {
+        Team team = newTeam();
+        long approved = projectId(team, "Aprovado");
+        long changes = projectId(team, "Com ajustes");
+        long unreviewed = projectId(team, "Sem revisao");
+        for (long c : new long[] {approved, changes, unreviewed}) setCardDue(c, today().minusDays(2));
+        taskDue(team, approved, "tarefa do aprovado", today().minusDays(1), null);
+        taskDue(team, changes, "tarefa do com ajustes", today().minusDays(1), null);
+        assertEquals(200, api.post(team.path() + "/cards/" + approved + "/reviews", rui.token(), map("decision", "APPROVED")).status());
+        assertEquals(200, api.post(team.path() + "/cards/" + changes + "/reviews", rui.token(), map("decision", "CHANGES_REQUESTED", "comment", "ajustar")).status());
+
+        Resp alerts = api.get(team.path() + "/alerts", carlos.token());
+
+        assertEquals(3, alerts.size(), alerts.body());
+        List<Long> cardIds = new java.util.ArrayList<>();
+        alerts.json().forEach(a -> cardIds.add(a.path("cardId").asLong()));
+        assertFalse(cardIds.contains(approved));
+        assertTrue(cardIds.contains(changes) && cardIds.contains(unreviewed));
+
+        // a new approval after the changes takes the project out too
+        assertEquals(200, api.post(team.path() + "/cards/" + changes + "/reviews", rui.token(), map("decision", "APPROVED")).status());
+        assertEquals(1, api.get(team.path() + "/alerts", carlos.token()).size());
+
+        // the digest follows the same rule
+        MailCapture.DIGESTS.clear();
+        int sent = digestUseCase.execute();
+        MailCapture.awaitDigests(sent);
+        List<String> lines = mine(MailCapture.digestsTo(ana.email()).get(0), team);
+        assertEquals(1, lines.size(), lines.toString());
+        assertTrue(lines.get(0).contains("Sem revisao"));
     }
 
     /** The lines of a digest that belong to the given teams (the same people take part in other tests). */

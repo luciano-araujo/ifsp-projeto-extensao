@@ -4,6 +4,7 @@ import br.edu.ifsp.tcc.application.dto.MessageResponse;
 import br.edu.ifsp.tcc.application.dto.RequestEmailChangeDTO;
 import br.edu.ifsp.tcc.application.entity.EmailChangeToken;
 import br.edu.ifsp.tcc.application.entity.User;
+import br.edu.ifsp.tcc.application.service.AfterCommit;
 import br.edu.ifsp.tcc.application.service.EmailChangeTokenService;
 import br.edu.ifsp.tcc.application.service.EmailService;
 import br.edu.ifsp.tcc.application.service.UserService;
@@ -59,7 +60,8 @@ public class RequestEmailChangeUseCase {
         token.setExpiresAt(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS).plusMinutes(tokenExpiryMinutes));
         emailChangeTokenService.save(token);
 
-        emailService.sendEmailChangeToken(newEmail, user.getName(), code);
+        String name = user.getName();
+        AfterCommit.run(() -> emailService.sendEmailChangeToken(newEmail, name, code));
         return new MessageResponse("Enviamos um código de verificação para " + newEmail + ".");
     }
 }
