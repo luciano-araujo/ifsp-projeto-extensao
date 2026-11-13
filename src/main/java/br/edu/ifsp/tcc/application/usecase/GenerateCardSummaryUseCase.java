@@ -50,9 +50,9 @@ public class GenerateCardSummaryUseCase {
                 .map(CardSummaryService::plainText).orElse("");
         if (CardSummaryService.countWords(plainText) < MIN_WORDS) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Dados insuficientes: o roteiro precisa de pelo menos 100 palavras para gerar o resumo.");
+                    "Dados insuficientes para gerar o resumo: escreva pelo menos 100 palavras no roteiro.");
         }
-        String summary = summaryGenerator.summarize(plainText);
+        String summary = summaryGenerator.summarize(CardSummaryService.buildPayload(item, plainText));
         return cardSummaryService.toResponse(cardSummaryService.overwrite(item, summary));
     }
 }

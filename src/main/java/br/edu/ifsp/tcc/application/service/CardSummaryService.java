@@ -74,6 +74,24 @@ public class CardSummaryService {
         return String.join("\n", lines);
     }
 
+    /**
+     * Text sent to the generator: header lines (title, audience, objective; only the non-blank ones), a blank line,
+     * then the plain text of the script.
+     */
+    public static String buildPayload(KanbanItem item, String scriptText) {
+        StringBuilder out = new StringBuilder();
+        appendHeader(out, "Título", item.getTitle());
+        appendHeader(out, "Público-alvo", item.getTargetAudience());
+        appendHeader(out, "Objetivo", item.getPedagogicalObjective());
+        if (out.length() > 0) out.append('\n');
+        return out.append(scriptText).toString();
+    }
+
+    private static void appendHeader(StringBuilder out, String label, String value) {
+        if (value == null || value.isBlank()) return;
+        out.append(label).append(": ").append(value.replaceAll("\\s+", " ").trim()).append('\n');
+    }
+
     public static int countWords(String plainText) {
         return plainText == null || plainText.isBlank() ? 0 : plainText.trim().split("\\s+").length;
     }

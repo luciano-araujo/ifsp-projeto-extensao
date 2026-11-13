@@ -7,6 +7,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 
 import java.util.List;
+import java.io.IOException;
+import java.util.Comparator;
+import java.util.ArrayList;
+import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
+import org.springframework.core.io.Resource;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -39,17 +44,17 @@ class DatabaseSchemaIT extends AbstractIT {
         List<Map<String, Object>> history = jdbc.queryForList(
                 "SELECT version, success FROM flyway_schema_history WHERE version IS NOT NULL ORDER BY installed_rank");
         // Every migration file of the project, in version order (gaps are allowed while slices are in flight)
-        List<String> expected = new java.util.ArrayList<>();
+        List<String> expected = new ArrayList<>();
         try {
-            for (org.springframework.core.io.Resource file : new org.springframework.core.io.support.PathMatchingResourcePatternResolver()
+            for (Resource file : new PathMatchingResourcePatternResolver()
                     .getResources("classpath:db/migration/V*__*.sql")) {
                 String name = file.getFilename();
                 expected.add(name.substring(1, name.indexOf("__")));
             }
-        } catch (java.io.IOException e) {
+        } catch (IOException e) {
             throw new IllegalStateException(e);
         }
-        expected.sort(java.util.Comparator.comparingInt(Integer::parseInt));
+        expected.sort(Comparator.comparingInt(Integer::parseInt));
         assertEquals(expected.size(), history.size(), "migrations applied: " + history);
         for (int i = 0; i < history.size(); i++) {
             assertEquals(expected.get(i), history.get(i).get("version"));

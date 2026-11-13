@@ -96,7 +96,7 @@ class CardSummaryIT extends AbstractIT {
         saveScript(card, "<h1>Título</h1><p><strong>" + words(60) + "</strong></p><ul><li>" + words(60) + "</li></ul>");
 
         assertEquals(200, api.post(summaryPath(team, card), carlos.token(), null).status());
-        assertEquals("Título\n" + words(60) + "\n" + words(60), LAST_TEXT.get());
+        assertEquals("Título: Texto puro\nPúblico-alvo: Estudantes iniciantes\nObjetivo: Aprender o basico do tema\n\nTítulo\n" + words(60) + "\n" + words(60), LAST_TEXT.get());
 
         NEXT_SUMMARY.set("Segundo resumo.");
         assertEquals(200, api.post(summaryPath(team, card), ana.token(), null).status());
@@ -117,7 +117,7 @@ class CardSummaryIT extends AbstractIT {
         for (long card : new long[]{noScript, shortScript}) {
             Resp r = api.post(summaryPath(team, card), ana.token(), null);
             assertEquals(400, r.status(), r.body());
-            assertEquals("Dados insuficientes: o roteiro precisa de pelo menos 100 palavras para gerar o resumo.", r.message());
+            assertEquals("Dados insuficientes para gerar o resumo: escreva pelo menos 100 palavras no roteiro.", r.message());
         }
         assertNull(LAST_TEXT.get(), "the generator is not called with too little text");
         assertEquals(200, api.post(summaryPath(team, exact), ana.token(), null).status());

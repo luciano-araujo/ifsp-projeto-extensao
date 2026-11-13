@@ -99,6 +99,15 @@ class HttpSummaryGeneratorTest {
     }
 
     @Test
+    void summarize_shouldEscapeMarkupCharactersInThePayload() {
+        reply(200, "{\"summary\":\"ok\"}", 0);
+
+        generator(Duration.ofSeconds(5)).summarize("a <b> & c");
+
+        assertEquals("{\"text\":\"a &lt;b&gt; &amp; c\"}", receivedBody.get());
+    }
+
+    @Test
     void summarize_shouldFailWith503OnServerError() {
         reply(500, "{\"detail\":\"boom\"}", 0);
 

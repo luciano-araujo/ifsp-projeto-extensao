@@ -60,7 +60,10 @@ class GenerateCardSummaryUseCaseTest {
     void execute_shouldSummarizePlainTextOfScriptAndSave() {
         when(boardService.findCard(10L, 3L)).thenReturn(project);
         when(scriptService.findByKanbanItemId(3L)).thenReturn(Optional.of(script("<p>" + words(60) + "</p><p>" + words(60) + "</p>")));
-        when(summaryGenerator.summarize(words(60) + "\n" + words(60))).thenReturn("Resumo curto");
+        project.setTitle("Meu vídeo");
+        project.setTargetAudience("Iniciantes");
+        project.setPedagogicalObjective("   ");
+        when(summaryGenerator.summarize("Título: Meu vídeo\nPúblico-alvo: Iniciantes\n\n" + words(60) + "\n" + words(60))).thenReturn("Resumo curto");
         CardSummary saved = new CardSummary();
         CardSummaryResponse response = mock(CardSummaryResponse.class);
         when(cardSummaryService.overwrite(project, "Resumo curto")).thenReturn(saved);
@@ -74,7 +77,7 @@ class GenerateCardSummaryUseCaseTest {
     void execute_shouldAcceptExactlyOneHundredWords() {
         when(boardService.findCard(10L, 3L)).thenReturn(project);
         when(scriptService.findByKanbanItemId(3L)).thenReturn(Optional.of(script("<p>" + words(100) + "</p>")));
-        when(summaryGenerator.summarize(words(100))).thenReturn("ok");
+        when(summaryGenerator.summarize(CardSummaryService.buildPayload(project, words(100)))).thenReturn("ok");
 
         useCase.execute(10L, 1L, 3L);
 
@@ -88,7 +91,7 @@ class GenerateCardSummaryUseCaseTest {
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class, () -> useCase.execute(10L, 1L, 3L));
         assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
-        assertEquals("Dados insuficientes: o roteiro precisa de pelo menos 100 palavras para gerar o resumo.", ex.getReason());
+        assertEquals("Dados insuficientes para gerar o resumo: escreva pelo menos 100 palavras no roteiro.", ex.getReason());
         verifyNoInteractions(summaryGenerator, cardSummaryService);
     }
 
