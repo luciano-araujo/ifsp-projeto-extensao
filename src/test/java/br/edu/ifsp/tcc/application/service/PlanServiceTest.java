@@ -49,6 +49,7 @@ class PlanServiceTest {
     @Mock private CourseRepository courseRepository;
     @Mock private MaterialRepository materialRepository;
     @Mock private CardReviewService cardReviewService;
+    @Mock private br.edu.ifsp.tcc.application.repository.TeamInviteRepository teamInviteRepository;
 
     private PlanService service;
     private final br.edu.ifsp.tcc.application.entity.User owner = new br.edu.ifsp.tcc.application.entity.User();
@@ -58,7 +59,7 @@ class PlanServiceTest {
         owner.setName("Ana Clara");
         Clock clock = Clock.fixed(NOW.toInstant(ZoneOffset.UTC), ZoneOffset.UTC);
         service = new PlanService(teamRepository, teamMemberRepository, kanbanItemRepository, courseRepository,
-                materialRepository, cardReviewService, clock);
+                materialRepository, cardReviewService, teamInviteRepository, clock);
     }
 
     private Team team(PlanType plan) {
@@ -344,6 +345,7 @@ class PlanServiceTest {
     void assertCanCreateFreeTeam_shouldNotCountThePersonalTeam() {
         Team personal = team(PlanType.GRATUITO);
         personal.setName("Estúdio de Ana");
+        personal.setPersonal(true);
         Team shared = team(PlanType.GRATUITO);
         when(teamMemberRepository.findByUser_IdOrderByJoinedAtAsc(1L))
                 .thenReturn(List.of(membership(personal, TeamRole.ADMIN)));
@@ -352,6 +354,38 @@ class PlanServiceTest {
 
         service.requireCanCreateFreeTeam(1L);                                   // personal team + one new: allowed
         assert402(() -> service.requireCanCreateFreeTeam(2L), "equipe compartilhada"); // second shared free team
+    }
+
+    @Test
+    void assertCanCreateFreeTeam_shouldNotExemptASharedTeamNamedLikeThePersonalOne() {
+        Team imitation = team(PlanType.GRATUITO);
+        imitation.setName("Estúdio de Ana");   // same name, but not flagged personal
+        when(teamMemberRepository.findByUser_IdOrderByJoinedAtAsc(1L))
+                .thenReturn(List.of(membership(imitation, TeamRole.ADMIN)));
+
+        assert402(() -> service.requireCanCreateFreeTeam(1L), "equipe compartilhada");
+    }
+
+    @Test
+    void requireCanInvite_shouldCountPendingInvitesAgainstTheUserLimit() {
+        when(teamMemberRepository.countByTeam_Id(10L)).thenReturn(1, 3, 3);
+        when(teamInviteRepository.countByTeam_IdAndStatusAndExpiresAtAfter(10L,
+                br.edu.ifsp.tcc.application.entity.InviteStatus.PENDING, NOW)).thenReturn(0, 1, 2);
+
+        assert402(() -> service.requireCanInvite(team(PlanType.GRATUITO)), "plano Gratuito", "convites pendentes");
+        service.requireCanInvite(team(PlanType.AGENCIA));                      // 3 members + 1 pending = 4 < 5
+        assert402(() -> service.requireCanInvite(team(PlanType.AGENCIA)), "5 usuários"); // 3 + 2 = 5
+    }
+
+    @Test
+    void trialStartIsTruncatedToSeconds() {
+        Team team = team(PlanType.GRATUITO);
+        when(teamRepository.save(team)).thenReturn(team);
+
+        service.startTrial(team, PlanType.SOLO);
+
+        assertEquals(0, team.getSubscription().getTrialUsedAt().getNano());
+        assertEquals(0, team.getSubscription().getExpiresAt().getNano());
     }
 
     @Test

@@ -20,6 +20,9 @@ public class TeamResponse {
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'")
     private LocalDateTime createdAt;
 
+    // True only for the personal team the system creates on the first access of a user
+    private boolean personal;
+
     /** Plan in force (a finished trial shows as GRATUITO). */
     private PlanType plan;
     private PlanSource planSource;

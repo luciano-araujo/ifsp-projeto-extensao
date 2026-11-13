@@ -205,7 +205,7 @@ class MaterialServiceTest {
         User uploader = new User();
         uploader.setId(5L);
         MultipartFile file = new MockMultipartFile("file", "..\\sub\\Roteiro Final.pdf", "application/pdf; foo=bar",
-                "conteudo".getBytes());
+                "%PDF-123".getBytes());
         when(materialRepository.save(any(Material.class))).thenAnswer(inv -> inv.getArgument(0));
 
         Material saved = service.attach(card(3L), uploader, file);
@@ -250,7 +250,7 @@ class MaterialServiceTest {
         when(file.getOriginalFilename()).thenReturn("limite.pdf");
         when(file.getContentType()).thenReturn("application/pdf");
         when(file.getSize()).thenReturn(MaterialService.MAX_SIZE_BYTES);
-        when(file.getInputStream()).thenReturn(InputStream.nullInputStream());
+        when(file.getInputStream()).thenReturn(new java.io.ByteArrayInputStream("%PDF-".getBytes()));
         when(materialRepository.save(any(Material.class))).thenAnswer(inv -> inv.getArgument(0));
 
         Material saved = service.attach(card(3L), new User(), file);
@@ -274,14 +274,14 @@ class MaterialServiceTest {
     @Test
     void attach_shouldRemoveThePartialFileWhenTheStorageFailsInTheMiddle() {
         TransactionSynchronizationManager.initSynchronization();
-        MultipartFile file = new MockMultipartFile("file", "a.pdf", "application/pdf", "abc".getBytes());
+        MultipartFile file = new MockMultipartFile("file", "a.pdf", "application/pdf", "%PDF-".getBytes());
         doThrow(new FileStorageException("disco cheio")).when(fileStorage)
-                .store(anyString(), any(InputStream.class), eq(3L), eq("application/pdf"));
+                .store(anyString(), any(InputStream.class), eq(5L), eq("application/pdf"));
 
         assertThrows(FileStorageException.class, () -> service.attach(card(3L), new User(), file));
 
         ArgumentCaptor<String> key = ArgumentCaptor.forClass(String.class);
-        verify(fileStorage).store(key.capture(), any(InputStream.class), eq(3L), eq("application/pdf"));
+        verify(fileStorage).store(key.capture(), any(InputStream.class), eq(5L), eq("application/pdf"));
         verifyNoInteractions(materialRepository);
         List<TransactionSynchronization> synchronizations = TransactionSynchronizationManager.getSynchronizations();
         assertEquals(1, synchronizations.size());
@@ -292,7 +292,7 @@ class MaterialServiceTest {
     @Test
     void attach_shouldRemoveTheStoredFileWhenTheTransactionRollsBack() {
         TransactionSynchronizationManager.initSynchronization();
-        MultipartFile file = new MockMultipartFile("file", "a.pdf", "application/pdf", "abc".getBytes());
+        MultipartFile file = new MockMultipartFile("file", "a.pdf", "application/pdf", "%PDF-".getBytes());
         when(materialRepository.save(any(Material.class))).thenAnswer(inv -> inv.getArgument(0));
 
         Material saved = service.attach(card(3L), new User(), file);
@@ -610,5 +610,116 @@ class MaterialServiceTest {
         Material material = material(7L, 3L, "k");
 
         assertNull(service.toResponse(material, 10L).getUploadedBy());
+    }
+
+    // --- Content check ---
+
+    private static byte[] bytes(int... values) {
+        byte[] result = new byte[values.length];
+        for (int i = 0; i < values.length; i++) result[i] = (byte) values[i];
+        return result;
+    }
+
+    @Test
+    void contentMatches_shouldAcceptTheSignatureOfEachType() {
+        assertTrue(MaterialService.contentMatches("pdf", "%PDF-1.7".getBytes()));
+        assertTrue(MaterialService.contentMatches("png", bytes(0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A, 0)));
+        assertTrue(MaterialService.contentMatches("jpg", bytes(0xFF, 0xD8, 0xFF, 0xE0)));
+        assertTrue(MaterialService.contentMatches("jpeg", bytes(0xFF, 0xD8, 0xFF)));
+        assertTrue(MaterialService.contentMatches("gif", "GIF87a..".getBytes()));
+        assertTrue(MaterialService.contentMatches("gif", "GIF89a..".getBytes()));
+        assertTrue(MaterialService.contentMatches("webp", bytes('R', 'I', 'F', 'F', 1, 2, 3, 4, 'W', 'E', 'B', 'P')));
+        for (String ext : List.of("docx", "xlsx", "pptx")) {
+            assertTrue(MaterialService.contentMatches(ext, bytes('P', 'K', 3, 4, 0)), ext);
+        }
+        for (String ext : List.of("doc", "xls", "ppt")) {
+            assertTrue(MaterialService.contentMatches(ext, bytes(0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1)), ext);
+        }
+        assertTrue(MaterialService.contentMatches("txt", "olá".getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+        assertTrue(MaterialService.contentMatches("txt", new byte[0]));
+    }
+
+    @Test
+    void contentMatches_shouldRefuseWrongOrShortContent() {
+        assertFalse(MaterialService.contentMatches("pdf", "<html>".getBytes()));
+        assertFalse(MaterialService.contentMatches("pdf", "%PDF".getBytes()));
+        assertFalse(MaterialService.contentMatches("png", bytes(0x89, 'P', 'N', 'G')));
+        assertFalse(MaterialService.contentMatches("png", bytes(0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0B)));
+        assertFalse(MaterialService.contentMatches("jpg", bytes(0xFF, 0xD8)));
+        assertFalse(MaterialService.contentMatches("gif", "GIF88a".getBytes()));
+        assertFalse(MaterialService.contentMatches("webp", bytes('R', 'I', 'F', 'F', 1, 2, 3, 4, 'W', 'A', 'V', 'E')));
+        assertFalse(MaterialService.contentMatches("webp", "RIFF".getBytes()));
+        assertFalse(MaterialService.contentMatches("docx", "%PDF-".getBytes()));
+        assertFalse(MaterialService.contentMatches("doc", bytes('P', 'K', 3, 4)));
+        assertFalse(MaterialService.contentMatches("txt", bytes('a', 0, 'b')));
+        assertFalse(MaterialService.contentMatches("exe", "MZ".getBytes()));
+    }
+
+    @Test
+    void attach_shouldRefuseContentThatDoesNotMatchTheExtensionWithoutStoring() {
+        MultipartFile file = new MockMultipartFile("file", "falso.pdf", "application/pdf", "<script>alert(1)</script>".getBytes());
+
+        assertStatus(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Tipo de arquivo não permitido.",
+                () -> service.attach(card(3L), new User(), file));
+
+        verifyNoInteractions(fileStorage, materialRepository);
+    }
+
+    @Test
+    void attach_shouldStoreTheWholeFileAfterReadingTheHead() {
+        byte[] content = new byte[20000];
+        System.arraycopy("%PDF-".getBytes(), 0, content, 0, 5);
+        content[19999] = 7;
+        MultipartFile file = new MockMultipartFile("file", "grande.pdf", "application/pdf", content);
+        when(materialRepository.save(any(Material.class))).thenAnswer(inv -> inv.getArgument(0));
+        doAnswer(inv -> {
+            assertEquals(20000, ((InputStream) inv.getArgument(1)).readAllBytes().length);
+            return null;
+        }).when(fileStorage).store(anyString(), any(InputStream.class), eq(20000L), eq("application/pdf"));
+
+        service.attach(card(3L), new User(), file);
+
+        verify(fileStorage).store(anyString(), any(InputStream.class), eq(20000L), eq("application/pdf"));
+    }
+
+    // --- Archive (RN04) ---
+
+    @Test
+    void archiveDueMaterials_shouldArchiveAndMarkEachRow() {
+        Material a = material(1L, 3L, "key-a");
+        Material b = material(2L, 3L, "key-b");
+        java.time.LocalDateTime limit = java.time.LocalDateTime.now().minusDays(30);
+        when(materialRepository.findDueForArchive(limit)).thenReturn(List.of(a, b));
+
+        assertEquals(2, service.archiveDueMaterials(limit));
+
+        verify(fileStorage).archive("key-a");
+        verify(fileStorage).archive("key-b");
+        verify(materialRepository).markArchived(eq(1L), any(java.time.LocalDateTime.class));
+        verify(materialRepository).markArchived(eq(2L), any(java.time.LocalDateTime.class));
+    }
+
+    @Test
+    void archiveDueMaterials_shouldSkipAMaterialWhoseArchiveFails() {
+        Material a = material(1L, 3L, "key-a");
+        Material b = material(2L, 3L, "key-b");
+        java.time.LocalDateTime limit = java.time.LocalDateTime.now();
+        when(materialRepository.findDueForArchive(limit)).thenReturn(List.of(a, b));
+        doThrow(new FileStorageException("falhou")).when(fileStorage).archive("key-a");
+
+        assertEquals(1, service.archiveDueMaterials(limit));
+
+        verify(materialRepository, never()).markArchived(eq(1L), any(java.time.LocalDateTime.class));
+        verify(materialRepository).markArchived(eq(2L), any(java.time.LocalDateTime.class));
+    }
+
+    @Test
+    void archiveDueMaterials_shouldDoNothingWhenNothingIsDue() {
+        java.time.LocalDateTime limit = java.time.LocalDateTime.now();
+        when(materialRepository.findDueForArchive(limit)).thenReturn(List.of());
+
+        assertEquals(0, service.archiveDueMaterials(limit));
+
+        verifyNoInteractions(fileStorage);
     }
 }

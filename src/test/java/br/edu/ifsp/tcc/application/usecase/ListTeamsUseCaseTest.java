@@ -46,11 +46,10 @@ class ListTeamsUseCaseTest {
         when(teamService.findMembershipsByUserId(1L))
                 .thenReturn(List.of())
                 .thenReturn(List.of(membership(team)));
-        when(teamService.personalTeamName(ana)).thenReturn("Estúdio de Ana");
 
         useCase.execute(ana);
 
-        verify(teamService).createTeamWithAdmin(ana, "Estúdio de Ana");
+        verify(teamService).createPersonalTeam(ana);
         verify(teamService).toTeamResponse(any(TeamMember.class));
     }
 
@@ -59,13 +58,13 @@ class ListTeamsUseCaseTest {
         Team team = new Team();
         team.setId(10L);
         TeamMember member = membership(team);
-        TeamResponse response = new TeamResponse(10L, "Estúdio de Ana", TeamRole.ADMIN, 1, null, null, null, null);
+        TeamResponse response = new TeamResponse(10L, "Estúdio de Ana", TeamRole.ADMIN, 1, null, false, null, null, null);
         when(teamService.findMembershipsByUserId(1L)).thenReturn(List.of(member));
         when(teamService.toTeamResponse(member)).thenReturn(response);
 
         List<TeamResponse> result = useCase.execute(ana());
 
         assertEquals(List.of(response), result);
-        verify(teamService, never()).createTeamWithAdmin(any(), any());
+        verify(teamService, never()).createPersonalTeam(any());
     }
 }

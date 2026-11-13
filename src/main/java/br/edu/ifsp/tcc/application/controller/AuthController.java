@@ -2,6 +2,7 @@ package br.edu.ifsp.tcc.application.controller;
 
 import br.edu.ifsp.tcc.application.dto.*;
 import br.edu.ifsp.tcc.application.usecase.ConfirmRegistrationUseCase;
+import br.edu.ifsp.tcc.application.usecase.GetInviteByTokenUseCase;
 import br.edu.ifsp.tcc.application.usecase.LoginUseCase;
 import br.edu.ifsp.tcc.application.usecase.RequestPasswordResetUseCase;
 import br.edu.ifsp.tcc.application.usecase.RequestRegistrationTokenUseCase;
@@ -19,17 +20,20 @@ public class AuthController {
     private final ConfirmRegistrationUseCase confirmRegistrationUseCase;
     private final RequestPasswordResetUseCase requestPasswordResetUseCase;
     private final ResetPasswordUseCase resetPasswordUseCase;
+    private final GetInviteByTokenUseCase getInviteByTokenUseCase;
 
     public AuthController(LoginUseCase loginUseCase,
                           RequestRegistrationTokenUseCase requestRegistrationTokenUseCase,
                           ConfirmRegistrationUseCase confirmRegistrationUseCase,
                           RequestPasswordResetUseCase requestPasswordResetUseCase,
-                          ResetPasswordUseCase resetPasswordUseCase) {
+                          ResetPasswordUseCase resetPasswordUseCase,
+                          GetInviteByTokenUseCase getInviteByTokenUseCase) {
         this.loginUseCase = loginUseCase;
         this.requestRegistrationTokenUseCase = requestRegistrationTokenUseCase;
         this.confirmRegistrationUseCase = confirmRegistrationUseCase;
         this.requestPasswordResetUseCase = requestPasswordResetUseCase;
         this.resetPasswordUseCase = resetPasswordUseCase;
+        this.getInviteByTokenUseCase = getInviteByTokenUseCase;
     }
 
     @PostMapping("/login")
@@ -59,5 +63,11 @@ public class AuthController {
     public ResponseEntity<MessageResponse> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
         resetPasswordUseCase.execute(request);
         return ResponseEntity.ok(new MessageResponse("Senha redefinida com sucesso."));
+    }
+
+    // Public: the /convite page shows the invite before the person logs in or signs up
+    @GetMapping("/invites/{token}")
+    public ResponseEntity<PublicInviteResponse> getInvite(@PathVariable String token) {
+        return ResponseEntity.ok(getInviteByTokenUseCase.execute(token));
     }
 }

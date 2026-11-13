@@ -2,6 +2,7 @@ package br.edu.ifsp.tcc.application.entity;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 
 /** A reviewer's decision on a project card. The reviewer is null after the account is deleted. */
 @Entity
@@ -32,7 +33,7 @@ public class CardReview {
 
     @PrePersist
     protected void onCreate() {
-        if (createdAt == null) createdAt = LocalDateTime.now();
+        if (createdAt == null) createdAt = LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS);
     }
 
     public Long getId() { return id; }

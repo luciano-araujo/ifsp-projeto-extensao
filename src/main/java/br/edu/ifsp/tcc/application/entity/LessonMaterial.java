@@ -2,6 +2,7 @@ package br.edu.ifsp.tcc.application.entity;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 
 /** Link between a course lesson and a material (unique per pair). */
 @Entity
@@ -25,7 +26,7 @@ public class LessonMaterial {
 
     @PrePersist
     protected void onCreate() {
-        createdAt = LocalDateTime.now();
+        createdAt = LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS);
     }
 
     public Long getId() { return id; }

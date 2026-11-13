@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 
 /** A file attached to a project card. The bytes are in the file storage under {@link #getStorageKey()}. */
@@ -51,7 +52,7 @@ public class Material {
     @PrePersist
     protected void onCreate() {
         if (uuid == null) uuid = UUID.randomUUID().toString();
-        createdAt = LocalDateTime.now();
+        createdAt = LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS);
     }
 
     public Long getId() { return id; }

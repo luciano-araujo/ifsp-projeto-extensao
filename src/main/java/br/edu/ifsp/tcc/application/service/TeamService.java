@@ -65,8 +65,18 @@ public class TeamService {
 
     /** Creates the team, its first ADMIN and the default columns. */
     public TeamMember createTeamWithAdmin(User user, String name) {
+        return createTeam(user, name, false);
+    }
+
+    /** The automatic personal team of a user (cannot be deleted, see requireDeletable). */
+    public TeamMember createPersonalTeam(User user) {
+        return createTeam(user, personalTeamName(user), true);
+    }
+
+    private TeamMember createTeam(User user, String name, boolean personal) {
         Team team = new Team();
         team.setName(name);
+        team.setPersonal(personal);
         team = teamRepository.save(team);
 
         TeamMember admin = new TeamMember();
@@ -86,6 +96,22 @@ public class TeamService {
         return admin;
     }
 
+
+    public Team renameTeam(Team team, String name) {
+        team.setName(name);
+        return teamRepository.save(team);
+    }
+
+    /**
+     * Product rule confirmed by Luciano: the personal team cannot be deleted. To change the rule,
+     * remove or edit this single check.
+     */
+    public void requireDeletable(Team team) {
+        if (team.isPersonal()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "A equipe pessoal não pode ser excluída.");
+        }
+    }
+
     /**
      * Deletes the team; its members, columns, cards, materials and courses go with it (database cascade).
      * The stored files of the materials are removed after the commit.
@@ -103,11 +129,6 @@ public class TeamService {
     }
 
     public String personalTeamName(User user) {
-        return personalNameOf(user);
-    }
-
-    /** Name of the personal team of the user; the personal team is identified by this name (there is no flag). */
-    public static String personalNameOf(User user) {
         String firstName = user.getName() == null ? "" : user.getName().trim().split("\\s+")[0];
         return firstName.isEmpty() ? "Meu Estúdio" : "Estúdio de " + firstName;
     }
@@ -136,6 +157,11 @@ public class TeamService {
         return teamMemberRepository.findByIdAndTeam_Id(memberId, teamId);
     }
 
+    /** Members of all the given teams, users included, in one query. */
+    public List<TeamMember> findMembersOfTeams(java.util.Collection<Long> teamIds) {
+        return teamMemberRepository.findByTeamIdsWithUser(teamIds);
+    }
+
     public int countMembers(Long teamId) {
         return teamMemberRepository.countByTeam_Id(teamId);
     }
@@ -159,7 +185,7 @@ public class TeamService {
         TeamSubscription subscription = team.getSubscription();
         LocalDateTime now = planService.now();
         return new TeamResponse(team.getId(), team.getName(), membership.getRole(),
-                countMembers(team.getId()), team.getCreatedAt(), subscription.effectivePlan(now),
+                countMembers(team.getId()), team.getCreatedAt(), team.isPersonal(), subscription.effectivePlan(now),
                 subscription.effectiveSource(now), subscription.effectiveExpiresAt(now));
     }
 

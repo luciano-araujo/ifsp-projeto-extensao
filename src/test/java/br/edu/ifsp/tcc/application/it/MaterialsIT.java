@@ -33,6 +33,21 @@ class MaterialsIT extends AbstractIT {
 
     // --- Helpers ---
 
+    /** The first bytes the content check expects for the extension of the file name. */
+    private static byte[] sample(String fileName) {
+        String ext = fileName.substring(fileName.lastIndexOf('.') + 1).toLowerCase();
+        return switch (ext) {
+            case "pdf" -> PDF;
+            case "png" -> new byte[]{(byte) 0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A, 0};
+            case "jpg", "jpeg" -> new byte[]{(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0};
+            case "gif" -> "GIF89a..".getBytes(StandardCharsets.UTF_8);
+            case "webp" -> new byte[]{'R', 'I', 'F', 'F', 1, 2, 3, 4, 'W', 'E', 'B', 'P'};
+            case "docx", "xlsx", "pptx" -> new byte[]{'P', 'K', 3, 4, 0};
+            case "doc", "xls", "ppt" -> new byte[]{(byte) 0xD0, (byte) 0xCF, 0x11, (byte) 0xE0, (byte) 0xA1, (byte) 0xB1, 0x1A, (byte) 0xE1};
+            default -> "texto simples".getBytes(StandardCharsets.UTF_8);
+        };
+    }
+
     private String baseUrl() {
         return "http://localhost:" + environment.getProperty("local.server.port");
     }
@@ -164,7 +179,7 @@ class MaterialsIT extends AbstractIT {
         assertArrayEquals(PDF, Files.readAllBytes(storageDir().resolve(key)));
 
         Resp byCreator = upload(team, card, carlos, "slides.pptx",
-                "application/vnd.openxmlformats-officedocument.presentationml.presentation", PDF);
+                "application/vnd.openxmlformats-officedocument.presentationml.presentation", new byte[]{0x50, 0x4B, 3, 4, 0});
         assertEquals(200, byCreator.status(), byCreator.body());
         assertEquals(carlos.id(), byCreator.num("uploadedBy.userId"));
     }
@@ -184,7 +199,7 @@ class MaterialsIT extends AbstractIT {
                 {"a.txt", "text/plain; charset=UTF-8"}, {"a.png", "image/png"}, {"a.jpg", "image/jpeg"},
                 {"a.JPEG", "image/jpeg"}, {"a.webp", "image/webp"}, {"a.gif", "image/gif"}};
         for (String[] type : allowed) {
-            Resp r = upload(team, card, ana, type[0], type[1], PDF);
+            Resp r = upload(team, card, ana, type[0], type[1], sample(type[0]));
             assertEquals(200, r.status(), type[0] + " " + r.body());
         }
         assertEquals(allowed.length, api.get(team.path() + "/cards/" + card + "/materials", ana.token()).size());
@@ -197,7 +212,7 @@ class MaterialsIT extends AbstractIT {
         long card = projectId(team, "Tipos genericos");
         String docx = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
-        Resp octet = upload(team, card, ana, "texto.docx", "application/octet-stream", PDF);
+        Resp octet = upload(team, card, ana, "texto.docx", "application/octet-stream", new byte[]{0x50, 0x4B, 3, 4, 0});
         assertEquals(200, octet.status(), octet.body());
         assertEquals(docx, octet.text("contentType"));
         Resp txt = upload(team, card, ana, "notas.txt", "text/plain", "ol\u00e1".getBytes(StandardCharsets.UTF_8));
@@ -222,7 +237,7 @@ class MaterialsIT extends AbstractIT {
                 {"imagem.svg", "image/svg+xml"}, {"script.js", "text/javascript"}, {"falso.pdf", "text/html"},
                 {"falso.png", "application/pdf"}, {"semextensao", "application/pdf"}, {"arquivo.pdf.exe", "application/pdf"}};
         for (String[] type : bad) {
-            Resp r = upload(team, card, ana, type[0], type[1], PDF);
+            Resp r = upload(team, card, ana, type[0], type[1], sample(type[0]));
             assertEquals(415, r.status(), type[0]);
             assertEquals("Tipo de arquivo não permitido.", r.message());
         }
@@ -260,6 +275,7 @@ class MaterialsIT extends AbstractIT {
         Team team = newTeam();
         long card = projectId(team, "Tamanho");
         byte[] limit = new byte[20 * 1024 * 1024];
+        System.arraycopy(PDF, 0, limit, 0, 5);
         Resp ok = upload(team, card, ana, "limite.pdf", "application/pdf", limit);
         assertEquals(200, ok.status(), ok.body());
         assertEquals(limit.length, ok.num("sizeBytes"));

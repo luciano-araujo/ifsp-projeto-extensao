@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * Plans: limits of Gratuito (HTTP 402), trial, manual activation by the system administrator and the plan routes.
  * The other ITs run their teams on AGENCIA (see AbstractIT.newTeamFor); here the teams are real Gratuito teams.
  */
+@org.springframework.context.annotation.Import(MailCapture.Config.class)
 class PlanIT extends AbstractIT {
 
     static final String SYSADMIN_EMAIL = "sysadmin.m5@creatorworkbench.test";
@@ -37,6 +38,7 @@ class PlanIT extends AbstractIT {
         Resp personal = api.get("/api/v1/teams", admin.token());
         assertEquals(1, personal.size(), personal.body());
         assertEquals("Estúdio de Gina", personal.text("0.name"));
+        assertTrue(personal.at("0.personal").asBoolean());
         Resp created = api.post("/api/v1/teams", admin.token(), map("name", "Gratuita " + UUID.randomUUID().toString().substring(0, 5)));
         assertEquals(200, created.status(), created.body());
         assertEquals("GRATUITO", created.text("plan"));
@@ -80,6 +82,8 @@ class PlanIT extends AbstractIT {
         ByteArrayOutputStream body = new ByteArrayOutputStream();
         byte[] content = new byte[size];
         java.util.Arrays.fill(content, (byte) 'a');
+        byte[] magic = "%PDF-".getBytes(StandardCharsets.UTF_8);
+        System.arraycopy(magic, 0, content, 0, Math.min(magic.length, size));
         try {
             body.write(("--" + boundary + "\r\nContent-Disposition: form-data; name=\"file\"; filename=\"a.pdf\"\r\n"
                     + "Content-Type: application/pdf\r\n\r\n").getBytes(StandardCharsets.UTF_8));
@@ -231,17 +235,17 @@ class PlanIT extends AbstractIT {
         long card = projectOk(f, "Com material");
         jdbc.update("INSERT INTO materials (uuid, kanban_item_id, file_name, content_type, size_bytes, storage_key) "
                 + "VALUES (?, ?, 'grande.pdf', 'application/pdf', ?, ?)", UUID.randomUUID().toString(), card,
-                100 * MB - 10, UUID.randomUUID().toString());
+                100 * MB - 20, UUID.randomUUID().toString());
 
-        assertEquals(200, uploadPdf(f, card, 10).status());
-        Resp over = uploadPdf(f, card, 1);
+        assertEquals(200, uploadPdf(f, card, 20).status());
+        Resp over = uploadPdf(f, card, 20);
         assertEquals(402, over.status(), over.body());
         assertTrue(over.text("message").contains("100 MB"), over.body());
         assertTrue(over.text("message").contains("plano Solo"), over.body());
         assertEquals(100 * MB, api.get(f.team().path() + "/plan", f.admin().token()).at("usage.storageBytes").asLong());
 
         setPlan(f.team().id(), "SOLO");
-        assertEquals(200, uploadPdf(f, card, 1).status());
+        assertEquals(200, uploadPdf(f, card, 20).status());
     }
 
     // --- Trial ---
@@ -346,5 +350,33 @@ class PlanIT extends AbstractIT {
         assertEquals("GRATUITO", jdbc.queryForObject("SELECT plan FROM teams WHERE id = ?", String.class, team.id()));
         assertEquals("FREE", jdbc.queryForObject("SELECT plan_source FROM teams WHERE id = ?", String.class, team.id()));
         setPlan(team.id(), "AGENCIA");
+    }
+
+    @Test
+    @DisplayName("IT-PLAN-11 Invites: Gratuito gives 402; pending invites count against the limit; accepting on a full team gives 402")
+    void invites() {
+        Free f = freeTeam();
+        Resp onFree = api.post(f.team().path() + "/invites", f.admin().token(), map("email", "x." + UUID.randomUUID() + "@creatorworkbench.test", "role", "CREATOR"));
+        assertEquals(402, onFree.status(), onFree.body());
+        assertTrue(onFree.text("message").contains("plano Gratuito"), onFree.body());
+
+        // Agência allows 5: ana, carlos and rui are 3 members, so two pending invites fill it
+        Team team = newTeam();
+        Person p1 = person("inv1");
+        Person p2 = person("inv2");
+        assertEquals(200, api.post(team.path() + "/invites", ana.token(), map("email", p1.email(), "role", "CREATOR")).status());
+        assertEquals(200, api.post(team.path() + "/invites", ana.token(), map("email", p2.email(), "role", "CREATOR")).status());
+        Resp third = api.post(team.path() + "/invites", ana.token(), map("email", "z." + UUID.randomUUID() + "@creatorworkbench.test", "role", "CREATOR"));
+        assertEquals(402, third.status(), third.body());
+        assertTrue(third.text("message").contains("convites pendentes"), third.body());
+
+        // The team drops to Gratuito before p1 accepts: accepting rechecks the members
+        String token = MailCapture.inviteToken(p1.email());
+        assertNotNull(token);
+        setPlan(team.id(), "GRATUITO");
+        Resp accept = api.post("/api/v1/invites/" + token + "/accept", p1.token(), null);
+        assertEquals(402, accept.status(), accept.body());
+        setPlan(team.id(), "AGENCIA");
+        assertEquals(200, api.post("/api/v1/invites/" + token + "/accept", p1.token(), null).status());
     }
 }

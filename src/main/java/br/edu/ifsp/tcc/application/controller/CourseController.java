@@ -4,6 +4,8 @@ import br.edu.ifsp.tcc.application.dto.*;
 import br.edu.ifsp.tcc.application.entity.User;
 import br.edu.ifsp.tcc.application.usecase.*;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -17,37 +19,61 @@ public class CourseController {
     private final ListCoursesUseCase listCoursesUseCase;
     private final GetCourseUseCase getCourseUseCase;
     private final CreateCourseUseCase createCourseUseCase;
+    private final UpdateCourseUseCase updateCourseUseCase;
     private final DeleteCourseUseCase deleteCourseUseCase;
     private final CreateCourseModuleUseCase createCourseModuleUseCase;
+    private final UpdateCourseModuleUseCase updateCourseModuleUseCase;
+    private final ReorderCourseModulesUseCase reorderCourseModulesUseCase;
     private final DeleteCourseModuleUseCase deleteCourseModuleUseCase;
     private final CreateCourseLessonUseCase createCourseLessonUseCase;
     private final UpdateCourseLessonUseCase updateCourseLessonUseCase;
+    private final ReorderCourseLessonsUseCase reorderCourseLessonsUseCase;
     private final DeleteCourseLessonUseCase deleteCourseLessonUseCase;
     private final LinkLessonMaterialUseCase linkLessonMaterialUseCase;
     private final UnlinkLessonMaterialUseCase unlinkLessonMaterialUseCase;
+    private final GetPublicationCheckUseCase getPublicationCheckUseCase;
+    private final PublishCourseUseCase publishCourseUseCase;
+    private final UnpublishCourseUseCase unpublishCourseUseCase;
+    private final ExportCourseUseCase exportCourseUseCase;
 
     public CourseController(ListCoursesUseCase listCoursesUseCase,
                             GetCourseUseCase getCourseUseCase,
                             CreateCourseUseCase createCourseUseCase,
+                            UpdateCourseUseCase updateCourseUseCase,
                             DeleteCourseUseCase deleteCourseUseCase,
                             CreateCourseModuleUseCase createCourseModuleUseCase,
+                            UpdateCourseModuleUseCase updateCourseModuleUseCase,
+                            ReorderCourseModulesUseCase reorderCourseModulesUseCase,
                             DeleteCourseModuleUseCase deleteCourseModuleUseCase,
                             CreateCourseLessonUseCase createCourseLessonUseCase,
                             UpdateCourseLessonUseCase updateCourseLessonUseCase,
+                            ReorderCourseLessonsUseCase reorderCourseLessonsUseCase,
                             DeleteCourseLessonUseCase deleteCourseLessonUseCase,
                             LinkLessonMaterialUseCase linkLessonMaterialUseCase,
-                            UnlinkLessonMaterialUseCase unlinkLessonMaterialUseCase) {
+                            UnlinkLessonMaterialUseCase unlinkLessonMaterialUseCase,
+                            GetPublicationCheckUseCase getPublicationCheckUseCase,
+                            PublishCourseUseCase publishCourseUseCase,
+                            UnpublishCourseUseCase unpublishCourseUseCase,
+                            ExportCourseUseCase exportCourseUseCase) {
         this.listCoursesUseCase = listCoursesUseCase;
         this.getCourseUseCase = getCourseUseCase;
         this.createCourseUseCase = createCourseUseCase;
+        this.updateCourseUseCase = updateCourseUseCase;
         this.deleteCourseUseCase = deleteCourseUseCase;
         this.createCourseModuleUseCase = createCourseModuleUseCase;
+        this.updateCourseModuleUseCase = updateCourseModuleUseCase;
+        this.reorderCourseModulesUseCase = reorderCourseModulesUseCase;
         this.deleteCourseModuleUseCase = deleteCourseModuleUseCase;
         this.createCourseLessonUseCase = createCourseLessonUseCase;
         this.updateCourseLessonUseCase = updateCourseLessonUseCase;
+        this.reorderCourseLessonsUseCase = reorderCourseLessonsUseCase;
         this.deleteCourseLessonUseCase = deleteCourseLessonUseCase;
         this.linkLessonMaterialUseCase = linkLessonMaterialUseCase;
         this.unlinkLessonMaterialUseCase = unlinkLessonMaterialUseCase;
+        this.getPublicationCheckUseCase = getPublicationCheckUseCase;
+        this.publishCourseUseCase = publishCourseUseCase;
+        this.unpublishCourseUseCase = unpublishCourseUseCase;
+        this.exportCourseUseCase = exportCourseUseCase;
     }
 
     @GetMapping
@@ -69,12 +95,55 @@ public class CourseController {
         return ResponseEntity.ok(createCourseUseCase.execute(teamId, user.getId(), dto));
     }
 
+    @PatchMapping("/{courseId}")
+    public ResponseEntity<CourseResponse> update(@AuthenticationPrincipal User user,
+                                                 @PathVariable Long teamId,
+                                                 @PathVariable Long courseId,
+                                                 @Valid @RequestBody UpdateCourseDTO dto) {
+        return ResponseEntity.ok(updateCourseUseCase.execute(teamId, user.getId(), courseId, dto));
+    }
+
     @DeleteMapping("/{courseId}")
     public ResponseEntity<Void> delete(@AuthenticationPrincipal User user,
                                        @PathVariable Long teamId,
                                        @PathVariable Long courseId) {
         deleteCourseUseCase.execute(teamId, user.getId(), courseId);
         return ResponseEntity.noContent().build();
+    }
+
+    // --- Publication and export ---
+
+    @GetMapping("/{courseId}/publication-check")
+    public ResponseEntity<PublicationCheckResponse> publicationCheck(@AuthenticationPrincipal User user,
+                                                                     @PathVariable Long teamId,
+                                                                     @PathVariable Long courseId) {
+        return ResponseEntity.ok(getPublicationCheckUseCase.execute(teamId, user.getId(), courseId));
+    }
+
+    @PostMapping("/{courseId}/publish")
+    public ResponseEntity<CourseResponse> publish(@AuthenticationPrincipal User user,
+                                                  @PathVariable Long teamId,
+                                                  @PathVariable Long courseId) {
+        return ResponseEntity.ok(publishCourseUseCase.execute(teamId, user.getId(), courseId));
+    }
+
+    @PostMapping("/{courseId}/unpublish")
+    public ResponseEntity<CourseResponse> unpublish(@AuthenticationPrincipal User user,
+                                                    @PathVariable Long teamId,
+                                                    @PathVariable Long courseId) {
+        return ResponseEntity.ok(unpublishCourseUseCase.execute(teamId, user.getId(), courseId));
+    }
+
+    @GetMapping("/{courseId}/export")
+    public ResponseEntity<Object> export(@AuthenticationPrincipal User user,
+                                         @PathVariable Long teamId,
+                                         @PathVariable Long courseId,
+                                         @RequestParam(defaultValue = "json") String format) {
+        CourseExportFile file = exportCourseUseCase.execute(teamId, user.getId(), courseId, format);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + file.getFileName() + "\"; filename*=UTF-8''" + file.getFileName())
+                .contentType(MediaType.parseMediaType(file.getContentType()))
+                .body(file.getBody());
     }
 
     // --- Modules ---
@@ -85,6 +154,23 @@ public class CourseController {
                                                              @PathVariable Long courseId,
                                                              @Valid @RequestBody CreateModuleDTO dto) {
         return ResponseEntity.ok(createCourseModuleUseCase.execute(teamId, user.getId(), courseId, dto));
+    }
+
+    @PutMapping("/{courseId}/modules/order")
+    public ResponseEntity<List<CourseModuleResponse>> reorderModules(@AuthenticationPrincipal User user,
+                                                                     @PathVariable Long teamId,
+                                                                     @PathVariable Long courseId,
+                                                                     @Valid @RequestBody ReorderModulesDTO dto) {
+        return ResponseEntity.ok(reorderCourseModulesUseCase.execute(teamId, user.getId(), courseId, dto));
+    }
+
+    @PatchMapping("/{courseId}/modules/{moduleId}")
+    public ResponseEntity<CourseModuleResponse> updateModule(@AuthenticationPrincipal User user,
+                                                             @PathVariable Long teamId,
+                                                             @PathVariable Long courseId,
+                                                             @PathVariable Long moduleId,
+                                                             @Valid @RequestBody UpdateModuleDTO dto) {
+        return ResponseEntity.ok(updateCourseModuleUseCase.execute(teamId, user.getId(), courseId, moduleId, dto));
     }
 
     @DeleteMapping("/{courseId}/modules/{moduleId}")
@@ -105,6 +191,15 @@ public class CourseController {
                                                              @PathVariable Long moduleId,
                                                              @Valid @RequestBody CreateCourseLessonDTO dto) {
         return ResponseEntity.ok(createCourseLessonUseCase.execute(teamId, user.getId(), courseId, moduleId, dto));
+    }
+
+    @PutMapping("/{courseId}/modules/{moduleId}/lessons/order")
+    public ResponseEntity<List<CourseLessonResponse>> reorderLessons(@AuthenticationPrincipal User user,
+                                                                     @PathVariable Long teamId,
+                                                                     @PathVariable Long courseId,
+                                                                     @PathVariable Long moduleId,
+                                                                     @Valid @RequestBody ReorderLessonsDTO dto) {
+        return ResponseEntity.ok(reorderCourseLessonsUseCase.execute(teamId, user.getId(), courseId, moduleId, dto));
     }
 
     @PatchMapping("/{courseId}/modules/{moduleId}/lessons/{lessonId}")

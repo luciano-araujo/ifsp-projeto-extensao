@@ -1,0 +1,10 @@
+target/
+.git/
+.claude/
+.idea/
+*.md
+automation/
+deploy/
+data/
+.env*
+**/.env

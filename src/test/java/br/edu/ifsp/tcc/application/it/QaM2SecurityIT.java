@@ -255,8 +255,8 @@ class QaM2SecurityIT extends AbstractIT {
         Team team = newTeam();
         long card = projectId(team, "Projeto partes");
         String boundary = "qa-two-parts";
-        String body = "--" + boundary + "\r\nContent-Disposition: form-data; name=\"file\"; filename=\"a.pdf\"\r\nContent-Type: application/pdf\r\n\r\nAAA\r\n"
-                + "--" + boundary + "\r\nContent-Disposition: form-data; name=\"file\"; filename=\"b.pdf\"\r\nContent-Type: application/pdf\r\n\r\nBBBB\r\n--" + boundary + "--\r\n";
+        String body = "--" + boundary + "\r\nContent-Disposition: form-data; name=\"file\"; filename=\"a.pdf\"\r\nContent-Type: application/pdf\r\n\r\n%PDF-AAA\r\n"
+                + "--" + boundary + "\r\nContent-Disposition: form-data; name=\"file\"; filename=\"b.pdf\"\r\nContent-Type: application/pdf\r\n\r\n%PDF-BBBB\r\n--" + boundary + "--\r\n";
         Resp two = raw("POST", team.path() + "/cards/" + card + "/materials", ana.token(),
                 "multipart/form-data; boundary=" + boundary, body.getBytes(StandardCharsets.UTF_8));
         assertEquals(200, two.status(), two.body());

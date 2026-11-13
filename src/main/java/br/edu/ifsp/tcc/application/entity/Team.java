@@ -17,6 +17,10 @@ public class Team {
     @Embedded
     private TeamSubscription subscription = new TeamSubscription();
 
+    // The personal team created on the first access of a user; it cannot be deleted
+    @Column(nullable = false)
+    private boolean personal = false;
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
@@ -33,6 +37,9 @@ public class Team {
 
     public TeamSubscription getSubscription() { return subscription; }
     public void setSubscription(TeamSubscription subscription) { this.subscription = subscription; }
+
+    public boolean isPersonal() { return personal; }
+    public void setPersonal(boolean personal) { this.personal = personal; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
 }

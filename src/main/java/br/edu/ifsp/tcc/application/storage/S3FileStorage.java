@@ -82,6 +82,9 @@ public class S3FileStorage implements FileStorage {
     @Override
     public void archive(String key) {
         try {
+            // Already archived (a previous run copied it but could not mark the row): nothing to do
+            String current = s3.headObject(HeadObjectRequest.builder().bucket(bucket).key(key).build()).storageClassAsString();
+            if (StorageClass.GLACIER_IR.toString().equals(current)) return;
             s3.copyObject(CopyObjectRequest.builder()
                     .sourceBucket(bucket).sourceKey(key)
                     .destinationBucket(bucket).destinationKey(key)

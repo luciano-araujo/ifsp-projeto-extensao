@@ -20,19 +20,25 @@ public class TeamController {
     private final AddTeamMemberUseCase addTeamMemberUseCase;
     private final UpdateTeamMemberRoleUseCase updateTeamMemberRoleUseCase;
     private final RemoveTeamMemberUseCase removeTeamMemberUseCase;
+    private final RenameTeamUseCase renameTeamUseCase;
+    private final DeleteTeamUseCase deleteTeamUseCase;
 
     public TeamController(ListTeamsUseCase listTeamsUseCase,
                           CreateTeamUseCase createTeamUseCase,
                           ListTeamMembersUseCase listTeamMembersUseCase,
                           AddTeamMemberUseCase addTeamMemberUseCase,
                           UpdateTeamMemberRoleUseCase updateTeamMemberRoleUseCase,
-                          RemoveTeamMemberUseCase removeTeamMemberUseCase) {
+                          RemoveTeamMemberUseCase removeTeamMemberUseCase,
+                          RenameTeamUseCase renameTeamUseCase,
+                          DeleteTeamUseCase deleteTeamUseCase) {
         this.listTeamsUseCase = listTeamsUseCase;
         this.createTeamUseCase = createTeamUseCase;
         this.listTeamMembersUseCase = listTeamMembersUseCase;
         this.addTeamMemberUseCase = addTeamMemberUseCase;
         this.updateTeamMemberRoleUseCase = updateTeamMemberRoleUseCase;
         this.removeTeamMemberUseCase = removeTeamMemberUseCase;
+        this.renameTeamUseCase = renameTeamUseCase;
+        this.deleteTeamUseCase = deleteTeamUseCase;
     }
 
     @GetMapping
@@ -44,6 +50,20 @@ public class TeamController {
     public ResponseEntity<TeamResponse> create(@AuthenticationPrincipal User user,
                                                @Valid @RequestBody CreateTeamDTO dto) {
         return ResponseEntity.ok(createTeamUseCase.execute(user, dto));
+    }
+
+    @PatchMapping("/{teamId}")
+    public ResponseEntity<TeamResponse> rename(@AuthenticationPrincipal User user,
+                                               @PathVariable Long teamId,
+                                               @Valid @RequestBody RenameTeamDTO dto) {
+        return ResponseEntity.ok(renameTeamUseCase.execute(teamId, user.getId(), dto));
+    }
+
+    @DeleteMapping("/{teamId}")
+    public ResponseEntity<Void> delete(@AuthenticationPrincipal User user,
+                                       @PathVariable Long teamId) {
+        deleteTeamUseCase.execute(teamId, user.getId());
+        return ResponseEntity.noContent().build();
     }
 
     // --- Members ---

@@ -64,5 +64,22 @@ class CreateCourseLessonUseCaseTest {
         assertEquals(LessonType.VIDEO, saved.getValue().getType());
         assertEquals(2, saved.getValue().getSortOrder());
         assertFalse(saved.getValue().getPublished());
+        assertNull(saved.getValue().getDescription());
+        assertNull(saved.getValue().getContentUrl());
+    }
+
+    @Test
+    void execute_shouldKeepDescriptionAndLink() {
+        when(courseService.findModule(20L, 30L)).thenReturn(new CourseModule());
+        CreateCourseLessonDTO dto = dto(null);
+        dto.setDescription("Texto");
+        dto.setContentUrl("https://youtu.be/dQw4w9WgXcQ");
+
+        useCase.execute(10L, 1L, 20L, 30L, dto);
+
+        ArgumentCaptor<CourseLesson> saved = ArgumentCaptor.forClass(CourseLesson.class);
+        verify(courseService).saveLesson(saved.capture());
+        assertEquals("Texto", saved.getValue().getDescription());
+        assertEquals("https://youtu.be/dQw4w9WgXcQ", saved.getValue().getContentUrl());
     }
 }

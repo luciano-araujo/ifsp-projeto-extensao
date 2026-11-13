@@ -6,6 +6,7 @@ import br.edu.ifsp.tcc.application.dto.PlanResponse;
 import br.edu.ifsp.tcc.application.dto.PlanUsageResponse;
 import br.edu.ifsp.tcc.application.dto.ReviewStatus;
 import br.edu.ifsp.tcc.application.dto.TeamPlanResponse;
+import br.edu.ifsp.tcc.application.entity.InviteStatus;
 import br.edu.ifsp.tcc.application.entity.KanbanItem;
 import br.edu.ifsp.tcc.application.entity.KanbanItemState;
 import br.edu.ifsp.tcc.application.entity.PlanSource;
@@ -17,6 +18,7 @@ import br.edu.ifsp.tcc.application.entity.TeamSubscription;
 import br.edu.ifsp.tcc.application.repository.CourseRepository;
 import br.edu.ifsp.tcc.application.repository.KanbanItemRepository;
 import br.edu.ifsp.tcc.application.repository.MaterialRepository;
+import br.edu.ifsp.tcc.application.repository.TeamInviteRepository;
 import br.edu.ifsp.tcc.application.repository.TeamMemberRepository;
 import br.edu.ifsp.tcc.application.repository.TeamRepository;
 import org.springframework.http.HttpStatus;
@@ -49,6 +51,7 @@ public class PlanService {
     private final CourseRepository courseRepository;
     private final MaterialRepository materialRepository;
     private final CardReviewService cardReviewService;
+    private final TeamInviteRepository teamInviteRepository;
     private final Clock clock;
 
     public PlanService(TeamRepository teamRepository,
@@ -57,6 +60,7 @@ public class PlanService {
                        CourseRepository courseRepository,
                        MaterialRepository materialRepository,
                        CardReviewService cardReviewService,
+                       TeamInviteRepository teamInviteRepository,
                        Clock clock) {
         this.teamRepository = teamRepository;
         this.teamMemberRepository = teamMemberRepository;
@@ -64,6 +68,7 @@ public class PlanService {
         this.courseRepository = courseRepository;
         this.materialRepository = materialRepository;
         this.cardReviewService = cardReviewService;
+        this.teamInviteRepository = teamInviteRepository;
         this.clock = clock;
     }
 
@@ -104,6 +109,22 @@ public class PlanService {
             throw limitReached("O plano " + plan.getDisplayName() + " permite " + plan.getMaxUsers()
                             + (plan.getMaxUsers() == 1 ? " usuário" : " usuários") + " por equipe.",
                     "adicionar membros", p -> p.getMaxUsers() == null || p.getMaxUsers() > members);
+        }
+    }
+
+    /**
+     * Creating an invite: members plus open (pending, not expired) invites must stay under the plan's user limit,
+     * so a team cannot collect more invitations than it has seats. Accepting rechecks members only.
+     */
+    public void requireCanInvite(Team team) {
+        PlanType plan = effectivePlan(team);
+        if (plan.getMaxUsers() == null) return;
+        int taken = teamMemberRepository.countByTeam_Id(team.getId())
+                + teamInviteRepository.countByTeam_IdAndStatusAndExpiresAtAfter(team.getId(), InviteStatus.PENDING, now());
+        if (taken >= plan.getMaxUsers()) {
+            throw limitReached("O plano " + plan.getDisplayName() + " permite " + plan.getMaxUsers()
+                            + (plan.getMaxUsers() == 1 ? " usuário" : " usuários") + " por equipe (membros e convites pendentes).",
+                    "convidar mais pessoas", pl -> pl.getMaxUsers() == null || pl.getMaxUsers() > taken);
         }
     }
 
@@ -149,14 +170,14 @@ public class PlanService {
     }
 
     /**
-     * One shared team on Gratuito per person. The personal team (auto-created, see TeamService.personalNameOf)
+     * One shared team on Gratuito per person. The personal team (auto-created, flagged by Team.isPersonal)
      * does not count. A team counts as free unless a system administrator activated its plan (MANUAL and
      * not expired), so a trial still counts and trial-then-create cannot be chained.
      */
     public void requireCanCreateFreeTeam(Long userId) {
         boolean hasFreeTeam = teamMemberRepository.findByUser_IdOrderByJoinedAtAsc(userId).stream()
                 .filter(m -> m.getRole() == TeamRole.ADMIN)
-                .filter(m -> !TeamService.personalNameOf(m.getUser()).equals(m.getTeam().getName()))
+                .filter(m -> !m.getTeam().isPersonal())
                 .anyMatch(m -> m.getTeam().getSubscription().effectiveSource(now()) != PlanSource.MANUAL);
         if (hasFreeTeam) {
             throw new ResponseStatusException(HttpStatus.PAYMENT_REQUIRED,
@@ -252,7 +273,7 @@ public class PlanService {
 
     /** The current moment of the application clock. */
     public LocalDateTime now() {
-        return LocalDateTime.now(clock);
+        return LocalDateTime.now(clock).truncatedTo(java.time.temporal.ChronoUnit.SECONDS);
     }
 
     /** 402 whose message names the current limit and the cheapest plan that lifts it. */

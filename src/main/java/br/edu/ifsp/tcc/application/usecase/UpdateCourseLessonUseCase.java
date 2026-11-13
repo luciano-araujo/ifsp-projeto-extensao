@@ -20,7 +20,7 @@ public class UpdateCourseLessonUseCase {
         this.courseService = courseService;
     }
 
-    /** Publishes a lesson or changes its title, type or linked card; only the fields sent are changed. */
+    /** Publishes a lesson or changes its title, type, description, link or linked card; only the fields sent are changed. */
     @Transactional
     public CourseLessonResponse execute(Long teamId, Long userId, Long courseId, Long moduleId, Long lessonId,
                                         UpdateCourseLessonDTO dto) {
@@ -32,6 +32,8 @@ public class UpdateCourseLessonUseCase {
         if (dto.getTitle() != null && !dto.getTitle().isBlank()) lesson.setTitle(dto.getTitle().trim());
         if (dto.getType() != null) lesson.setType(dto.getType());
         if (dto.getPublished() != null) lesson.setPublished(dto.getPublished());
+        if (dto.getDescription() != null) lesson.setDescription(CourseService.blankToNull(dto.getDescription()));
+        if (dto.getContentUrl() != null) lesson.setContentUrl(CourseService.blankToNull(dto.getContentUrl()));
         if (dto.getProjectId() != null) lesson.setProject(courseService.findProject(teamId, dto.getProjectId()));
         return courseService.toLessonResponseWithMaterials(teamId, courseService.saveLesson(lesson));
     }

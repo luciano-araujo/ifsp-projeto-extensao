@@ -38,5 +38,36 @@ class UpdateCourseLessonUseCaseTest {
         verify(courseService).saveLesson(lesson);
         verify(courseService).toLessonResponseWithMaterials(10L, null);
         verify(courseService, never()).findProject(10L, null);
+        assertNull(lesson.getDescription());
+    }
+
+    @Test
+    void execute_shouldSetDescriptionAndLink() {
+        CourseLesson lesson = new CourseLesson();
+        when(courseService.findLesson(30L, 40L)).thenReturn(lesson);
+        UpdateCourseLessonDTO dto = new UpdateCourseLessonDTO();
+        dto.setDescription(" Texto ");
+        dto.setContentUrl(" https://vimeo.com/1 ");
+
+        useCase.execute(10L, 1L, 20L, 30L, 40L, dto);
+
+        assertEquals("Texto", lesson.getDescription());
+        assertEquals("https://vimeo.com/1", lesson.getContentUrl());
+    }
+
+    @Test
+    void execute_shouldClearDescriptionAndLinkWithEmptyTexts() {
+        CourseLesson lesson = new CourseLesson();
+        lesson.setDescription("Texto");
+        lesson.setContentUrl("https://vimeo.com/1");
+        when(courseService.findLesson(30L, 40L)).thenReturn(lesson);
+        UpdateCourseLessonDTO dto = new UpdateCourseLessonDTO();
+        dto.setDescription("");
+        dto.setContentUrl("");
+
+        useCase.execute(10L, 1L, 20L, 30L, 40L, dto);
+
+        assertNull(lesson.getDescription());
+        assertNull(lesson.getContentUrl());
     }
 }
