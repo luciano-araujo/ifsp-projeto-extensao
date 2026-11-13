@@ -51,9 +51,11 @@ class PlanServiceTest {
     @Mock private CardReviewService cardReviewService;
 
     private PlanService service;
+    private final br.edu.ifsp.tcc.application.entity.User owner = new br.edu.ifsp.tcc.application.entity.User();
 
     @BeforeEach
     void setUp() {
+        owner.setName("Ana Clara");
         Clock clock = Clock.fixed(NOW.toInstant(ZoneOffset.UTC), ZoneOffset.UTC);
         service = new PlanService(teamRepository, teamMemberRepository, kanbanItemRepository, courseRepository,
                 materialRepository, cardReviewService, clock);
@@ -310,6 +312,7 @@ class PlanServiceTest {
 
     private TeamMember membership(Team team, TeamRole role) {
         TeamMember member = new TeamMember();
+        member.setUser(owner);
         member.setTeam(team);
         member.setRole(role);
         return member;
@@ -320,7 +323,21 @@ class PlanServiceTest {
         when(teamMemberRepository.findByUser_IdOrderByJoinedAtAsc(1L))
                 .thenReturn(List.of(membership(team(PlanType.GRATUITO), TeamRole.ADMIN)));
 
-        assert402(() -> service.assertCanCreateFreeTeam(1L), "apenas uma equipe no plano Gratuito");
+        assert402(() -> service.assertCanCreateFreeTeam(1L), "apenas uma equipe compartilhada no plano Gratuito");
+    }
+
+    @Test
+    void assertCanCreateFreeTeam_shouldNotCountThePersonalTeam() {
+        Team personal = team(PlanType.GRATUITO);
+        personal.setName("Estúdio de Ana");
+        Team shared = team(PlanType.GRATUITO);
+        when(teamMemberRepository.findByUser_IdOrderByJoinedAtAsc(1L))
+                .thenReturn(List.of(membership(personal, TeamRole.ADMIN)));
+        when(teamMemberRepository.findByUser_IdOrderByJoinedAtAsc(2L))
+                .thenReturn(List.of(membership(personal, TeamRole.ADMIN), membership(shared, TeamRole.ADMIN)));
+
+        service.assertCanCreateFreeTeam(1L);                                   // personal team + one new: allowed
+        assert402(() -> service.assertCanCreateFreeTeam(2L), "equipe compartilhada"); // second shared free team
     }
 
     @Test
@@ -335,7 +352,7 @@ class PlanServiceTest {
                 .thenReturn(List.of(membership(expiredTrial, TeamRole.ADMIN)));
 
         service.assertCanCreateFreeTeam(1L);
-        assert402(() -> service.assertCanCreateFreeTeam(2L), "uma equipe no plano Gratuito"); // trial over = free again
+        assert402(() -> service.assertCanCreateFreeTeam(2L), "equipe compartilhada"); // trial over = free again
     }
 
     @Test

@@ -148,15 +148,19 @@ public class PlanService {
         }
     }
 
-    /** One team on Gratuito per person: a user administers at most one team whose plan in force is Gratuito. */
+    /**
+     * One shared team on Gratuito per person. The personal team (auto-created, see TeamService.personalNameOf)
+     * does not count, and neither do paid or trial teams.
+     */
     public void assertCanCreateFreeTeam(Long userId) {
         boolean hasFreeTeam = teamMemberRepository.findByUser_IdOrderByJoinedAtAsc(userId).stream()
                 .filter(m -> m.getRole() == TeamRole.ADMIN)
+                .filter(m -> !TeamService.personalNameOf(m.getUser()).equals(m.getTeam().getName()))
                 .anyMatch(m -> effectivePlan(m.getTeam()) == PlanType.GRATUITO);
         if (hasFreeTeam) {
             throw new ResponseStatusException(HttpStatus.PAYMENT_REQUIRED,
-                    "Cada pessoa pode administrar apenas uma equipe no plano Gratuito. "
-                            + "Para criar outra equipe, mude uma das suas equipes para um plano pago.");
+                    "Cada pessoa pode administrar apenas uma equipe compartilhada no plano Gratuito. "
+                            + "Para criar outra equipe, mude a sua equipe atual para um plano pago.");
         }
     }
 

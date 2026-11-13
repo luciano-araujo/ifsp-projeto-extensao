@@ -33,6 +33,10 @@ class PlanIT extends AbstractIT {
 
     private Free freeTeam() {
         Person admin = person("gina");
+        // The personal team (auto-created by the first GET /teams) does not count as the one free team
+        Resp personal = api.get("/api/v1/teams", admin.token());
+        assertEquals(1, personal.size(), personal.body());
+        assertEquals("Estúdio de Gina", personal.text("0.name"));
         Resp created = api.post("/api/v1/teams", admin.token(), map("name", "Gratuita " + UUID.randomUUID().toString().substring(0, 5)));
         assertEquals(200, created.status(), created.body());
         assertEquals("GRATUITO", created.text("plan"));
@@ -149,6 +153,7 @@ class PlanIT extends AbstractIT {
 
         Resp second = api.post("/api/v1/teams", f.admin().token(), map("name", "Segunda gratuita"));
         assertEquals(402, second.status(), second.body());
+        assertEquals(2, api.get("/api/v1/teams", f.admin().token()).size(), "personal team + one shared free team");
 
         setPlan(f.team().id(), "PRO");
         assertEquals(200, api.post("/api/v1/teams", f.admin().token(), map("name", "Segunda equipe")).status());
@@ -261,7 +266,7 @@ class PlanIT extends AbstractIT {
 
         // During the trial Pro limits apply (unlimited projects)
         for (int i = 1; i <= 4; i++) projectOk(f, "Durante o teste " + i);
-        assertEquals("PRO", api.get("/api/v1/teams", f.admin().token()).text("0.plan"));
+        assertEquals("PRO", api.get("/api/v1/teams", f.admin().token()).text("1.plan"));
         assertEquals(409, api.post(path, f.admin().token(), map("plan", "SOLO")).status());
 
         // Expired: computed on read, no job
@@ -272,7 +277,7 @@ class PlanIT extends AbstractIT {
         assertTrue(after.at("expiresAt").isNull());
         assertTrue(after.at("overLimit").asBoolean());
         assertEquals(402, project(f, "Depois do teste").status());
-        assertEquals("GRATUITO", api.get("/api/v1/teams", f.admin().token()).text("0.plan"));
+        assertEquals("GRATUITO", api.get("/api/v1/teams", f.admin().token()).text("1.plan"));
         Resp again = api.post(path, f.admin().token(), map("plan", "SOLO"));
         assertEquals(409, again.status(), again.body());
         assertEquals("O teste grátis já foi usado por esta equipe.", again.text("message"));
@@ -309,11 +314,12 @@ class PlanIT extends AbstractIT {
                 map("email", carlos.email(), "role", "CREATOR")).status());
 
         Resp byEmail = api.get("/api/v1/admin/teams?email=" + f.admin().email(), sys.token());
-        assertEquals(1, byEmail.size());
-        assertEquals(f.team().id(), byEmail.at("0.id").asLong());
-        assertEquals("AGENCIA", byEmail.text("0.plan"));
-        assertEquals("MANUAL", byEmail.text("0.planSource"));
-        assertEquals(2, byEmail.at("0.membersCount").asInt());
+        assertEquals(2, byEmail.size(), "personal team + shared team");
+        assertEquals(f.team().id(), byEmail.at("1.id").asLong());
+        assertEquals("AGENCIA", byEmail.text("1.plan"));
+        assertEquals("MANUAL", byEmail.text("1.planSource"));
+        assertEquals(2, byEmail.at("1.membersCount").asInt());
+        assertEquals("GRATUITO", byEmail.text("0.plan"));
         assertEquals(0, api.get("/api/v1/admin/teams?email=ninguem@creatorworkbench.test", sys.token()).size());
         assertEquals(400, api.get("/api/v1/admin/teams", sys.token()).status());
 

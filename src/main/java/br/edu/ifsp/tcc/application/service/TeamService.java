@@ -103,6 +103,11 @@ public class TeamService {
     }
 
     public String personalTeamName(User user) {
+        return personalNameOf(user);
+    }
+
+    /** Name of the personal team of the user; the personal team is identified by this name (there is no flag). */
+    public static String personalNameOf(User user) {
         String firstName = user.getName() == null ? "" : user.getName().trim().split("\\s+")[0];
         return firstName.isEmpty() ? "Meu Estúdio" : "Estúdio de " + firstName;
     }
