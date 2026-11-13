@@ -208,6 +208,22 @@ class CreateInviteUseCaseTest {
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
                 () -> useCase.execute(10L, 1L, dto("carla@exemplo.test", TeamRole.CREATOR)));
         assertEquals(HttpStatus.PAYMENT_REQUIRED, ex.getStatusCode());
-        verifyNoInteractions(inviteService, emailService);
+        // only the pending-invite lookup ran; nothing was deleted, created or e-mailed
+        verify(inviteService).findPendingByTeamAndEmail(10L, "carla@exemplo.test");
+        verifyNoMoreInteractions(inviteService);
+        verifyNoInteractions(emailService);
+    }
+
+    @Test
+    void execute_shouldReportAnOpenInviteAs409EvenWhenThePlanIsFull() {
+        when(teamService.requireRole(10L, 1L, TeamRole.ADMIN)).thenReturn(admin);
+        TeamInvite open = mock(TeamInvite.class);
+        when(open.isOpen()).thenReturn(true);
+        when(inviteService.findPendingByTeamAndEmail(10L, "carla@exemplo.test")).thenReturn(List.of(open));
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> useCase.execute(10L, 1L, dto("carla@exemplo.test", TeamRole.CREATOR)));
+        assertEquals(HttpStatus.CONFLICT, ex.getStatusCode());
+        verify(planService, never()).requireCanInvite(any());
     }
 }

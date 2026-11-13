@@ -48,7 +48,6 @@ public class CreateInviteUseCase {
     @Transactional
     public InviteResponse execute(Long teamId, Long userId, CreateInviteDTO dto) {
         TeamMember admin = teamService.requireRole(teamId, userId, TeamRole.ADMIN);
-        planService.requireCanInvite(admin.getTeam());
         String email = dto.getEmail().trim();
 
         User existing = userService.findByEmail(email).orElse(null);
@@ -60,6 +59,8 @@ public class CreateInviteUseCase {
         if (pending.stream().anyMatch(TeamInvite::isOpen)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Já existe um convite pendente para este e-mail.");
         }
+        // Same order as adding a member: the 409 conflicts win over the plan limit (402)
+        planService.requireCanInvite(admin.getTeam());
         inviteService.deleteAll(pending);
 
         TeamRole role = dto.getRole() != null ? dto.getRole() : TeamRole.CREATOR;
