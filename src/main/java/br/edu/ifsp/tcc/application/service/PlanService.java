@@ -246,7 +246,7 @@ public class PlanService {
                 || (plan.getMaxCourses() != null && usage.getCourses() > plan.getMaxCourses())
                 || usage.getStorageBytes() > plan.getStorageBytes();
         return new TeamPlanResponse(team.getId(), plan, plan.getDisplayName(), subscription.effectiveSource(now),
-                subscription.effectiveExpiresAt(now), subscription.getTrialUsedAt() == null,
+                subscription.effectiveExpiresAt(now), subscription.getTrialUsedAt() == null && plan == PlanType.GRATUITO,
                 subscription.getTrialUsedAt(), limitsOf(plan), usage, over);
     }
 

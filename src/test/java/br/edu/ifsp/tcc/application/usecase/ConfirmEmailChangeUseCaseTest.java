@@ -75,13 +75,13 @@ class ConfirmEmailChangeUseCaseTest {
         EmailChangeToken token = pending(1, LocalDateTime.now().plusMinutes(5));
         when(userService.findById(1L)).thenReturn(Optional.of(ana));
         when(emailChangeTokenService.findByUserId(1L)).thenReturn(Optional.of(token));
-        when(emailChangeTokenService.registerWrongAttempt(any(), eq(ConfirmEmailChangeUseCase.MAX_ATTEMPTS - 1))).thenReturn(true);
+        when(emailChangeTokenService.registerAttempt(any(), eq(ConfirmEmailChangeUseCase.MAX_ATTEMPTS))).thenReturn(2);
 
         ResponseStatusException ex = thrown(1L, 1L, "000000");
 
         assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
         assertEquals("Código inválido.", ex.getReason());
-        verify(emailChangeTokenService).registerWrongAttempt(any(), eq(ConfirmEmailChangeUseCase.MAX_ATTEMPTS - 1));
+        verify(emailChangeTokenService).registerAttempt(any(), eq(ConfirmEmailChangeUseCase.MAX_ATTEMPTS));
         assertEquals("ana@exemplo.test", ana.getEmail());
     }
 
@@ -90,7 +90,7 @@ class ConfirmEmailChangeUseCaseTest {
         when(userService.findById(1L)).thenReturn(Optional.of(ana));
         when(emailChangeTokenService.findByUserId(1L)).thenReturn(Optional.of(
                 pending(ConfirmEmailChangeUseCase.MAX_ATTEMPTS - 1, LocalDateTime.now().plusMinutes(5))));
-        when(emailChangeTokenService.registerWrongAttempt(any(), eq(ConfirmEmailChangeUseCase.MAX_ATTEMPTS - 1))).thenReturn(false);
+        when(emailChangeTokenService.registerAttempt(any(), eq(ConfirmEmailChangeUseCase.MAX_ATTEMPTS))).thenReturn(ConfirmEmailChangeUseCase.MAX_ATTEMPTS);
 
         ResponseStatusException ex = thrown(1L, 1L, "000000");
 
@@ -139,5 +139,19 @@ class ConfirmEmailChangeUseCaseTest {
         when(userService.findById(1L)).thenReturn(Optional.empty());
 
         assertEquals(HttpStatus.NOT_FOUND, thrown(1L, 1L, "482917").getStatusCode());
+    }
+
+    @Test
+    void execute_shouldRefuseEvenTheRightCodeOnceTheCapWasReached() {
+        when(userService.findById(1L)).thenReturn(Optional.of(ana));
+        when(emailChangeTokenService.findByUserId(1L)).thenReturn(Optional.of(pending(0, LocalDateTime.now().plusMinutes(5))));
+        when(emailChangeTokenService.registerAttempt(any(), eq(ConfirmEmailChangeUseCase.MAX_ATTEMPTS))).thenReturn(-1);
+
+        ResponseStatusException ex = thrown(1L, 1L, "482917");
+
+        assertTrue(ex.getReason().startsWith("Muitas tentativas"));
+        verify(emailChangeTokenService).deleteByUserId(1L);
+        verify(userService, never()).update(any());
+        assertEquals("ana@exemplo.test", ana.getEmail());
     }
 }

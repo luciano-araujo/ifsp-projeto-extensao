@@ -9,6 +9,7 @@ import br.edu.ifsp.tcc.application.service.PlanService;
 import br.edu.ifsp.tcc.application.service.TagService;
 import br.edu.ifsp.tcc.application.service.TeamService;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -32,8 +33,10 @@ public class CreateCardUseCase {
     }
 
     /** Creates a project directly on the board; RN01 applies as in a conversion. */
-    @Transactional
+    // READ_COMMITTED + the team lock first: the plan check (count then act) must see what concurrent requests committed
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public CardResponse execute(Long teamId, User user, CreateCardDTO dto) {
+        teamService.lockTeam(teamId);
         Team team = teamService.requireRole(teamId, user.getId(), TeamRole.ADMIN, TeamRole.CREATOR).getTeam();
         KanbanItemService.requireProjectFields(dto.getTitle(), dto.getTargetAudience(), dto.getPedagogicalObjective());
         BoardColumn column = boardService.resolveColumn(teamId, dto.getColumnId());

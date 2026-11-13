@@ -244,4 +244,14 @@ class RateLimitFilterTest {
         verify(chain, times(5)).doFilter(any(), any());
         verifyNoInteractions(rateLimitService);
     }
+
+    @Test
+    void shouldKeyTheUserBucketByTheParsedIdSoLeadingZerosShareTheBucket() throws Exception {
+        when(rateLimitService.registerAttempt(anyString(), anyInt())).thenReturn(0L);
+
+        filter(true).doFilter(user("PUT", "/api/v1/users/007/password"), new MockHttpServletResponse(), chain);
+        filter(true).doFilter(user("PUT", "/api/v1/users/7/password"), new MockHttpServletResponse(), chain);
+
+        verify(rateLimitService, times(2)).registerAttempt("user|/api/v1/users/7/password|203.0.113.5", 10);
+    }
 }

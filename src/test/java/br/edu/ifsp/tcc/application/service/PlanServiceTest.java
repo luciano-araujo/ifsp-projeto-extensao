@@ -460,6 +460,23 @@ class PlanServiceTest {
     }
 
     @Test
+    void toTeamPlanResponse_shouldNotOfferTheTrialWhileAPaidPlanIsInForce() {
+        Team team = team(PlanType.PRO);
+        team.getSubscription().setSource(PlanSource.MANUAL);
+        team.getSubscription().setExpiresAt(NOW.plusDays(30));
+        activeProjects(1, 0);
+        when(teamMemberRepository.countByTeam_Id(10L)).thenReturn(1);
+        when(courseRepository.countByTeam_Id(10L)).thenReturn(0);
+        when(materialRepository.sumSizeBytesByTeam(10L)).thenReturn(0L);
+
+        TeamPlanResponse response = service.toPlanResponse(team);
+
+        assertEquals(PlanType.PRO, response.getPlan());
+        assertNull(response.getTrialUsedAt());
+        assertFalse(response.getTrialAvailable(), "QA-M5-02: a paid plan in force means no trial to offer");
+    }
+
+    @Test
     void toTeamPlanResponse_shouldFlagOverLimitAfterTheTrialEndedAndShowTrialUsed() {
         Team team = team(PlanType.PRO);
         team.getSubscription().setSource(PlanSource.TRIAL);

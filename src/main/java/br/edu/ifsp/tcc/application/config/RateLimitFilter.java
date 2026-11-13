@@ -123,7 +123,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
             String template = "/api/v1/users/{id}/" + userRoute.group(2);
             retryAfter = Math.max(
                     rateLimitService.registerAttempt("ip|" + template + "|" + ip, maxAttemptsPerIp),
-                    rateLimitService.registerAttempt("user|" + path + "|" + ip, maxAttemptsUser));
+                    rateLimitService.registerAttempt("user|/api/v1/users/" + Long.parseLong(userRoute.group(1)) + "/" + userRoute.group(2) + "|" + ip,
+                            maxAttemptsUser));
         } else {
             // per route + IP (stops rotating e-mails) and per route + IP + e-mail
             retryAfter = Math.max(

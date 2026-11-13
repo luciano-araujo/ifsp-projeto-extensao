@@ -316,7 +316,7 @@ class PlanIT extends AbstractIT {
         assertEquals("AGENCIA", activated.text("plan"));
         assertEquals("MANUAL", activated.text("source"));
         assertEquals("2037-12-31T23:59:59Z", activated.text("expiresAt"));
-        assertTrue(activated.at("trialAvailable").asBoolean(), "a manual activation does not use the trial");
+        assertFalse(activated.at("trialAvailable").asBoolean(), "no trial is available while a paid plan is in force (QA-M5-02)");
         assertEquals(5, activated.at("limits.maxUsers").asInt());
         assertEquals(200, api.post(f.team().path() + "/members", f.admin().token(),
                 map("email", carlos.email(), "role", "CREATOR")).status());

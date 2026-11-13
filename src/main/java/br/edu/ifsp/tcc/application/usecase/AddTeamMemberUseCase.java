@@ -10,6 +10,7 @@ import br.edu.ifsp.tcc.application.service.TeamService;
 import br.edu.ifsp.tcc.application.service.UserService;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -26,8 +27,10 @@ public class AddTeamMemberUseCase {
         this.planService = planService;
     }
 
-    @Transactional
+    // READ_COMMITTED + the team lock first: the plan check (count then act) must see what concurrent requests committed
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public TeamMemberResponse execute(Long teamId, Long userId, AddTeamMemberDTO dto) {
+        teamService.lockTeam(teamId);
         TeamMember admin = teamService.requireRole(teamId, userId, TeamRole.ADMIN);
 
         User newUser = userService.findByEmail(dto.getEmail().trim())

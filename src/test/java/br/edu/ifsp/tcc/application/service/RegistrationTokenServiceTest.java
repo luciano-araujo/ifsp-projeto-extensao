@@ -62,10 +62,11 @@ class RegistrationTokenServiceTest {
     }
 
     @Test
-    void registerWrongAttempt_shouldBeTrueWhileTheCounterIsBelowTheLimitAndFalseAfterwards() {
-        when(registrationTokenRepository.incrementAttempts(7L, 4)).thenReturn(1, 0);
+    void registerAttempt_shouldReturnTheNewCounterOrMinusOneAtTheCap() {
+        when(registrationTokenRepository.incrementAttempts(7L, 5)).thenReturn(1, 0);
+        when(registrationTokenRepository.findAttempts(7L)).thenReturn(3);
 
-        assertTrue(service.registerWrongAttempt(7L, 4));
-        assertFalse(service.registerWrongAttempt(7L, 4));
+        assertEquals(3, service.registerAttempt(7L, 5));
+        assertEquals(-1, service.registerAttempt(7L, 5));
     }
 }

@@ -29,4 +29,8 @@ public interface PasswordResetTokenRepository extends JpaRepository<PasswordRese
     @Modifying(flushAutomatically = true)
     @Query("UPDATE PasswordResetToken t SET t.attempts = t.attempts + 1 WHERE t.id = :id AND t.attempts < :limit")
     int incrementAttempts(@Param("id") Long id, @Param("limit") int limit);
+
+    /** The counter as stored (read inside the transaction that just incremented it, so it includes that increment). */
+    @Query("SELECT t.attempts FROM PasswordResetToken t WHERE t.id = :id")
+    Integer findAttempts(@Param("id") Long id);
 }

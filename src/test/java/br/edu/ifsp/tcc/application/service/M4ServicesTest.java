@@ -173,12 +173,13 @@ class M4ServicesTest {
     }
 
     @Test
-    void emailChangeRegisterWrongAttempt_shouldBeFalseWhenTheLimitWasReached() {
+    void emailChangeRegisterAttempt_shouldReturnTheNewCounterOrMinusOneAtTheCap() {
         EmailChangeTokenService service = new EmailChangeTokenService(emailChangeTokenRepository);
-        when(emailChangeTokenRepository.incrementAttempts(3L, 4)).thenReturn(1, 0);
+        when(emailChangeTokenRepository.incrementAttempts(3L, 5)).thenReturn(1, 0);
+        when(emailChangeTokenRepository.findAttempts(3L)).thenReturn(2);
 
-        assertTrue(service.registerWrongAttempt(3L, 4));
-        assertFalse(service.registerWrongAttempt(3L, 4));
+        assertEquals(2, service.registerAttempt(3L, 5));
+        assertEquals(-1, service.registerAttempt(3L, 5));
     }
 
     @Test

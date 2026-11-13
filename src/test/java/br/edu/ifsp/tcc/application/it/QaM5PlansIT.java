@@ -813,7 +813,7 @@ class QaM5PlansIT extends AbstractIT {
     }
 
     @Test
-    @DisplayName("UT-119 (known gap, documented) The rule is checked only when a team is created: handing the ADMIN role to a second account lets the first create another free team")
+    @DisplayName("UT-119 (known limitation QA-M5-03, accepted and documented: not counted on admin hand-off) The rule is checked only when a team is created: handing the ADMIN role to a second account lets the first create another free team")
     void adminHandoffIsNotCounted() {
         Free f = freeTeam("handoff");
         assertEquals(200, api.post(f.path() + "/plan/trial", f.token(), map("plan", "AGENCIA")).status());
@@ -914,7 +914,7 @@ class QaM5PlansIT extends AbstractIT {
     // --- Races (acceptable at TCC scale; the numbers are printed for the report) ---
 
     @Test
-    @DisplayName("SEC-25 (race, documented) Parallel creations at the limit never fail with 5xx; the overshoot, if any, is printed")
+    @DisplayName("SEC-25 Parallel requests at the plan limits: the project limit, the storage limit and the one-time trial hold (QA-M5-01)")
     void parallelRequestsAtTheLimit() throws Exception {
         ExecutorService pool = Executors.newFixedThreadPool(8);
         try {
@@ -930,7 +930,8 @@ class QaM5PlansIT extends AbstractIT {
             List<Integer> statuses = run(pool, creates);
             long ok = statuses.stream().filter(s -> s == 200).count();
             assertTrue(statuses.stream().noneMatch(s -> s >= 500), "no 5xx: " + statuses);
-            assertTrue(ok >= 1);
+            assertEquals(1, ok, "room for exactly one project: " + statuses);
+            assertEquals(402, statuses.stream().filter(s -> s != 200).findFirst().orElseThrow());
             System.out.println("QA-M5 race projects: limit room 1, accepted " + ok + " of 8 -> active "
                     + plan(f).at("usage.activeProjects").asInt());
 
@@ -943,7 +944,8 @@ class QaM5PlansIT extends AbstractIT {
             List<Integer> up = run(pool, uploads);
             long accepted = up.stream().filter(s -> s == 200).count();
             assertTrue(up.stream().noneMatch(s -> s >= 500), "no 5xx: " + up);
-            assertTrue(accepted >= 2);
+            assertEquals(2, accepted, "room for exactly two 5-byte files: " + up);
+            assertTrue(plan(g).at("usage.storageBytes").asLong() <= 100 * MB);
             System.out.println("QA-M5 race storage: room for 2, accepted " + accepted + " of 8 -> "
                     + plan(g).at("usage.storageBytes").asLong() + " bytes of " + 100 * MB);
 
@@ -955,7 +957,8 @@ class QaM5PlansIT extends AbstractIT {
             }
             List<Integer> t = run(pool, trials);
             assertTrue(t.stream().noneMatch(s -> s >= 500), "no 5xx: " + t);
-            assertTrue(t.contains(200));
+            assertEquals(1, t.stream().filter(s -> s == 200).count(), "one trial only: " + t);
+            assertEquals(5, t.stream().filter(s -> s == 409).count(), "the others are refused: " + t);
             System.out.println("QA-M5 race trial: " + t + " -> " + dbPlan(h.team().id()));
             assertTrue(dbPlan(h.team().id()).contains("/TRIAL/"));
         } finally {

@@ -105,14 +105,14 @@ class ConfirmRegistrationUseCaseTest {
     void execute_shouldCountWrongCodeAndNotCreateAccount() {
         RegistrationToken current = token("x@x.com", LocalDateTime.now().plusMinutes(5), 2);
         when(registrationTokenService.findLatestByEmail("x@x.com")).thenReturn(Optional.of(current));
-        when(registrationTokenService.registerWrongAttempt(any(), eq(ConfirmRegistrationUseCase.MAX_ATTEMPTS - 1))).thenReturn(true);
+        when(registrationTokenService.registerAttempt(any(), eq(ConfirmRegistrationUseCase.MAX_ATTEMPTS))).thenReturn(2);
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
                 () -> useCase.execute(request("x@x.com", "000000", "pass")));
 
         assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
         assertTrue(ex.getReason().contains("inválido"));
-        verify(registrationTokenService).registerWrongAttempt(any(), eq(ConfirmRegistrationUseCase.MAX_ATTEMPTS - 1));
+        verify(registrationTokenService).registerAttempt(any(), eq(ConfirmRegistrationUseCase.MAX_ATTEMPTS));
         verify(userService, never()).save(any());
     }
 
@@ -120,7 +120,7 @@ class ConfirmRegistrationUseCaseTest {
     void execute_shouldDiscardCodeAfterMaxAttempts() {
         RegistrationToken current = token("x@x.com", LocalDateTime.now().plusMinutes(5),
                 ConfirmRegistrationUseCase.MAX_ATTEMPTS - 1);
-        when(registrationTokenService.registerWrongAttempt(any(), eq(ConfirmRegistrationUseCase.MAX_ATTEMPTS - 1))).thenReturn(false);
+        when(registrationTokenService.registerAttempt(any(), eq(ConfirmRegistrationUseCase.MAX_ATTEMPTS))).thenReturn(ConfirmRegistrationUseCase.MAX_ATTEMPTS);
         when(registrationTokenService.findLatestByEmail("x@x.com")).thenReturn(Optional.of(current));
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
@@ -140,5 +140,19 @@ class ConfirmRegistrationUseCaseTest {
         assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
         assertEquals("A senha deve ter no máximo 72 bytes (caracteres acentuados contam mais).", ex.getReason());
         verifyNoInteractions(registrationTokenService, userService, passwordEncoder);
+    }
+
+    @Test
+    void execute_shouldRefuseEvenTheRightCodeOnceTheCapWasReached() {
+        when(registrationTokenService.findLatestByEmail("x@x.com"))
+                .thenReturn(Optional.of(token("x@x.com", LocalDateTime.now().plusMinutes(5), 0)));
+        when(registrationTokenService.registerAttempt(any(), eq(ConfirmRegistrationUseCase.MAX_ATTEMPTS))).thenReturn(-1);
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> useCase.execute(request("x@x.com", "123456", "pass")));
+
+        assertTrue(ex.getReason().contains("Muitas tentativas"));
+        verify(registrationTokenService).deleteByEmail("x@x.com");
+        verify(userService, never()).save(any());
     }
 }

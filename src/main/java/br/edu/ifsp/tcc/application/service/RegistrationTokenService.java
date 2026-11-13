@@ -37,8 +37,12 @@ public class RegistrationTokenService {
         return registrationTokenRepository.deleteExpired(now);
     }
 
-    /** Counts one wrong attempt atomically; false when the limit was already reached (the code must be discarded). */
-    public boolean registerWrongAttempt(Long tokenId, int limit) {
-        return registrationTokenRepository.incrementAttempts(tokenId, limit) > 0;
+    /**
+     * Counts one attempt (right or wrong) atomically BEFORE the code is compared, so parallel guesses cannot go past the cap.
+     * Returns the new counter, or -1 when the cap was already reached (the code must be discarded).
+     */
+    public int registerAttempt(Long tokenId, int cap) {
+        if (registrationTokenRepository.incrementAttempts(tokenId, cap) == 0) return -1;
+        return registrationTokenRepository.findAttempts(tokenId);
     }
 }
