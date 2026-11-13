@@ -264,6 +264,10 @@ class PlanIT extends AbstractIT {
         long days = java.time.Duration.between(java.time.LocalDateTime.now(java.time.ZoneOffset.UTC), expires).toHours();
         assertTrue(days >= 14 * 24 - 1 && days <= 14 * 24, "about 14 days, was " + days + " hours");
 
+        // A trial team still counts as the free team: trial-then-create cannot be chained
+        Resp chained = api.post("/api/v1/teams", f.admin().token(), map("name", "Encadeada"));
+        assertEquals(402, chained.status(), chained.body());
+
         // During the trial Pro limits apply (unlimited projects)
         for (int i = 1; i <= 4; i++) projectOk(f, "Durante o teste " + i);
         assertEquals("PRO", api.get("/api/v1/teams", f.admin().token()).text("1.plan"));

@@ -191,7 +191,7 @@ class PlanServiceTest {
         Team team = team(PlanType.GRATUITO);
         when(teamMemberRepository.countByTeam_Id(10L)).thenReturn(1);
 
-        assert402(() -> service.assertCanAddMember(team), "plano Gratuito", "1 usuário", "plano Agência");
+        assert402(() -> service.requireCanAddMember(team), "plano Gratuito", "1 usuário", "plano Agência");
     }
 
     @Test
@@ -199,8 +199,8 @@ class PlanServiceTest {
         Team team = team(PlanType.AGENCIA);
         when(teamMemberRepository.countByTeam_Id(10L)).thenReturn(4, 5);
 
-        service.assertCanAddMember(team);
-        assert402(() -> service.assertCanAddMember(team), "5 usuários");
+        service.requireCanAddMember(team);
+        assert402(() -> service.requireCanAddMember(team), "5 usuários");
     }
 
     @Test
@@ -208,7 +208,7 @@ class PlanServiceTest {
         Team team = team(PlanType.SOLO);
         when(teamMemberRepository.countByTeam_Id(10L)).thenReturn(3);
 
-        assert402(() -> service.assertCanAddMember(team), "plano Solo", "plano Agência");
+        assert402(() -> service.requireCanAddMember(team), "plano Solo", "plano Agência");
     }
 
     @Test
@@ -218,7 +218,7 @@ class PlanServiceTest {
         team.getSubscription().setExpiresAt(NOW.minusSeconds(1));
         when(teamMemberRepository.countByTeam_Id(10L)).thenReturn(2);
 
-        assert402(() -> service.assertCanAddMember(team), "plano Gratuito");
+        assert402(() -> service.requireCanAddMember(team), "plano Gratuito");
     }
 
     // --- Active projects ---
@@ -234,7 +234,7 @@ class PlanServiceTest {
     void assertCanCreateActiveProject_shouldBlockTheFourthOnGratuito() {
         activeProjects(3, 0);
 
-        assert402(() -> service.assertCanCreateActiveProject(team(PlanType.GRATUITO)),
+        assert402(() -> service.requireCanCreateProject(team(PlanType.GRATUITO)),
                 "até 3 projetos ativos", "plano Solo");
     }
 
@@ -242,16 +242,16 @@ class PlanServiceTest {
     void assertCanCreateActiveProject_shouldAllowWhenApprovedProjectsFreeASlot() {
         activeProjects(3, 1);
 
-        service.assertCanCreateActiveProject(team(PlanType.GRATUITO));
+        service.requireCanCreateProject(team(PlanType.GRATUITO));
     }
 
     @Test
     void assertCanCreateActiveProject_shouldBlockSoloAtTenAndNeverBlockUnlimitedPlans() {
         activeProjects(10, 0);
-        assert402(() -> service.assertCanCreateActiveProject(team(PlanType.SOLO)), "até 10 projetos ativos", "plano Pro");
+        assert402(() -> service.requireCanCreateProject(team(PlanType.SOLO)), "até 10 projetos ativos", "plano Pro");
 
-        service.assertCanCreateActiveProject(team(PlanType.PRO));
-        service.assertCanCreateActiveProject(team(PlanType.AGENCIA));
+        service.requireCanCreateProject(team(PlanType.PRO));
+        service.requireCanCreateProject(team(PlanType.AGENCIA));
     }
 
     // --- Courses ---
@@ -260,16 +260,16 @@ class PlanServiceTest {
     void assertCanCreateCourse_shouldBlockTheSecondOnGratuitoAndTheSixthOnSolo() {
         when(courseRepository.countByTeam_Id(10L)).thenReturn(1, 5);
 
-        assert402(() -> service.assertCanCreateCourse(team(PlanType.GRATUITO)), "até 1 curso.", "plano Solo");
-        assert402(() -> service.assertCanCreateCourse(team(PlanType.SOLO)), "até 5 cursos.", "plano Pro");
+        assert402(() -> service.requireCanCreateCourse(team(PlanType.GRATUITO)), "até 1 curso.", "plano Solo");
+        assert402(() -> service.requireCanCreateCourse(team(PlanType.SOLO)), "até 5 cursos.", "plano Pro");
     }
 
     @Test
     void assertCanCreateCourse_shouldAllowBelowTheLimitAndUnlimitedPlans() {
         when(courseRepository.countByTeam_Id(10L)).thenReturn(0);
 
-        service.assertCanCreateCourse(team(PlanType.GRATUITO));
-        service.assertCanCreateCourse(team(PlanType.PRO));
+        service.requireCanCreateCourse(team(PlanType.GRATUITO));
+        service.requireCanCreateCourse(team(PlanType.PRO));
         verify(courseRepository, times(1)).countByTeam_Id(10L);
     }
 
@@ -277,10 +277,10 @@ class PlanServiceTest {
 
     @Test
     void assertCanGenerateSummary_shouldBlockGratuitoAndSoloOnly() {
-        assert402(() -> service.assertCanGenerateSummary(team(PlanType.GRATUITO)), "plano Gratuito", "plano Pro");
-        assert402(() -> service.assertCanGenerateSummary(team(PlanType.SOLO)), "plano Solo", "plano Pro");
-        service.assertCanGenerateSummary(team(PlanType.PRO));
-        service.assertCanGenerateSummary(team(PlanType.AGENCIA));
+        assert402(() -> service.requireCanSummarize(team(PlanType.GRATUITO)), "plano Gratuito", "plano Pro");
+        assert402(() -> service.requireCanSummarize(team(PlanType.SOLO)), "plano Solo", "plano Pro");
+        service.requireCanSummarize(team(PlanType.PRO));
+        service.requireCanSummarize(team(PlanType.AGENCIA));
     }
 
     // --- Storage ---
@@ -289,14 +289,14 @@ class PlanServiceTest {
     void assertCanStoreMaterial_shouldAllowUpToExactly100MbOnGratuito() {
         when(materialRepository.sumSizeBytesByTeam(10L)).thenReturn(80 * MB);
 
-        service.assertCanStoreMaterial(team(PlanType.GRATUITO), 20 * MB);
+        service.requireStorage(team(PlanType.GRATUITO), 20 * MB);
     }
 
     @Test
     void assertCanStoreMaterial_shouldBlockOneByteOver100MbNamingTheLimitAndPlan() {
         when(materialRepository.sumSizeBytesByTeam(10L)).thenReturn(80 * MB);
 
-        assert402(() -> service.assertCanStoreMaterial(team(PlanType.GRATUITO), 20 * MB + 1),
+        assert402(() -> service.requireStorage(team(PlanType.GRATUITO), 20 * MB + 1),
                 "plano Gratuito", "100 MB", "plano Solo");
     }
 
@@ -304,8 +304,8 @@ class PlanServiceTest {
     void assertCanStoreMaterial_shouldSuggestThePlanThatFitsTheTotal() {
         when(materialRepository.sumSizeBytesByTeam(10L)).thenReturn(1020L * MB);
 
-        assert402(() -> service.assertCanStoreMaterial(team(PlanType.SOLO), 10 * MB), "1 GB", "plano Pro");
-        service.assertCanStoreMaterial(team(PlanType.PRO), 10 * MB);
+        assert402(() -> service.requireStorage(team(PlanType.SOLO), 10 * MB), "1 GB", "plano Pro");
+        service.requireStorage(team(PlanType.PRO), 10 * MB);
     }
 
     // --- One free team per admin ---
@@ -323,7 +323,21 @@ class PlanServiceTest {
         when(teamMemberRepository.findByUser_IdOrderByJoinedAtAsc(1L))
                 .thenReturn(List.of(membership(team(PlanType.GRATUITO), TeamRole.ADMIN)));
 
-        assert402(() -> service.assertCanCreateFreeTeam(1L), "apenas uma equipe compartilhada no plano Gratuito");
+        assert402(() -> service.requireCanCreateFreeTeam(1L), "apenas uma equipe compartilhada no plano Gratuito");
+    }
+
+    @Test
+    void assertCanCreateFreeTeam_shouldCountASharedTeamOnTrialButNotAManualOne() {
+        Team trial = team(PlanType.GRATUITO);
+        trial.getSubscription().setPlan(PlanType.PRO);
+        trial.getSubscription().setSource(PlanSource.TRIAL);
+        trial.getSubscription().setExpiresAt(NOW.plusDays(5));
+        when(teamMemberRepository.findByUser_IdOrderByJoinedAtAsc(1L)).thenReturn(List.of(membership(trial, TeamRole.ADMIN)));
+
+        assert402(() -> service.requireCanCreateFreeTeam(1L), "equipe compartilhada");
+
+        trial.getSubscription().setSource(PlanSource.MANUAL);
+        service.requireCanCreateFreeTeam(1L);
     }
 
     @Test
@@ -336,8 +350,8 @@ class PlanServiceTest {
         when(teamMemberRepository.findByUser_IdOrderByJoinedAtAsc(2L))
                 .thenReturn(List.of(membership(personal, TeamRole.ADMIN), membership(shared, TeamRole.ADMIN)));
 
-        service.assertCanCreateFreeTeam(1L);                                   // personal team + one new: allowed
-        assert402(() -> service.assertCanCreateFreeTeam(2L), "equipe compartilhada"); // second shared free team
+        service.requireCanCreateFreeTeam(1L);                                   // personal team + one new: allowed
+        assert402(() -> service.requireCanCreateFreeTeam(2L), "equipe compartilhada"); // second shared free team
     }
 
     @Test
@@ -351,15 +365,15 @@ class PlanServiceTest {
         when(teamMemberRepository.findByUser_IdOrderByJoinedAtAsc(2L))
                 .thenReturn(List.of(membership(expiredTrial, TeamRole.ADMIN)));
 
-        service.assertCanCreateFreeTeam(1L);
-        assert402(() -> service.assertCanCreateFreeTeam(2L), "equipe compartilhada"); // trial over = free again
+        service.requireCanCreateFreeTeam(1L);
+        assert402(() -> service.requireCanCreateFreeTeam(2L), "equipe compartilhada"); // trial over = free again
     }
 
     @Test
     void assertCanCreateFreeTeam_shouldAllowUsersWithoutTeams() {
         when(teamMemberRepository.findByUser_IdOrderByJoinedAtAsc(3L)).thenReturn(List.of());
 
-        service.assertCanCreateFreeTeam(3L);
+        service.requireCanCreateFreeTeam(3L);
     }
 
     // --- Lookups and mapping ---
@@ -395,7 +409,7 @@ class PlanServiceTest {
         when(courseRepository.countByTeam_Id(10L)).thenReturn(1);
         when(materialRepository.sumSizeBytesByTeam(10L)).thenReturn(5 * MB);
 
-        TeamPlanResponse response = service.toTeamPlanResponse(team);
+        TeamPlanResponse response = service.toPlanResponse(team);
 
         assertEquals(PlanType.GRATUITO, response.getPlan());
         assertEquals("Gratuito", response.getPlanName());
@@ -422,7 +436,7 @@ class PlanServiceTest {
         when(courseRepository.countByTeam_Id(10L)).thenReturn(0);
         when(materialRepository.sumSizeBytesByTeam(10L)).thenReturn(0L);
 
-        TeamPlanResponse response = service.toTeamPlanResponse(team);
+        TeamPlanResponse response = service.toPlanResponse(team);
 
         assertEquals(PlanType.GRATUITO, response.getPlan());
         assertNull(response.getExpiresAt());
@@ -439,9 +453,9 @@ class PlanServiceTest {
         when(courseRepository.countByTeam_Id(10L)).thenReturn(0, 2, 0);
         when(materialRepository.sumSizeBytesByTeam(10L)).thenReturn(0L, 0L, 101 * MB);
 
-        assertTrue(service.toTeamPlanResponse(team).getOverLimit());   // members
-        assertTrue(service.toTeamPlanResponse(team).getOverLimit());   // courses
-        assertTrue(service.toTeamPlanResponse(team).getOverLimit());   // storage
+        assertTrue(service.toPlanResponse(team).getOverLimit());   // members
+        assertTrue(service.toPlanResponse(team).getOverLimit());   // courses
+        assertTrue(service.toPlanResponse(team).getOverLimit());   // storage
     }
 
     @Test

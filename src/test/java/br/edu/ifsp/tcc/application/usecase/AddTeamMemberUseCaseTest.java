@@ -103,7 +103,7 @@ class AddTeamMemberUseCaseTest {
         when(teamService.requireRole(10L, 1L, TeamRole.ADMIN)).thenReturn(admin);
         when(userService.findByEmail("rui@test.com")).thenReturn(Optional.of(rui));
         when(teamService.findMemberByTeamIdAndUserId(10L, 2L)).thenReturn(Optional.empty());
-        doThrow(new ResponseStatusException(HttpStatus.PAYMENT_REQUIRED, "limite")).when(planService).assertCanAddMember(admin.getTeam());
+        doThrow(new ResponseStatusException(HttpStatus.PAYMENT_REQUIRED, "limite")).when(planService).requireCanAddMember(admin.getTeam());
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
                 () -> useCase.execute(10L, 1L, dto("rui@test.com", TeamRole.REVIEWER)));

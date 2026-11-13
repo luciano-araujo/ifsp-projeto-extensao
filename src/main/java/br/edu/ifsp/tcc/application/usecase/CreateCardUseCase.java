@@ -37,7 +37,7 @@ public class CreateCardUseCase {
         Team team = teamService.requireRole(teamId, user.getId(), TeamRole.ADMIN, TeamRole.CREATOR).getTeam();
         KanbanItemService.requireProjectFields(dto.getTitle(), dto.getTargetAudience(), dto.getPedagogicalObjective());
         BoardColumn column = boardService.resolveColumn(teamId, dto.getColumnId());
-        planService.assertCanCreateActiveProject(team);
+        planService.requireCanCreateProject(team);
 
         KanbanItem item = new KanbanItem();
         item.setTitle(dto.getTitle().trim());

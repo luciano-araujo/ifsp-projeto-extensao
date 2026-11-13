@@ -81,7 +81,7 @@ public class PlanService {
 
     // --- Usage ---
 
-    public PlanUsageResponse usageOf(Team team) {
+    public PlanUsageResponse usage(Team team) {
         return new PlanUsageResponse(teamMemberRepository.countByTeam_Id(team.getId()),
                 countActiveProjects(team.getId()), courseRepository.countByTeam_Id(team.getId()),
                 materialRepository.sumSizeBytesByTeam(team.getId()));
@@ -97,7 +97,7 @@ public class PlanService {
     // --- Limit checks (402) ---
 
     /** Call wherever a member is added (direct add, invite creation or acceptance). */
-    public void assertCanAddMember(Team team) {
+    public void requireCanAddMember(Team team) {
         PlanType plan = effectivePlan(team);
         int members = teamMemberRepository.countByTeam_Id(team.getId());
         if (plan.getMaxUsers() != null && members >= plan.getMaxUsers()) {
@@ -107,7 +107,7 @@ public class PlanService {
         }
     }
 
-    public void assertCanCreateActiveProject(Team team) {
+    public void requireCanCreateProject(Team team) {
         PlanType plan = effectivePlan(team);
         if (plan.getMaxActiveProjects() == null) return;
         int active = countActiveProjects(team.getId());
@@ -118,7 +118,7 @@ public class PlanService {
         }
     }
 
-    public void assertCanCreateCourse(Team team) {
+    public void requireCanCreateCourse(Team team) {
         PlanType plan = effectivePlan(team);
         if (plan.getMaxCourses() == null) return;
         int courses = courseRepository.countByTeam_Id(team.getId());
@@ -129,7 +129,7 @@ public class PlanService {
         }
     }
 
-    public void assertCanGenerateSummary(Team team) {
+    public void requireCanSummarize(Team team) {
         PlanType plan = effectivePlan(team);
         if (!plan.isAutomaticSummary()) {
             throw limitReached("O resumo automático não está disponível no plano " + plan.getDisplayName() + ".",
@@ -138,7 +138,7 @@ public class PlanService {
     }
 
     /** The total size of the team's materials plus the new file must fit in the plan storage. */
-    public void assertCanStoreMaterial(Team team, long newFileBytes) {
+    public void requireStorage(Team team, long newFileBytes) {
         PlanType plan = effectivePlan(team);
         long needed = materialRepository.sumSizeBytesByTeam(team.getId()) + newFileBytes;
         if (needed > plan.getStorageBytes()) {
@@ -150,13 +150,14 @@ public class PlanService {
 
     /**
      * One shared team on Gratuito per person. The personal team (auto-created, see TeamService.personalNameOf)
-     * does not count, and neither do paid or trial teams.
+     * does not count. A team counts as free unless a system administrator activated its plan (MANUAL and
+     * not expired), so a trial still counts and trial-then-create cannot be chained.
      */
-    public void assertCanCreateFreeTeam(Long userId) {
+    public void requireCanCreateFreeTeam(Long userId) {
         boolean hasFreeTeam = teamMemberRepository.findByUser_IdOrderByJoinedAtAsc(userId).stream()
                 .filter(m -> m.getRole() == TeamRole.ADMIN)
                 .filter(m -> !TeamService.personalNameOf(m.getUser()).equals(m.getTeam().getName()))
-                .anyMatch(m -> effectivePlan(m.getTeam()) == PlanType.GRATUITO);
+                .anyMatch(m -> m.getTeam().getSubscription().effectiveSource(now()) != PlanSource.MANUAL);
         if (hasFreeTeam) {
             throw new ResponseStatusException(HttpStatus.PAYMENT_REQUIRED,
                     "Cada pessoa pode administrar apenas uma equipe compartilhada no plano Gratuito. "
@@ -214,11 +215,11 @@ public class PlanService {
                 .map(p -> new PlanResponse(p, p.getDisplayName(), p.getMonthlyPrice(), limitsOf(p))).toList();
     }
 
-    public TeamPlanResponse toTeamPlanResponse(Team team) {
+    public TeamPlanResponse toPlanResponse(Team team) {
         LocalDateTime now = now();
         TeamSubscription subscription = team.getSubscription();
         PlanType plan = subscription.effectivePlan(now);
-        PlanUsageResponse usage = usageOf(team);
+        PlanUsageResponse usage = usage(team);
         boolean over = (plan.getMaxUsers() != null && usage.getMembers() > plan.getMaxUsers())
                 || (plan.getMaxActiveProjects() != null && usage.getActiveProjects() > plan.getMaxActiveProjects())
                 || (plan.getMaxCourses() != null && usage.getCourses() > plan.getMaxCourses())

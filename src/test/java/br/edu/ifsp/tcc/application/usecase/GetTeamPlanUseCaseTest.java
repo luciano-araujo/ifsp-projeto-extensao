@@ -36,7 +36,7 @@ class GetTeamPlanUseCaseTest {
         member.setTeam(team);
         TeamPlanResponse response = mock(TeamPlanResponse.class);
         when(teamService.requireMember(10L, 1L)).thenReturn(member);
-        when(planService.toTeamPlanResponse(team)).thenReturn(response);
+        when(planService.toPlanResponse(team)).thenReturn(response);
 
         assertSame(response, useCase.execute(10L, 1L));
     }

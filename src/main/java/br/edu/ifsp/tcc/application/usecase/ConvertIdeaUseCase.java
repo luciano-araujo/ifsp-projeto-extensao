@@ -52,7 +52,7 @@ public class ConvertIdeaUseCase {
         KanbanItemService.requireProjectFields(item.getTitle(), item.getTargetAudience(), item.getPedagogicalObjective());
 
         BoardColumn column = boardService.resolveColumn(teamId, targetColumnId);
-        planService.assertCanCreateActiveProject(item.getTeam());
+        planService.requireCanCreateProject(item.getTeam());
         item.setColumn(column);
         item.setSortOrder(boardService.nextSortOrder(teamId, column.getId()));
         item.setState(KanbanItemState.IN_PRODUCTION);

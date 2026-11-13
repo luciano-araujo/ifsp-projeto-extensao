@@ -20,6 +20,6 @@ public class GetTeamPlanUseCase {
     /** Any member sees the plan in force, its limits and the usage. */
     @Transactional(readOnly = true)
     public TeamPlanResponse execute(Long teamId, Long userId) {
-        return planService.toTeamPlanResponse(teamService.requireMember(teamId, userId).getTeam());
+        return planService.toPlanResponse(teamService.requireMember(teamId, userId).getTeam());
     }
 }

@@ -43,7 +43,8 @@ public class UploadMaterialUseCase {
         if (file == null || file.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Envie um arquivo não vazio no campo \"file\".");
         }
-        planService.assertCanStoreMaterial(card.getTeam(), file.getSize());
+        MaterialService.requireAllowedType(MaterialService.sanitizeFileName(file.getOriginalFilename()), file.getContentType());
+        planService.requireStorage(card.getTeam(), file.getSize());
         return materialService.toResponse(materialService.attach(card, user, file), teamId);
     }
 }

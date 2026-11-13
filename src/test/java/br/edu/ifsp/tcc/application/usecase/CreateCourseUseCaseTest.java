@@ -67,7 +67,7 @@ class CreateCourseUseCaseTest {
         TeamMember admin = new TeamMember();
         admin.setTeam(team);
         when(teamService.requireRole(10L, 1L, TeamRole.ADMIN, TeamRole.CREATOR)).thenReturn(admin);
-        doThrow(new ResponseStatusException(HttpStatus.PAYMENT_REQUIRED, "limite")).when(planService).assertCanCreateCourse(team);
+        doThrow(new ResponseStatusException(HttpStatus.PAYMENT_REQUIRED, "limite")).when(planService).requireCanCreateCourse(team);
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
                 () -> useCase.execute(10L, 1L, dto("Curso")));

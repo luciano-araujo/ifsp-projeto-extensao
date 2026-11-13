@@ -160,11 +160,21 @@ class GenerateCardSummaryUseCaseTest {
 
 
     @Test
+    void execute_shouldRefuseIdeasBeforeThePlanCheck() {
+        project.setState(KanbanItemState.IDEATION);
+        when(boardService.findCard(10L, 3L)).thenReturn(project);
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class, () -> useCase.execute(10L, 1L, 3L));
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+        verifyNoInteractions(planService);
+    }
+
+    @Test
     void execute_shouldStopWith402WhenThePlanHasNoAutomaticSummary() {
         br.edu.ifsp.tcc.application.entity.Team team = new br.edu.ifsp.tcc.application.entity.Team();
         project.setTeam(team);
         when(boardService.findCard(10L, 3L)).thenReturn(project);
-        doThrow(new ResponseStatusException(HttpStatus.PAYMENT_REQUIRED, "limite")).when(planService).assertCanGenerateSummary(team);
+        doThrow(new ResponseStatusException(HttpStatus.PAYMENT_REQUIRED, "limite")).when(planService).requireCanSummarize(team);
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class, () -> useCase.execute(10L, 1L, 3L));
         assertEquals(HttpStatus.PAYMENT_REQUIRED, ex.getStatusCode());

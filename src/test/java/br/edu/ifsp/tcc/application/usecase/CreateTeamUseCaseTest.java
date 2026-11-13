@@ -46,7 +46,7 @@ class CreateTeamUseCaseTest {
         user.setId(7L);
         CreateTeamDTO dto = new CreateTeamDTO();
         dto.setName("Outra");
-        doThrow(new ResponseStatusException(HttpStatus.PAYMENT_REQUIRED, "limite")).when(planService).assertCanCreateFreeTeam(7L);
+        doThrow(new ResponseStatusException(HttpStatus.PAYMENT_REQUIRED, "limite")).when(planService).requireCanCreateFreeTeam(7L);
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class, () -> useCase.execute(user, dto));
         assertEquals(HttpStatus.PAYMENT_REQUIRED, ex.getStatusCode());

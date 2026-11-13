@@ -43,7 +43,7 @@ class StartTrialUseCaseTest {
         TeamPlanResponse response = mock(TeamPlanResponse.class);
         when(teamService.requireRole(10L, 1L, TeamRole.ADMIN)).thenReturn(admin);
         when(planService.startTrial(team, PlanType.PRO)).thenReturn(team);
-        when(planService.toTeamPlanResponse(team)).thenReturn(response);
+        when(planService.toPlanResponse(team)).thenReturn(response);
 
         assertSame(response, useCase.execute(10L, 1L, dto(PlanType.PRO)));
     }

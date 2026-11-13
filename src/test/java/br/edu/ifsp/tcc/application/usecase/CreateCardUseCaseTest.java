@@ -143,7 +143,7 @@ class CreateCardUseCaseTest {
         member.setTeam(team);
         when(teamService.requireRole(10L, 1L, TeamRole.ADMIN, TeamRole.CREATOR)).thenReturn(member);
         when(boardService.resolveColumn(10L, 2L)).thenReturn(new BoardColumn());
-        doThrow(new ResponseStatusException(HttpStatus.PAYMENT_REQUIRED, "limite")).when(planService).assertCanCreateActiveProject(team);
+        doThrow(new ResponseStatusException(HttpStatus.PAYMENT_REQUIRED, "limite")).when(planService).requireCanCreateProject(team);
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class, () -> useCase.execute(10L, user, dto()));
         assertEquals(HttpStatus.PAYMENT_REQUIRED, ex.getStatusCode());

@@ -38,7 +38,7 @@ public class AddTeamMemberUseCase {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Este usuário já faz parte da equipe.");
         }
 
-        planService.assertCanAddMember(admin.getTeam());
+        planService.requireCanAddMember(admin.getTeam());
 
         TeamMember member = new TeamMember();
         member.setTeam(admin.getTeam());

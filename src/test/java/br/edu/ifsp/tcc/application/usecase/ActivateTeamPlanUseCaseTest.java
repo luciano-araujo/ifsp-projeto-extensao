@@ -40,7 +40,7 @@ class ActivateTeamPlanUseCaseTest {
         TeamPlanResponse response = mock(TeamPlanResponse.class);
         when(planService.findTeam(10L)).thenReturn(team);
         when(planService.activate(team, PlanType.AGENCIA, until)).thenReturn(team);
-        when(planService.toTeamPlanResponse(team)).thenReturn(response);
+        when(planService.toPlanResponse(team)).thenReturn(response);
 
         assertSame(response, useCase.execute(admin, 10L, dto));
         verify(systemAdminService).requireSystemAdmin(admin);

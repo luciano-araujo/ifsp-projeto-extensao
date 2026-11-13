@@ -173,7 +173,7 @@ class ConvertIdeaUseCaseTest {
         idea.setPedagogicalObjective("Entender BFS");
         when(boardService.findCard(10L, 1L)).thenReturn(idea);
         when(boardService.resolveColumn(10L, 101L)).thenReturn(column(101L));
-        doThrow(new ResponseStatusException(HttpStatus.PAYMENT_REQUIRED, "limite")).when(planService).assertCanCreateActiveProject(team);
+        doThrow(new ResponseStatusException(HttpStatus.PAYMENT_REQUIRED, "limite")).when(planService).requireCanCreateProject(team);
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
                 () -> useCase.execute(10L, 1L, 1L, 101L, null));

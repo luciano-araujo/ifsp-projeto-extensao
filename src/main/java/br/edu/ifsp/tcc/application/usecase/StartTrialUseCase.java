@@ -24,6 +24,6 @@ public class StartTrialUseCase {
     @Transactional
     public TeamPlanResponse execute(Long teamId, Long userId, StartTrialDTO dto) {
         Team team = teamService.requireRole(teamId, userId, TeamRole.ADMIN).getTeam();
-        return planService.toTeamPlanResponse(planService.startTrial(team, dto.getPlan()));
+        return planService.toPlanResponse(planService.startTrial(team, dto.getPlan()));
     }
 }

@@ -21,7 +21,7 @@ public class CreateTeamUseCase {
 
     @Transactional
     public TeamResponse execute(User user, CreateTeamDTO dto) {
-        planService.assertCanCreateFreeTeam(user.getId());
+        planService.requireCanCreateFreeTeam(user.getId());
         return teamService.toTeamResponse(teamService.createTeamWithAdmin(user, dto.getName().trim()));
     }
 }

@@ -46,10 +46,10 @@ public class GenerateCardSummaryUseCase {
     public CardSummaryResponse execute(Long teamId, Long userId, Long cardId) {
         teamService.requireRole(teamId, userId, TeamRole.ADMIN, TeamRole.CREATOR);
         KanbanItem item = boardService.findCard(teamId, cardId);
-        planService.assertCanGenerateSummary(item.getTeam());
         if (item.getState() == KanbanItemState.IDEATION) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ideias não possuem roteiro para resumir.");
         }
+        planService.requireCanSummarize(item.getTeam());
         String plainText = scriptService.findByKanbanItemId(cardId).map(Script::getContent)
                 .map(CardSummaryService::plainText).orElse("");
         if (CardSummaryService.countWords(plainText) < MIN_WORDS) {

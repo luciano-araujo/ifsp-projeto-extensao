@@ -27,7 +27,7 @@ public class CreateCourseUseCase {
     @Transactional
     public CourseResponse execute(Long teamId, Long userId, CreateCourseDTO dto) {
         Team team = teamService.requireRole(teamId, userId, TeamRole.ADMIN, TeamRole.CREATOR).getTeam();
-        planService.assertCanCreateCourse(team);
+        planService.requireCanCreateCourse(team);
 
         Course course = new Course();
         course.setTeam(team);

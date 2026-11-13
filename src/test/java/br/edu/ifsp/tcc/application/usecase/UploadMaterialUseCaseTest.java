@@ -129,13 +129,25 @@ class UploadMaterialUseCaseTest {
 
 
     @Test
+    void execute_shouldRefuseAnUnsupportedTypeBeforeTheStorageCheck() {
+        editor();
+        KanbanItem card = card(KanbanItemState.IN_PRODUCTION);
+        when(boardService.findCard(10L, 3L)).thenReturn(card);
+        MockMultipartFile exe = new MockMultipartFile("file", "a.exe", "application/x-msdownload", "abc".getBytes());
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class, () -> useCase.execute(10L, 1L, 3L, exe));
+        assertEquals(HttpStatus.UNSUPPORTED_MEDIA_TYPE, ex.getStatusCode());
+        verifyNoInteractions(planService);
+    }
+
+    @Test
     void execute_shouldStopWith402WhenTheStorageOfThePlanWouldBeExceeded() {
         editor();
         KanbanItem card = card(KanbanItemState.IN_PRODUCTION);
         br.edu.ifsp.tcc.application.entity.Team team = new br.edu.ifsp.tcc.application.entity.Team();
         card.setTeam(team);
         when(boardService.findCard(10L, 3L)).thenReturn(card);
-        doThrow(new ResponseStatusException(HttpStatus.PAYMENT_REQUIRED, "limite")).when(planService).assertCanStoreMaterial(team, 3L);
+        doThrow(new ResponseStatusException(HttpStatus.PAYMENT_REQUIRED, "limite")).when(planService).requireStorage(team, 3L);
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
                 () -> useCase.execute(10L, 1L, 3L, file));

@@ -23,7 +23,7 @@ public class ActivateTeamPlanUseCase {
     @Transactional
     public TeamPlanResponse execute(User user, Long teamId, ActivatePlanDTO dto) {
         systemAdminService.requireSystemAdmin(user);
-        return planService.toTeamPlanResponse(
+        return planService.toPlanResponse(
                 planService.activate(planService.findTeam(teamId), dto.getPlan(), dto.getExpiresAt()));
     }
 }
