@@ -8,6 +8,7 @@ import lombok.Data;
 @Data
 public class UpdateTaskDTO {
     @Size(max = 255, message = "O título da tarefa deve ter no máximo 255 caracteres.")
+    @Pattern(regexp = "[^\\p{Cntrl}]*", message = "O texto não pode conter quebras de linha ou caracteres de controle.")
     private String title;
 
     /** Id of the team member responsible for the task; 0 removes the assignee. */

@@ -43,14 +43,17 @@ public class ResetPasswordUseCase {
             throw invalid("Código inválido ou expirado. Solicite um novo.");
         }
 
+        // The attempt is counted first and atomically, right or wrong: a right code in a parallel burst cannot slip past the cap
+        int attempts = passwordResetTokenService.registerAttempt(token.getId(), MAX_ATTEMPTS);
+        if (attempts < 0) {
+            passwordResetTokenService.deleteByEmail(email);
+            throw invalid("Muitas tentativas. Solicite um novo código.");
+        }
         if (!token.getToken().equals(request.getToken())) {
-            int attempts = token.getAttempts() + 1;
             if (attempts >= MAX_ATTEMPTS) {
                 passwordResetTokenService.deleteByEmail(email);
                 throw invalid("Muitas tentativas. Solicite um novo código.");
             }
-            token.setAttempts(attempts);
-            passwordResetTokenService.save(token);
             throw invalid("Código inválido.");
         }
 

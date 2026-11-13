@@ -60,4 +60,13 @@ class RegistrationTokenServiceTest {
 
         assertEquals(3, service.deleteExpired(now));
     }
+
+    @Test
+    void registerAttempt_shouldReturnTheNewCounterOrMinusOneAtTheCap() {
+        when(registrationTokenRepository.incrementAttempts(7L, 5)).thenReturn(1, 0);
+        when(registrationTokenRepository.findAttempts(7L)).thenReturn(3);
+
+        assertEquals(3, service.registerAttempt(7L, 5));
+        assertEquals(-1, service.registerAttempt(7L, 5));
+    }
 }

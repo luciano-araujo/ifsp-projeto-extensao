@@ -49,14 +49,17 @@ public class ConfirmRegistrationUseCase {
             throw invalid("Código de verificação expirado. Solicite um novo.");
         }
 
+        // The attempt is counted first and atomically, right or wrong: a right code in a parallel burst cannot slip past the cap
+        int attempts = registrationTokenService.registerAttempt(token.getId(), MAX_ATTEMPTS);
+        if (attempts < 0) {
+            registrationTokenService.deleteByEmail(email);
+            throw invalid("Muitas tentativas. Solicite um novo código de verificação.");
+        }
         if (!token.getToken().equals(request.getToken())) {
-            int attempts = token.getAttempts() + 1;
             if (attempts >= MAX_ATTEMPTS) {
                 registrationTokenService.deleteByEmail(email);
                 throw invalid("Muitas tentativas. Solicite um novo código de verificação.");
             }
-            token.setAttempts(attempts);
-            registrationTokenService.save(token);
             throw invalid("Código de verificação inválido.");
         }
 

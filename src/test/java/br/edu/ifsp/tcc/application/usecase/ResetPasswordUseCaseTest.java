@@ -66,12 +66,12 @@ class ResetPasswordUseCaseTest {
     void execute_shouldCountWrongCodeAndKeepPassword() {
         PasswordResetToken current = token(1, LocalDateTime.now().plusMinutes(5));
         when(passwordResetTokenService.findLatestByEmail("ana@example.com")).thenReturn(Optional.of(current));
+        when(passwordResetTokenService.registerAttempt(any(), eq(ResetPasswordUseCase.MAX_ATTEMPTS))).thenReturn(2);
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class, () -> useCase.execute(request("000000")));
 
         assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
-        assertEquals(2, current.getAttempts());
-        verify(passwordResetTokenService).save(current);
+        verify(passwordResetTokenService).registerAttempt(any(), eq(ResetPasswordUseCase.MAX_ATTEMPTS));
         verify(userService, never()).update(any());
     }
 
@@ -79,6 +79,7 @@ class ResetPasswordUseCaseTest {
     void execute_shouldDiscardCodeAfterMaxAttempts() {
         PasswordResetToken current = token(ResetPasswordUseCase.MAX_ATTEMPTS - 1, LocalDateTime.now().plusMinutes(5));
         when(passwordResetTokenService.findLatestByEmail("ana@example.com")).thenReturn(Optional.of(current));
+        when(passwordResetTokenService.registerAttempt(any(), eq(ResetPasswordUseCase.MAX_ATTEMPTS))).thenReturn(ResetPasswordUseCase.MAX_ATTEMPTS);
 
         ResponseStatusException ex = assertThrows(ResponseStatusException.class, () -> useCase.execute(request("000000")));
 
@@ -116,5 +117,18 @@ class ResetPasswordUseCaseTest {
         assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
         assertEquals("A senha deve ter no máximo 72 bytes (caracteres acentuados contam mais).", ex.getReason());
         verifyNoInteractions(passwordResetTokenService, userService, passwordEncoder);
+    }
+
+    @Test
+    void execute_shouldRefuseEvenTheRightCodeOnceTheCapWasReached() {
+        when(passwordResetTokenService.findLatestByEmail("ana@example.com"))
+                .thenReturn(Optional.of(token(0, LocalDateTime.now().plusMinutes(5))));
+        when(passwordResetTokenService.registerAttempt(any(), eq(ResetPasswordUseCase.MAX_ATTEMPTS))).thenReturn(-1);
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class, () -> useCase.execute(request("123456")));
+
+        assertTrue(ex.getReason().contains("Muitas tentativas"));
+        verify(passwordResetTokenService).deleteByEmail("ana@example.com");
+        verify(userService, never()).update(any());
     }
 }

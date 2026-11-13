@@ -32,4 +32,13 @@ public class EmailChangeTokenService {
     public int deleteExpired(LocalDateTime now) {
         return emailChangeTokenRepository.deleteExpired(now);
     }
+
+    /**
+     * Counts one attempt (right or wrong) atomically BEFORE the code is compared, so parallel guesses cannot go past the cap.
+     * Returns the new counter, or -1 when the cap was already reached (the code must be discarded).
+     */
+    public int registerAttempt(Long tokenId, int cap) {
+        if (emailChangeTokenRepository.incrementAttempts(tokenId, cap) == 0) return -1;
+        return emailChangeTokenRepository.findAttempts(tokenId);
+    }
 }

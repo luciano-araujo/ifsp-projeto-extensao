@@ -25,6 +25,8 @@ import java.util.Arrays;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Limits attempts on the public auth routes per route + client IP + e-mail (BE-44).
@@ -43,6 +45,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
             "/api/auth/password/forgot",
             "/api/auth/password/reset");
 
+    static final Pattern USER_ROUTE = Pattern.compile("^/api/v1/users/(\\d{1,18})/(password|email-change)$");
+
     static final int MAX_BODY_BYTES = 16 * 1024;
     static final int MAX_EMAIL_LENGTH = 254;
     static final String TOO_LARGE_MESSAGE = "Requisição muito grande.";
@@ -52,6 +56,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private final boolean enabled;
     private final int maxAttempts;
     private final int maxAttemptsPerIp;
+    private final int maxAttemptsUser;
     private final Set<String> trustedProxies;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -59,19 +64,38 @@ public class RateLimitFilter extends OncePerRequestFilter {
                            @Value("${app.rate-limit.enabled:true}") boolean enabled,
                            @Value("${app.rate-limit.max-attempts:10}") int maxAttempts,
                            @Value("${app.rate-limit.max-attempts-per-ip:100}") int maxAttemptsPerIp,
+                           @Value("${app.rate-limit.max-attempts-user:10}") int maxAttemptsUser,
                            @Value("${app.rate-limit.trusted-proxies:127.0.0.1,0:0:0:0:0:0:0:1,::1}") String trustedProxies) {
         this.rateLimitService = rateLimitService;
         this.enabled = enabled;
         this.maxAttempts = maxAttempts;
         this.maxAttemptsPerIp = maxAttemptsPerIp;
+        this.maxAttemptsUser = maxAttemptsUser;
         this.trustedProxies = Set.copyOf(Arrays.stream(trustedProxies.split(","))
                 .map(String::trim).filter(s -> !s.isEmpty()).toList());
     }
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        return !enabled || !"POST".equalsIgnoreCase(request.getMethod())
-                || !LIMITED_PATHS.contains(pathOf(request));
+        return !enabled || (!isAuthRoute(request) && userRoute(request) == null);
+    }
+
+    private static boolean isAuthRoute(HttpServletRequest request) {
+        return "POST".equalsIgnoreCase(request.getMethod()) && LIMITED_PATHS.contains(pathOf(request));
+    }
+
+    /**
+     * Sensitive routes of a logged-in user (QA4-03): PUT .../password and POST .../email-change. Their attempts are counted
+     * per user id (from the path) and client IP. The e-mail confirmation is not limited here: its code is discarded
+     * after 5 wrong attempts. Returns the matcher, or null when the request is not one of these routes.
+     */
+    private static Matcher userRoute(HttpServletRequest request) {
+        Matcher matcher = USER_ROUTE.matcher(pathOf(request));
+        if (!matcher.matches()) return null;
+        boolean right = "password".equals(matcher.group(2))
+                ? "PUT".equalsIgnoreCase(request.getMethod())
+                : "POST".equalsIgnoreCase(request.getMethod());
+        return right ? matcher : null;
     }
 
     /** Decoded and normalized path (so /api/auth/%6Cogin is the login route), not the raw request URI. */
@@ -92,11 +116,24 @@ public class RateLimitFilter extends OncePerRequestFilter {
         String path = pathOf(request);
         String ip = clientIp(request);
 
-        // per route + IP first (stops rotating e-mails); a blocked IP must not also charge the e-mail bucket,
-        // otherwise an attacker could drain a victim's bucket from an already blocked address
-        long retryAfter = rateLimitService.registerAttempt("ip|" + path + "|" + ip, maxAttemptsPerIp);
-        if (retryAfter == 0) {
-            retryAfter = rateLimitService.registerAttempt(path + "|" + ip + "|" + extractEmail(body), maxAttempts);
+        // The per-IP bucket is checked first; a blocked IP must not also charge the narrower bucket, otherwise an
+        // attacker could drain a victim's bucket from an already blocked address
+        Matcher userRoute = userRoute(request);
+        long retryAfter;
+        if (userRoute != null) {
+            // per route template + IP, then per user (id parsed from the path, so 007 and 7 share a bucket) + IP
+            String template = "/api/v1/users/{id}/" + userRoute.group(2);
+            retryAfter = rateLimitService.registerAttempt("ip|" + template + "|" + ip, maxAttemptsPerIp);
+            if (retryAfter == 0) {
+                retryAfter = rateLimitService.registerAttempt("user|/api/v1/users/" + Long.parseLong(userRoute.group(1))
+                        + "/" + userRoute.group(2) + "|" + ip, maxAttemptsUser);
+            }
+        } else {
+            // per route + IP (stops rotating e-mails), then per route + IP + e-mail
+            retryAfter = rateLimitService.registerAttempt("ip|" + path + "|" + ip, maxAttemptsPerIp);
+            if (retryAfter == 0) {
+                retryAfter = rateLimitService.registerAttempt(path + "|" + ip + "|" + extractEmail(body), maxAttempts);
+            }
         }
         if (retryAfter > 0) {
             response.setHeader("Retry-After", String.valueOf(retryAfter));

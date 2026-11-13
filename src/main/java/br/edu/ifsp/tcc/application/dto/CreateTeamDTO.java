@@ -1,6 +1,7 @@
 package br.edu.ifsp.tcc.application.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
@@ -8,5 +9,6 @@ import lombok.Data;
 public class CreateTeamDTO {
     @NotBlank(message = "O nome da equipe é obrigatório.")
     @Size(max = 120, message = "O nome da equipe deve ter no máximo 120 caracteres.")
+    @Pattern(regexp = "[^\\p{Cntrl}]*", message = "O texto não pode conter quebras de linha ou caracteres de controle.")
     private String name;
 }

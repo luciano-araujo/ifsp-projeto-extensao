@@ -7,6 +7,7 @@ import lombok.Data;
 @Data
 public class UpdateKanbanItemDTO {
     @Size(max = 255, message = "O título deve ter no máximo 255 caracteres.")
+    @Pattern(regexp = "[^\\p{Cntrl}]*", message = "O texto não pode conter quebras de linha ou caracteres de controle.")
     private String title;
     @Size(max = 10000, message = "A descrição deve ter no máximo 10000 caracteres.")
     private String description;

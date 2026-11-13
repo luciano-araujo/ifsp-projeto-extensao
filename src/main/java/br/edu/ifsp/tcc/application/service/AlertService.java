@@ -137,8 +137,8 @@ public class AlertService {
     /** One line of the digest e-mail. */
     public String describe(String teamName, AlertResponse alert) {
         String subject = alert.getTaskTitle() == null
-                ? "Projeto \"" + alert.getCardTitle() + "\""
-                : "Tarefa \"" + alert.getTaskTitle() + "\" (projeto \"" + alert.getCardTitle() + "\")";
+                ? "Projeto \"" + clean(alert.getCardTitle()) + "\""
+                : "Tarefa \"" + clean(alert.getTaskTitle()) + "\" (projeto \"" + clean(alert.getCardTitle()) + "\")";
         int days = alert.getDaysLeft();
         String when;
         if (days < 0) {
@@ -150,7 +150,12 @@ public class AlertService {
         } else {
             when = "vence em " + days + " dias";
         }
-        return "[" + teamName + "] " + subject + ": " + when + " (" + alert.getDueDate().format(BR_DATE) + ")";
+        return "[" + clean(teamName) + "] " + subject + ": " + when + " (" + alert.getDueDate().format(BR_DATE) + ")";
+    }
+
+    /** Defence in depth for data created before titles refused control characters: a line break must not forge a line. */
+    private static String clean(String text) {
+        return text == null ? "" : text.replaceAll("[\r\n\t]", " ");
     }
 
     private static int daysLeft(LocalDate today, LocalDate dueDate) {

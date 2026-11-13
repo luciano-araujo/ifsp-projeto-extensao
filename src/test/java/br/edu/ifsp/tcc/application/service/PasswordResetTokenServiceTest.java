@@ -51,4 +51,13 @@ class PasswordResetTokenServiceTest {
 
         assertEquals(2, service.deleteExpired(now));
     }
+
+    @Test
+    void registerAttempt_shouldReturnTheNewCounterOrMinusOneAtTheCap() {
+        when(passwordResetTokenRepository.incrementAttempts(7L, 5)).thenReturn(1, 0);
+        when(passwordResetTokenRepository.findAttempts(7L)).thenReturn(3);
+
+        assertEquals(3, service.registerAttempt(7L, 5));
+        assertEquals(-1, service.registerAttempt(7L, 5));
+    }
 }

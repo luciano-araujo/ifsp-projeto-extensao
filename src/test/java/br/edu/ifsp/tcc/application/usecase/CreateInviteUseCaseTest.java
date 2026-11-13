@@ -68,6 +68,7 @@ class CreateInviteUseCaseTest {
 
     @Test
     void execute_shouldCreateInviteAndSendTheTokenByEmail() {
+        org.mockito.InOrder order = org.mockito.Mockito.inOrder(teamService);
         when(teamService.requireRole(10L, 1L, TeamRole.ADMIN)).thenReturn(admin);
         when(userService.findByEmail("carla@exemplo.test")).thenReturn(Optional.empty());
         when(inviteService.findPendingByTeamAndEmail(10L, "carla@exemplo.test")).thenReturn(List.of());
@@ -82,6 +83,9 @@ class CreateInviteUseCaseTest {
         assertSame(response, result);
         ArgumentCaptor<TeamInvite> saved = ArgumentCaptor.forClass(TeamInvite.class);
         verify(inviteService).create(saved.capture(), eq("token-123"));
+        // the team row is locked before anything else is read
+        order.verify(teamService).lockTeam(10L);
+        order.verify(teamService).requireRole(10L, 1L, TeamRole.ADMIN);
         assertEquals("carla@exemplo.test", saved.getValue().getEmail());
         assertEquals(TeamRole.REVIEWER, saved.getValue().getRole());
         assertEquals(InviteStatus.PENDING, saved.getValue().getStatus());

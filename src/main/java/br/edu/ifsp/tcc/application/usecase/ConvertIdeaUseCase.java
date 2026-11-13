@@ -14,6 +14,7 @@ import br.edu.ifsp.tcc.application.service.PlanService;
 import br.edu.ifsp.tcc.application.service.TeamService;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -36,8 +37,10 @@ public class ConvertIdeaUseCase {
     }
 
     /** RN01: an idea only becomes a project with a target audience and a pedagogical objective. */
-    @Transactional
+    // READ_COMMITTED + the team lock first: the plan check (count then act) must see what concurrent requests committed
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public CardResponse execute(Long teamId, Long userId, Long cardId, Long targetColumnId, ConvertCardDTO dto) {
+        teamService.lockTeam(teamId);
         User user = teamService.requireRole(teamId, userId, TeamRole.ADMIN, TeamRole.CREATOR).getUser();
         KanbanItem item = boardService.findCard(teamId, cardId);
         if (item.getState() != KanbanItemState.IDEATION) {

@@ -39,14 +39,17 @@ public class ConfirmEmailChangeUseCase {
             emailChangeTokenService.deleteByUserId(id);
             throw invalid("Código inválido ou expirado. Solicite um novo.");
         }
+        // The attempt is counted first and atomically, right or wrong: a right code in a parallel burst cannot slip past the cap
+        int attempts = emailChangeTokenService.registerAttempt(token.getId(), MAX_ATTEMPTS);
+        if (attempts < 0) {
+            emailChangeTokenService.deleteByUserId(id);
+            throw invalid("Muitas tentativas. Solicite um novo código.");
+        }
         if (!token.getToken().equals(dto.getToken())) {
-            int attempts = token.getAttempts() + 1;
             if (attempts >= MAX_ATTEMPTS) {
                 emailChangeTokenService.deleteByUserId(id);
                 throw invalid("Muitas tentativas. Solicite um novo código.");
             }
-            token.setAttempts(attempts);
-            emailChangeTokenService.save(token);
             throw invalid("Código inválido.");
         }
 

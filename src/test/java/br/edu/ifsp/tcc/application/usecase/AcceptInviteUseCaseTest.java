@@ -60,6 +60,7 @@ class AcceptInviteUseCaseTest {
         verify(teamService).saveMember(member.capture());
         assertEquals(TeamRole.REVIEWER, member.getValue().getRole());
         assertSame(carla, member.getValue().getUser());
+        verify(teamService).lockTeam(10L);
         verify(inviteService).markAccepted(invite);
     }
 
