@@ -44,6 +44,7 @@ class RequestPasswordResetUseCaseTest {
     void execute_shouldReplaceOldCodeAndSendNewOneForRegisteredEmail() {
         User ana = new User();
         ana.setName("Ana");
+        ana.setEmail("ana@example.com");
         when(userService.findByEmail("ana@example.com")).thenReturn(Optional.of(ana));
 
         useCase.execute(request(" ana@example.com "));
@@ -56,6 +57,23 @@ class RequestPasswordResetUseCaseTest {
         assertEquals(0, saved.getValue().getAttempts());
         assertNotNull(saved.getValue().getExpiresAt());
         verify(emailService).sendPasswordResetToken(eq("ana@example.com"), eq("Ana"), anyString());
+    }
+
+    @Test
+    void execute_shouldSendToAndKeyTheCodeOnTheStoredEmailWhenTypedWithAccentsOrCase() {
+        User jose = new User();
+        jose.setName("José");
+        jose.setEmail("jose@example.com");
+        when(userService.findByEmail("JOSÉ@Example.com")).thenReturn(Optional.of(jose));
+
+        useCase.execute(request("JOSÉ@Example.com"));
+
+        verify(passwordResetTokenService).deleteByEmail("jose@example.com");
+        ArgumentCaptor<PasswordResetToken> saved = ArgumentCaptor.forClass(PasswordResetToken.class);
+        verify(passwordResetTokenService).save(saved.capture());
+        assertEquals("jose@example.com", saved.getValue().getEmail());
+        verify(emailService).sendPasswordResetToken(eq("jose@example.com"), eq("José"), anyString());
+        verify(emailService, never()).sendPasswordResetToken(eq("JOSÉ@Example.com"), anyString(), anyString());
     }
 
     @Test

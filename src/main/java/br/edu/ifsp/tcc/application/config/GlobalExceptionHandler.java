@@ -34,7 +34,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<MessageResponse> handleResponseStatusException(ResponseStatusException ex) {
-        return ResponseEntity.status(ex.getStatusCode()).body(new MessageResponse(ex.getReason()));
+        return ResponseEntity.status(ex.getStatusCode()).headers(ex.getHeaders()).body(new MessageResponse(ex.getReason()));
     }
 
     /** Unique/foreign key violations (e.g. two requests creating the same tag): 409 without leaking SQL text. */

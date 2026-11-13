@@ -46,6 +46,10 @@ class RemoveTeamMemberUseCaseTest {
 
         useCase.execute(10L, 2L, 6L);
 
+        // the team lock is the first thing the use case does
+        var order = inOrder(teamService);
+        order.verify(teamService).lockTeam(10L);
+        order.verify(teamService).requireMember(10L, 2L);
         verify(teamService).deleteMember(creator);
     }
 

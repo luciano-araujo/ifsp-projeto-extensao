@@ -23,6 +23,13 @@ class QaM4AccountIT extends AbstractIT {
         return "novo." + UUID.randomUUID().toString().substring(0, 8) + "@creatorworkbench.test";
     }
 
+    /** PUT password: 200 with a fresh token; returns it. */
+    private String changePassword(String path, String token, String current, String next) {
+        Resp r = api.put(path, token, map("currentPassword", current, "newPassword", next));
+        assertEquals(200, r.status(), r.body());
+        return r.text("token");
+    }
+
     private String passwordPath(Person p) {
         return "/api/v1/users/" + p.id() + "/password";
     }
@@ -70,13 +77,14 @@ class QaM4AccountIT extends AbstractIT {
         assertEquals(200, login(user.email(), PASSWORD).status(), "the password never changed");
 
         // exactly at the limit: 72 bytes in ASCII and in two-byte characters
-        assertEquals(204, api.put(path, user.token(), map("currentPassword", PASSWORD, "newPassword", "a".repeat(72))).status());
+        // every change answers 200 with the token of the session that stays valid (the previous one is dead)
+        String token = changePassword(path, user.token(), PASSWORD, "a".repeat(72));
         assertEquals(200, login(user.email(), "a".repeat(72)).status());
-        assertEquals(204, api.put(path, user.token(), map("currentPassword", "a".repeat(72), "newPassword", "é".repeat(36))).status());
+        token = changePassword(path, token, "a".repeat(72), "é".repeat(36));
         assertEquals(200, login(user.email(), "é".repeat(36)).status());
         // the same password again and surrounding spaces are plain characters
-        assertEquals(204, api.put(path, user.token(), map("currentPassword", "é".repeat(36), "newPassword", "é".repeat(36))).status());
-        assertEquals(204, api.put(path, user.token(), map("currentPassword", "é".repeat(36), "newPassword", "  com espacos  ")).status());
+        token = changePassword(path, token, "é".repeat(36), "é".repeat(36));
+        token = changePassword(path, token, "é".repeat(36), "  com espacos  ");
         assertEquals(200, login(user.email(), "  com espacos  ").status());
         assertEquals(401, login(user.email(), "com espacos").status());
     }

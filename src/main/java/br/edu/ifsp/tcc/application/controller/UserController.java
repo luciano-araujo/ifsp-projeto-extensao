@@ -44,11 +44,10 @@ public class UserController {
     }
 
     @PutMapping("/{id}/password")
-    public ResponseEntity<Void> changePassword(@AuthenticationPrincipal User user,
+    public ResponseEntity<TokenResponse> changePassword(@AuthenticationPrincipal User user,
                                                @PathVariable Long id,
                                                @Valid @RequestBody ChangePasswordDTO dto) {
-        changePasswordUseCase.execute(id, user.getId(), dto);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(changePasswordUseCase.execute(id, user.getId(), dto));
     }
 
     @PostMapping("/{id}/email-change")

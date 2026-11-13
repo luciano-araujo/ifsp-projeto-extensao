@@ -1,5 +1,6 @@
 package br.edu.ifsp.tcc.application.controller;
 
+import jakarta.validation.Valid;
 import br.edu.ifsp.tcc.application.dto.MessageResponse;
 import br.edu.ifsp.tcc.application.dto.SaveScriptDTO;
 import br.edu.ifsp.tcc.application.dto.ScriptExportResponse;
@@ -41,7 +42,7 @@ public class ScriptController {
     @PutMapping
     public ResponseEntity<Script> save(@AuthenticationPrincipal User user,
                                         @PathVariable Long kanbanItemId,
-                                        @RequestBody SaveScriptDTO dto) {
+                                        @Valid @RequestBody SaveScriptDTO dto) {
         Script script = saveScriptUseCase.execute(kanbanItemId, user.getId(), dto.getContent());
         return ResponseEntity.ok(script);
     }

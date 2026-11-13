@@ -7,6 +7,7 @@ import br.edu.ifsp.tcc.application.entity.TeamRole;
 import br.edu.ifsp.tcc.application.service.TeamService;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -19,8 +20,10 @@ public class UpdateTeamMemberRoleUseCase {
         this.teamService = teamService;
     }
 
-    @Transactional
+    // READ_COMMITTED + the team lock first: two parallel changes cannot both see another admin (last-admin race)
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public TeamMemberResponse execute(Long teamId, Long userId, Long memberId, UpdateTeamMemberDTO dto) {
+        teamService.lockTeam(teamId);
         teamService.requireRole(teamId, userId, TeamRole.ADMIN);
         TeamMember member = teamService.findMember(teamId, memberId);
 

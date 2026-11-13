@@ -29,6 +29,18 @@ class RateLimitServiceTest {
     }
 
     @Test
+    void registerAttempt_shouldUseTheWindowOfTheCaller() {
+        java.time.Duration hour = java.time.Duration.ofHours(1);
+        for (int i = 0; i < 2; i++) assertEquals(0, service.registerAttempt("h", 2, hour));
+        now.addAndGet(20 * 60_000L);
+
+        // past the 10-minute service window, still inside the caller's 1-hour window
+        assertEquals(40 * 60, service.registerAttempt("h", 2, hour));
+        now.addAndGet(40 * 60_000L);
+        assertEquals(0, service.registerAttempt("h", 2, hour));
+    }
+
+    @Test
     void registerAttempt_shouldReportAtLeastOneSecond() {
         for (int i = 0; i < 3; i++) service.registerAttempt("k", 3);
         now.addAndGet(10 * 60_000L - 1);

@@ -43,6 +43,16 @@ class JwtServiceTest {
     }
 
     @Test
+    void generateToken_shouldCarryTheTokenVersionOfTheUser() {
+        User user = createUser();
+        user.setTokenVersion(4);
+
+        DecodedJWT decoded = jwtService.validateToken(jwtService.generateToken(user));
+
+        assertEquals(4, decoded.getClaim("tv").asInt());
+    }
+
+    @Test
     void validateToken_shouldReturnNullForInvalidToken() {
         DecodedJWT decoded = jwtService.validateToken("invalid.token.here");
         assertNull(decoded);

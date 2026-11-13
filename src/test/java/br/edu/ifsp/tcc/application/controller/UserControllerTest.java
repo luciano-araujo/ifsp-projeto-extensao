@@ -78,13 +78,15 @@ class UserControllerTest {
     }
 
     @Test
-    void changePassword_shouldReturnNoContent() {
+    void changePassword_shouldReturnTheFreshToken() {
         ChangePasswordDTO dto = new ChangePasswordDTO();
+        TokenResponse token = new TokenResponse("fresh-jwt");
+        when(changePasswordUseCase.execute(1L, 1L, dto)).thenReturn(token);
 
-        ResponseEntity<Void> response = controller.changePassword(user, 1L, dto);
+        ResponseEntity<TokenResponse> response = controller.changePassword(user, 1L, dto);
 
-        assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
-        verify(changePasswordUseCase).execute(1L, 1L, dto);
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertSame(token, response.getBody());
     }
 
     @Test

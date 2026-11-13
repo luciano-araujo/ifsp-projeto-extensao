@@ -2,6 +2,8 @@ package br.edu.ifsp.tcc.application.usecase;
 
 import br.edu.ifsp.tcc.application.dto.ChangePasswordDTO;
 import br.edu.ifsp.tcc.application.entity.User;
+import br.edu.ifsp.tcc.application.dto.TokenResponse;
+import br.edu.ifsp.tcc.application.service.JwtService;
 import br.edu.ifsp.tcc.application.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -23,6 +25,7 @@ class ChangePasswordUseCaseTest {
 
     @Mock private UserService userService;
     @Mock private PasswordEncoder passwordEncoder;
+    @Mock private JwtService jwtService;
     @InjectMocks private ChangePasswordUseCase useCase;
 
     private User ana;
@@ -51,8 +54,12 @@ class ChangePasswordUseCaseTest {
         when(passwordEncoder.matches("atual123", "old-hash")).thenReturn(true);
         when(passwordEncoder.encode("nova1234")).thenReturn("new-hash");
 
-        useCase.execute(1L, 1L, dto("atual123", "nova1234"));
+        when(jwtService.generateToken(ana)).thenReturn("fresh-jwt");
 
+        TokenResponse response = useCase.execute(1L, 1L, dto("atual123", "nova1234"));
+
+        assertEquals("fresh-jwt", response.getToken());
+        assertEquals(1, ana.getTokenVersion());
         assertEquals("new-hash", ana.getPassword());
         verify(userService).update(ana);
     }

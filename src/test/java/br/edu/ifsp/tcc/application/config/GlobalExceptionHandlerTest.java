@@ -39,6 +39,16 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    void handleResponseStatusException_shouldCopyRetryAfterOfA429() {
+        ResponseEntity<MessageResponse> response = handler.handleResponseStatusException(
+                new br.edu.ifsp.tcc.application.exception.TooManyRequestsException("Muitas requisições.", 90));
+
+        assertEquals(HttpStatus.TOO_MANY_REQUESTS, response.getStatusCode());
+        assertEquals("90", response.getHeaders().getFirst(HttpHeaders.RETRY_AFTER));
+        assertEquals("Muitas requisições.", response.getBody().getMessage());
+    }
+
+    @Test
     void handleMalformedMultipart_shouldReturn400WithTheFieldMessage() {
         ResponseEntity<MessageResponse> response = handler.handleMalformedMultipart(
                 new org.springframework.web.multipart.MultipartException("Failed to parse multipart servlet request"));

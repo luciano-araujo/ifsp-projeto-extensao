@@ -32,7 +32,8 @@ public class RateLimitService {
         this.clock = clock;
         this.windows = Caffeine.newBuilder()
                 .maximumSize(100_000)
-                .expireAfterWrite(Duration.ofMillis(windowMillis))
+                // Longest window used by any caller (see the overload with its own window); the window itself is checked in registerAttempt
+                .expireAfterWrite(Duration.ofMillis(Math.max(windowMillis, Duration.ofHours(2).toMillis())))
                 .build();
     }
 
@@ -42,6 +43,15 @@ public class RateLimitService {
      * @return 0 when the attempt is allowed, otherwise the seconds left until the window ends
      */
     public long registerAttempt(String key, int maxAttempts) {
+        return registerAttempt(key, maxAttempts, windowMillis);
+    }
+
+    /** Same as above with a window of its own (at most 2 hours), for limits that are not the auth-route window. */
+    public long registerAttempt(String key, int maxAttempts, Duration window) {
+        return registerAttempt(key, maxAttempts, window.toMillis());
+    }
+
+    private long registerAttempt(String key, int maxAttempts, long windowMillis) {
         long now = clock.getAsLong();
         long[] retryAfter = {0};
         windows.asMap().compute(key, (k, current) -> {

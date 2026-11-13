@@ -23,6 +23,11 @@ public class User {
     @Column(nullable = false)
     private String name;
 
+    /** Incremented on password change/reset; the JWT claim "tv" must match it, so older sessions stop working. */
+    @JsonIgnore
+    @Column(name = "token_version", nullable = false)
+    private int tokenVersion;
+
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'")
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
@@ -43,6 +48,9 @@ public class User {
 
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
+
+    public int getTokenVersion() { return tokenVersion; }
+    public void setTokenVersion(int tokenVersion) { this.tokenVersion = tokenVersion; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
 }
