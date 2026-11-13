@@ -39,6 +39,24 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    void handleMalformedMultipart_shouldReturn400WithTheFieldMessage() {
+        ResponseEntity<MessageResponse> response = handler.handleMalformedMultipart(
+                new org.springframework.web.multipart.MultipartException("Failed to parse multipart servlet request"));
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals("Envio de arquivo inválido. Envie o arquivo no campo \"file\".", response.getBody().getMessage());
+    }
+
+    @Test
+    void multipartHandlers_shouldKeepTheMoreSpecificSizeHandlerForOversizedUploads() throws Exception {
+        var resolver = new org.springframework.web.method.annotation.ExceptionHandlerMethodResolver(GlobalExceptionHandler.class);
+        var size = new org.springframework.web.multipart.MaxUploadSizeExceededException(1L);
+        assertEquals("handleUploadTooLarge", resolver.resolveMethodByThrowable(size).getName());
+        assertEquals("handleMalformedMultipart", resolver.resolveMethodByThrowable(
+                new org.springframework.web.multipart.MultipartException("x")).getName());
+    }
+
+    @Test
     void handleUploadTooLarge_shouldReturn413WithTheLimitMessage() {
         ResponseEntity<MessageResponse> response = handler.handleUploadTooLarge(
                 new org.springframework.web.multipart.MaxUploadSizeExceededException(20L * 1024 * 1024));

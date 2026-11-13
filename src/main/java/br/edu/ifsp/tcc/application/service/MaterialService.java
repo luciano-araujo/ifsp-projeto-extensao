@@ -94,6 +94,7 @@ public class MaterialService {
         String name = original.replace('\\', '/');
         name = name.substring(name.lastIndexOf('/') + 1);
         name = name.replaceAll(UNSAFE_CHARACTERS, "").trim();
+        if (name.length() > 1 && name.startsWith(".") && name.indexOf('.', 1) < 0) name = "arquivo" + name; // ".pdf" has no base name
         if (name.length() > MAX_FILE_NAME_LENGTH) {
             String extension = extensionOf(name);
             String suffix = extension.isEmpty() || extension.length() > 10 ? "" : "." + extension;

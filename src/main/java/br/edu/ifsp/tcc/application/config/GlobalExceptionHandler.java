@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
@@ -48,6 +49,14 @@ public class GlobalExceptionHandler {
     public ResponseEntity<MessageResponse> handleUploadTooLarge(MaxUploadSizeExceededException ex) {
         return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
                 .body(new MessageResponse("O arquivo excede o limite de 20 MB."));
+    }
+
+    /** Malformed multipart (no boundary, truncated body, missing parts). MaxUploadSizeExceededException is more specific and still wins. */
+    @ExceptionHandler(MultipartException.class)
+    public ResponseEntity<MessageResponse> handleMalformedMultipart(MultipartException ex) {
+        log.warn("Malformed multipart request: {}", ex.getClass().getSimpleName());
+        return ResponseEntity.badRequest()
+                .body(new MessageResponse("Envio de arquivo inválido. Envie o arquivo no campo \"file\"."));
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
