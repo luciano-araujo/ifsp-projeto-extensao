@@ -33,6 +33,8 @@ public class CreateCourseLessonUseCase {
         lesson.setModule(module);
         lesson.setTitle(dto.getTitle().trim());
         lesson.setType(dto.getType() != null ? dto.getType() : LessonType.VIDEO);
+        lesson.setDescription(CourseService.blankToNull(dto.getDescription()));
+        lesson.setContentUrl(CourseService.blankToNull(dto.getContentUrl()));
         lesson.setProject(courseService.findProject(teamId, dto.getProjectId()));
         lesson.setSortOrder(courseService.countLessons(moduleId));
         return courseService.toLessonResponse(courseService.saveLesson(lesson));

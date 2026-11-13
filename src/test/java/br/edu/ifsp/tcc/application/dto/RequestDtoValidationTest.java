@@ -27,6 +27,48 @@ class RequestDtoValidationTest {
     }
 
     @Test
+    void lessonContentUrl_shouldAcceptHttpHttpsAndBlankButRefuseOthersAndMoreThan500Characters() {
+        for (String ok : new String[]{"https://youtu.be/dQw4w9WgXcQ", "http://exemplo.com/a", "", "   ", " https://vimeo.com/1 "}) {
+            UpdateCourseLessonDTO update = new UpdateCourseLessonDTO();
+            update.setContentUrl(ok);
+            assertTrue(VALIDATOR.validate(update).isEmpty(), "[" + ok + "]");
+            CreateCourseLessonDTO create = new CreateCourseLessonDTO();
+            create.setTitle("Aula");
+            create.setContentUrl(ok);
+            assertTrue(VALIDATOR.validate(create).isEmpty(), "[" + ok + "]");
+        }
+        for (String bad : new String[]{"ftp://x.com/a", "javascript:alert(1)", "https://", "youtube.com/x"}) {
+            UpdateCourseLessonDTO update = new UpdateCourseLessonDTO();
+            update.setContentUrl(bad);
+            assertFalse(VALIDATOR.validate(update).isEmpty(), bad);
+        }
+        String atLimit = "https://exemplo.com/" + "a".repeat(480);
+        UpdateCourseLessonDTO limit = new UpdateCourseLessonDTO();
+        limit.setContentUrl(atLimit);
+        assertEquals(500, atLimit.length());
+        assertTrue(VALIDATOR.validate(limit).isEmpty());
+        limit.setContentUrl(atLimit + "a");
+        var violations = VALIDATOR.validate(limit);
+        assertEquals(1, violations.size());
+        assertEquals("O link da aula deve ter no máximo 500 caracteres.", violations.iterator().next().getMessage());
+        CreateCourseLessonDTO create = new CreateCourseLessonDTO();
+        create.setTitle("Aula");
+        create.setContentUrl(atLimit + "a");
+        assertEquals(1, VALIDATOR.validate(create).size());
+    }
+
+    @Test
+    void updateCourse_shouldAllowDescriptionsUpTo10000Characters() {
+        UpdateCourseDTO dto = new UpdateCourseDTO();
+        dto.setDescription("d".repeat(10000));
+        assertTrue(VALIDATOR.validate(dto).isEmpty());
+        dto.setDescription("d".repeat(10001));
+        var violations = VALIDATOR.validate(dto);
+        assertEquals(1, violations.size());
+        assertEquals("A descrição deve ter no máximo 10000 caracteres.", violations.iterator().next().getMessage());
+    }
+
+    @Test
     void createCard_shouldRejectLongTitleAudienceAndTag() {
         CreateCardDTO dto = new CreateCardDTO();
         dto.setTitle(LONG);

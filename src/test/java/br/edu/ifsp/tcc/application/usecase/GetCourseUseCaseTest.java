@@ -1,10 +1,7 @@
 package br.edu.ifsp.tcc.application.usecase;
 
 import br.edu.ifsp.tcc.application.dto.CourseDetailResponse;
-import br.edu.ifsp.tcc.application.dto.MaterialResponse;
 import br.edu.ifsp.tcc.application.entity.Course;
-import br.edu.ifsp.tcc.application.entity.CourseLesson;
-import br.edu.ifsp.tcc.application.entity.CourseModule;
 import br.edu.ifsp.tcc.application.service.CourseService;
 import br.edu.ifsp.tcc.application.service.TeamService;
 import org.junit.jupiter.api.Test;
@@ -13,10 +10,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.List;
-import java.util.Map;
-
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -26,33 +20,15 @@ class GetCourseUseCaseTest {
     @Mock private CourseService courseService;
     @InjectMocks private GetCourseUseCase useCase;
 
-    private CourseModule module(Long id) {
-        CourseModule module = new CourseModule();
-        module.setId(id);
-        return module;
-    }
-
     @Test
-    void execute_shouldReturnModulesWithTheirLessons() {
+    void execute_shouldReturnTheCourseTree() {
         Course course = new Course();
-        course.setId(20L);
-        course.setTitle("Algoritmos");
-        CourseModule grafos = module(30L);
-        CourseModule arvores = module(31L);
-        List<CourseLesson> grafosLessons = List.of(new CourseLesson());
+        CourseDetailResponse detail = mock(CourseDetailResponse.class);
         when(courseService.findCourse(10L, 20L)).thenReturn(course);
-        when(courseService.findModules(20L)).thenReturn(List.of(grafos, arvores));
-        Map<Long, List<CourseLesson>> lessonsByModule = Map.of(30L, grafosLessons);
-        Map<Long, List<MaterialResponse>> materials = Map.of(7L, List.of(mock(MaterialResponse.class)));
-        when(courseService.findLessonsByModule(List.of(grafos, arvores))).thenReturn(lessonsByModule);
-        when(courseService.findMaterialsByLesson(10L, lessonsByModule)).thenReturn(materials);
+        when(courseService.toDetailResponse(10L, course)).thenReturn(detail);
 
-        CourseDetailResponse detail = useCase.execute(10L, 1L, 20L);
+        assertSame(detail, useCase.execute(10L, 1L, 20L));
 
-        assertEquals("Algoritmos", detail.getTitle());
-        assertEquals(2, detail.getModulesCount());
         verify(teamService).requireMember(10L, 1L);
-        verify(courseService).toModuleResponse(grafos, grafosLessons, materials);
-        verify(courseService).toModuleResponse(arvores, List.of(), materials);
     }
 }
