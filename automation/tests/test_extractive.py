@@ -87,9 +87,10 @@ def test_header_is_case_insensitive_and_ignores_leading_blank_lines():
 
 
 def test_header_words_still_count_towards_frequency():
-    text = ("Título: robótica robótica robótica\n\n"
-            "O dia estava bonito. Aprendemos robótica juntos.")
-    assert summarize_extractive(text, max_words=3) == "Aprendemos robótica juntos."
+    script = "Gatos dormem muito. Cachorros correm bastante."
+    # sem cabeçalho vence a segunda frase; o título repetido faz a primeira vencer
+    assert summarize_extractive(script, max_words=3) == "Cachorros correm bastante."
+    assert summarize_extractive("Título: gatos gatos gatos\n\n" + script, max_words=3) == "Gatos dormem muito."
 
 
 def test_header_label_inside_the_script_is_kept():
