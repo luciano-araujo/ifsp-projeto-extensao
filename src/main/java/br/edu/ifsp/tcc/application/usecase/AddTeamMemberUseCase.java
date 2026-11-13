@@ -1,52 +1,31 @@
 package br.edu.ifsp.tcc.application.usecase;
 
 import br.edu.ifsp.tcc.application.dto.AddTeamMemberDTO;
-import br.edu.ifsp.tcc.application.dto.TeamMemberResponse;
-import br.edu.ifsp.tcc.application.entity.TeamMember;
-import br.edu.ifsp.tcc.application.entity.TeamRole;
-import br.edu.ifsp.tcc.application.entity.User;
-import br.edu.ifsp.tcc.application.service.PlanService;
-import br.edu.ifsp.tcc.application.service.TeamService;
-import br.edu.ifsp.tcc.application.service.UserService;
-import org.springframework.http.HttpStatus;
+import br.edu.ifsp.tcc.application.dto.CreateInviteDTO;
+import br.edu.ifsp.tcc.application.dto.InviteResponse;
+import br.edu.ifsp.tcc.application.service.InviteService;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * Decision 22: "add member" no longer inserts a membership. It creates an invite with exactly the rules of
+ * POST /teams/{t}/invites; the user joins only by accepting it.
+ */
 @Component
 public class AddTeamMemberUseCase {
 
-    private final TeamService teamService;
-    private final UserService userService;
-    private final PlanService planService;
+    private final InviteService inviteService;
 
-    public AddTeamMemberUseCase(TeamService teamService, UserService userService, PlanService planService) {
-        this.teamService = teamService;
-        this.userService = userService;
-        this.planService = planService;
+    public AddTeamMemberUseCase(InviteService inviteService) {
+        this.inviteService = inviteService;
     }
 
-    // READ_COMMITTED + the team lock first: the plan check (count then act) must see what concurrent requests committed
     @Transactional(isolation = Isolation.READ_COMMITTED)
-    public TeamMemberResponse execute(Long teamId, Long userId, AddTeamMemberDTO dto) {
-        teamService.lockTeam(teamId);
-        TeamMember admin = teamService.requireRole(teamId, userId, TeamRole.ADMIN);
-
-        User newUser = userService.findByEmail(dto.getEmail().trim())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                        "Nenhum usuário cadastrado com este e-mail."));
-
-        if (teamService.findMemberByTeamIdAndUserId(teamId, newUser.getId()).isPresent()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Este usuário já faz parte da equipe.");
-        }
-
-        planService.requireCanAddMember(admin.getTeam());
-
-        TeamMember member = new TeamMember();
-        member.setTeam(admin.getTeam());
-        member.setUser(newUser);
-        member.setRole(dto.getRole() != null ? dto.getRole() : TeamRole.CREATOR);
-        return teamService.toMemberResponse(teamService.saveMember(member));
+    public InviteResponse execute(Long teamId, Long userId, AddTeamMemberDTO dto) {
+        CreateInviteDTO invite = new CreateInviteDTO();
+        invite.setEmail(dto.getEmail());
+        invite.setRole(dto.getRole());
+        return inviteService.createInvite(teamId, userId, invite);
     }
 }

@@ -154,6 +154,11 @@ class PlanIT extends AbstractIT {
         assertEquals(402, add.status(), add.body());
         assertTrue(add.text("message").contains("plano Gratuito"), add.body());
         assertTrue(add.text("message").contains("Agência"), add.body());
+        // Same answer for an e-mail nobody registered: the 402 cannot be used to find out who has an account
+        Resp unknown = api.post(f.team().path() + "/members", f.admin().token(),
+                map("email", "ninguem." + UUID.randomUUID() + "@creatorworkbench.test", "role", "CREATOR"));
+        assertEquals(402, unknown.status(), unknown.body());
+        assertEquals(add.text("message"), unknown.text("message"));
 
         Resp second = api.post("/api/v1/teams", f.admin().token(), map("name", "Segunda gratuita"));
         assertEquals(402, second.status(), second.body());
@@ -318,8 +323,7 @@ class PlanIT extends AbstractIT {
         assertEquals("2037-12-31T23:59:59Z", activated.text("expiresAt"));
         assertFalse(activated.at("trialAvailable").asBoolean(), "no trial is available while a paid plan is in force (QA-M5-02)");
         assertEquals(5, activated.at("limits.maxUsers").asInt());
-        assertEquals(200, api.post(f.team().path() + "/members", f.admin().token(),
-                map("email", carlos.email(), "role", "CREATOR")).status());
+        addMemberDirect(f.team().id(), carlos, "CREATOR");
 
         Resp byEmail = api.get("/api/v1/admin/teams?email=" + f.admin().email(), sys.token());
         assertEquals(2, byEmail.size(), "personal team + shared team");

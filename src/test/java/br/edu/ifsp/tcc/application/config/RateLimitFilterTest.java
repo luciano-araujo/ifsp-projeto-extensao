@@ -254,4 +254,55 @@ class RateLimitFilterTest {
 
         verify(rateLimitService, times(2)).registerAttempt("user|/api/v1/users/7/password|203.0.113.5", 10);
     }
+
+    @Test
+    void shouldLimitTheInviteRoutesPerRouteIpFirstThenPerTeamAndIp() throws Exception {
+        when(rateLimitService.registerAttempt(anyString(), anyInt())).thenReturn(0L);
+
+        filter(true).doFilter(user("POST", "/api/v1/teams/5/members"), new MockHttpServletResponse(), chain);
+        filter(true).doFilter(user("POST", "/api/v1/teams/005/invites"), new MockHttpServletResponse(), chain);
+
+        verify(rateLimitService).registerAttempt("ip|/api/v1/teams/{id}/members|203.0.113.5", 100);
+        verify(rateLimitService).registerAttempt("ip|/api/v1/teams/{id}/invites|203.0.113.5", 100);
+        // both routes share the team bucket (leading zeros included)
+        verify(rateLimitService, times(2)).registerAttempt("team-invite|5|203.0.113.5", 10);
+        verify(chain, times(2)).doFilter(any(), any());
+    }
+
+    @Test
+    void shouldBlockTheInviteRoutesWith429AndNotChargeTheTeamBucketWhenTheIpIsBlocked() throws Exception {
+        when(rateLimitService.registerAttempt(anyString(), anyInt())).thenReturn(30L);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        filter(true).doFilter(user("POST", "/api/v1/teams/5/members"), response, chain);
+
+        assertEquals(429, response.getStatus());
+        assertEquals("30", response.getHeader("Retry-After"));
+        verify(rateLimitService, times(1)).registerAttempt(anyString(), anyInt());
+        verifyNoInteractions(chain);
+    }
+
+    @Test
+    void shouldAnswer429WhenTheTeamBucketIsFull() throws Exception {
+        when(rateLimitService.registerAttempt(anyString(), anyInt())).thenReturn(0L, 12L);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        filter(true).doFilter(user("POST", "/api/v1/teams/5/invites"), response, chain);
+
+        assertEquals(429, response.getStatus());
+        assertEquals("12", response.getHeader("Retry-After"));
+        verifyNoInteractions(chain);
+    }
+
+    @Test
+    void shouldNotLimitOtherTeamRoutesOrMethods() throws Exception {
+        filter(true).doFilter(user("GET", "/api/v1/teams/5/members"), new MockHttpServletResponse(), chain);
+        filter(true).doFilter(user("GET", "/api/v1/teams/5/invites"), new MockHttpServletResponse(), chain);
+        filter(true).doFilter(user("DELETE", "/api/v1/teams/5/invites"), new MockHttpServletResponse(), chain);
+        filter(true).doFilter(user("POST", "/api/v1/teams/5/members/3"), new MockHttpServletResponse(), chain);
+        filter(true).doFilter(user("POST", "/api/v1/teams/abc/members"), new MockHttpServletResponse(), chain);
+
+        verify(chain, times(5)).doFilter(any(), any());
+        verifyNoInteractions(rateLimitService);
+    }
 }

@@ -200,7 +200,7 @@ class InvitesIT extends AbstractIT {
         Team team = newTeam();
         Person dora = person("dora");
         invite(team, dora.email(), "CREATOR");
-        assertEquals(200, api.post(team.path() + "/members", ana.token(), map("email", dora.email(), "role", "CREATOR")).status());
+        addMemberDirect(team.id(), dora, "CREATOR");
 
         Resp r = api.post("/api/v1/invites/" + tokenSentTo(dora.email()) + "/accept", dora.token(), null);
 
@@ -246,5 +246,54 @@ class InvitesIT extends AbstractIT {
         assertEquals(404, api.get("/api/auth/invites/" + token, null).status());
         assertEquals(404, api.delete(invitesPath(team) + "/" + id, ana.token()).status());
         assertEquals(0, api.get(invitesPath(team), ana.token()).size());
+    }
+
+    // --- Decision 22: POST /teams/{t}/members is an invite ---
+
+    @Test
+    @DisplayName("IT-INV-20 POST members with an unregistered e-mail: 200 with an InviteResponse (no 404), e-mail sent")
+    void addMemberWithUnknownEmailIsAnInvite() {
+        Team team = newTeam();
+        String unknown = email("ninguem");
+
+        Resp r = api.post(team.path() + "/members", ana.token(), map("email", unknown, "role", "REVIEWER"));
+
+        assertEquals(200, r.status(), r.body());
+        assertEquals(unknown, r.text("email"));
+        assertEquals("REVIEWER", r.text("role"));
+        assertEquals("PENDING", r.text("status"));
+        assertEquals(ana.id(), r.num("invitedBy.userId"));
+        assertNotNull(tokenSentTo(unknown));
+    }
+
+    @Test
+    @DisplayName("IT-INV-21 POST members with a registered e-mail: 200 with an invite and NOT a member until accept")
+    void addMemberWithKnownEmailIsNotAMemberUntilAccept() {
+        Team team = newTeam();
+        Person dora = person("dora");
+        int before = api.get(team.path() + "/members", ana.token()).size();
+
+        Resp r = api.post(team.path() + "/members", ana.token(), map("email", dora.email(), "role", "CREATOR"));
+
+        assertEquals(200, r.status(), r.body());
+        assertEquals("PENDING", r.text("status"));
+        assertEquals(before, api.get(team.path() + "/members", ana.token()).size());
+        assertEquals(403, api.get(team.path() + "/members", dora.token()).status(), "not a member yet");
+
+        assertEquals(200, api.post("/api/v1/invites/" + tokenSentTo(dora.email()) + "/accept", dora.token(), null).status());
+        assertEquals(before + 1, api.get(team.path() + "/members", ana.token()).size());
+    }
+
+    @Test
+    @DisplayName("IT-INV-22 POST members follows the invite rules: 409 for a member and for an open invite, 403 for non-admin")
+    void addMemberFollowsTheInviteRules() {
+        Team team = newTeam();
+        Person dora = person("dora");
+
+        assertEquals(409, api.post(team.path() + "/members", ana.token(), map("email", carlos.email(), "role", "CREATOR")).status());
+        assertEquals(200, api.post(team.path() + "/members", ana.token(), map("email", dora.email(), "role", "CREATOR")).status());
+        assertEquals(409, api.post(team.path() + "/members", ana.token(), map("email", dora.email(), "role", "CREATOR")).status());
+        assertEquals(409, invite(team, dora.email(), "CREATOR").status(), "the open invite is shared by both routes");
+        assertEquals(403, api.post(team.path() + "/members", carlos.token(), map("email", email("x"), "role", "CREATOR")).status());
     }
 }

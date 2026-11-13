@@ -136,16 +136,10 @@ public abstract class AbstractIT {
         long creatorMemberId = 0;
         long reviewerMemberId = 0;
         if (creator != null) {
-            Resp r = api.post("/api/v1/teams/" + teamId + "/members", admin.token(),
-                    map("email", creator.email(), "role", "CREATOR"));
-            assertEquals(200, r.status(), r.body());
-            creatorMemberId = r.num("id");
+            creatorMemberId = addMemberDirect(teamId, creator, "CREATOR");
         }
         if (reviewer != null) {
-            Resp r = api.post("/api/v1/teams/" + teamId + "/members", admin.token(),
-                    map("email", reviewer.email(), "role", "REVIEWER"));
-            assertEquals(200, r.status(), r.body());
-            reviewerMemberId = r.num("id");
+            reviewerMemberId = addMemberDirect(teamId, reviewer, "REVIEWER");
         }
         Resp board = api.get("/api/v1/teams/" + teamId + "/board", admin.token());
         List<Long> columns = new ArrayList<>();
@@ -154,6 +148,18 @@ public abstract class AbstractIT {
         List<Long> tagIds = new ArrayList<>();
         tags.json().forEach(t -> tagIds.add(t.path("id").asLong()));
         return new Team(teamId, adminMemberId, creatorMemberId, reviewerMemberId, columns, tagIds);
+    }
+
+    /**
+     * Adds a membership straight in the IT database and returns the member id. Fixture choice (decision 22): the route
+     * POST /teams/{t}/members now creates an invite (the user must accept), so fixtures cannot use it to build teams.
+     * SQL is faster than invite + accept through the API and is not subject to plan seat limits, like the other
+     * fixture shortcuts (setPlan). The invite flow itself is covered by InvitesIT, SecurityIT and the plan ITs.
+     */
+    protected long addMemberDirect(long teamId, Person who, String role) {
+        jdbc.update("INSERT INTO team_members (team_id, user_id, role) VALUES (?, ?, ?)", teamId, who.id(), role);
+        return jdbc.queryForObject("SELECT id FROM team_members WHERE team_id = ? AND user_id = ?", Long.class,
+                teamId, who.id());
     }
 
     /** Sets the plan of a team straight in the database (a manual activation without expiry). */

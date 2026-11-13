@@ -1,10 +1,12 @@
 package br.edu.ifsp.tcc.application.service;
 
+import br.edu.ifsp.tcc.application.dto.CreateInviteDTO;
 import br.edu.ifsp.tcc.application.dto.InviteResponse;
 import br.edu.ifsp.tcc.application.dto.PublicInviteResponse;
 import br.edu.ifsp.tcc.application.entity.InviteStatus;
 import br.edu.ifsp.tcc.application.entity.Team;
 import br.edu.ifsp.tcc.application.entity.TeamInvite;
+import br.edu.ifsp.tcc.application.entity.TeamMember;
 import br.edu.ifsp.tcc.application.entity.TeamRole;
 import br.edu.ifsp.tcc.application.entity.User;
 import br.edu.ifsp.tcc.application.repository.TeamInviteRepository;
@@ -22,6 +24,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
@@ -29,6 +32,10 @@ import static org.mockito.Mockito.*;
 class InviteServiceTest {
 
     @Mock private TeamInviteRepository teamInviteRepository;
+    @Mock private TeamService teamService;
+    @Mock private UserService userService;
+    @Mock private PlanService planService;
+    @Mock private EmailService emailService;
     @InjectMocks private InviteService inviteService;
 
     private TeamInvite invite(InviteStatus status, LocalDateTime expiresAt) {
@@ -186,5 +193,169 @@ class InviteServiceTest {
         assertEquals("carla@exemplo.test", response.getEmail());
         assertEquals("Ana Admin", response.getInvitedByName());
         assertEquals(expires, response.getExpiresAt());
+    }
+
+    // --- createInvite (shared by POST /invites and POST /members) ---
+
+    private TeamMember admin() {
+        Team team = new Team();
+        team.setId(10L);
+        team.setName("Equipe Office");
+        User ana = new User();
+        ana.setId(1L);
+        ana.setName("Ana Admin");
+        TeamMember admin = new TeamMember();
+        admin.setTeam(team);
+        admin.setUser(ana);
+        admin.setRole(TeamRole.ADMIN);
+        return admin;
+    }
+
+    private CreateInviteDTO dto(String email, TeamRole role) {
+        CreateInviteDTO dto = new CreateInviteDTO();
+        dto.setEmail(email);
+        dto.setRole(role);
+        return dto;
+    }
+
+    private void noPending(String email) {
+        when(teamInviteRepository.findByTeam_IdAndEmailIgnoreCaseAndStatus(10L, email, InviteStatus.PENDING))
+                .thenReturn(List.of());
+        when(teamInviteRepository.save(any(TeamInvite.class))).thenAnswer(inv -> inv.getArgument(0));
+    }
+
+    @Test
+    void createInvite_shouldLockTheTeamThenCreateTheInviteForAnUnregisteredEmail() {
+        org.mockito.InOrder order = inOrder(teamService);
+        when(teamService.requireRole(10L, 1L, TeamRole.ADMIN)).thenReturn(admin());
+        when(userService.findByEmail("carla@exemplo.test")).thenReturn(Optional.empty());
+        noPending("carla@exemplo.test");
+
+        InviteResponse result = inviteService.createInvite(10L, 1L, dto("  carla@exemplo.test ", TeamRole.REVIEWER));
+
+        assertEquals("carla@exemplo.test", result.getEmail());
+        assertEquals(TeamRole.REVIEWER, result.getRole());
+        assertEquals(InviteStatus.PENDING, result.getStatus());
+        order.verify(teamService).lockTeam(10L);
+        order.verify(teamService).requireRole(10L, 1L, TeamRole.ADMIN);
+        verify(planService).requireCanInvite(any());
+    }
+
+    @Test
+    void createInvite_shouldDefaultToCreatorAndSendTheEmailOnlyAfterCommit() {
+        when(teamService.requireRole(10L, 1L, TeamRole.ADMIN)).thenReturn(admin());
+        when(userService.findByEmail("x@exemplo.test")).thenReturn(Optional.empty());
+        noPending("x@exemplo.test");
+        org.springframework.transaction.support.TransactionSynchronizationManager.initSynchronization();
+        try {
+            InviteResponse result = inviteService.createInvite(10L, 1L, dto("x@exemplo.test", null));
+
+            assertEquals(TeamRole.CREATOR, result.getRole());
+            verifyNoInteractions(emailService);
+            var synchronizations = org.springframework.transaction.support.TransactionSynchronizationManager.getSynchronizations();
+            assertEquals(1, synchronizations.size());
+            synchronizations.get(0).afterCommit();
+            verify(emailService).sendTeamInvite(eq("x@exemplo.test"), eq("Ana Admin"), eq("Equipe Office"),
+                    eq("Criador"), anyString());
+        } finally {
+            org.springframework.transaction.support.TransactionSynchronizationManager.clearSynchronization();
+        }
+    }
+
+    @Test
+    void createInvite_shouldInviteARegisteredUserWhoIsNotYetAMember() {
+        User bia = new User();
+        bia.setId(2L);
+        when(teamService.requireRole(10L, 1L, TeamRole.ADMIN)).thenReturn(admin());
+        when(userService.findByEmail("bia@exemplo.test")).thenReturn(Optional.of(bia));
+        when(teamService.findMemberByTeamIdAndUserId(10L, 2L)).thenReturn(Optional.empty());
+        noPending("bia@exemplo.test");
+
+        inviteService.createInvite(10L, 1L, dto("bia@exemplo.test", TeamRole.CREATOR));
+
+        verify(teamInviteRepository).save(any(TeamInvite.class));
+        verify(teamService, never()).saveMember(any());
+    }
+
+    @Test
+    void createInvite_shouldRejectEmailOfAnExistingMemberWith409() {
+        User bia = new User();
+        bia.setId(2L);
+        when(teamService.requireRole(10L, 1L, TeamRole.ADMIN)).thenReturn(admin());
+        when(userService.findByEmail("bia@exemplo.test")).thenReturn(Optional.of(bia));
+        when(teamService.findMemberByTeamIdAndUserId(10L, 2L)).thenReturn(Optional.of(new TeamMember()));
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> inviteService.createInvite(10L, 1L, dto("bia@exemplo.test", TeamRole.CREATOR)));
+
+        assertEquals(HttpStatus.CONFLICT, ex.getStatusCode());
+        verifyNoInteractions(emailService);
+    }
+
+    @Test
+    void createInvite_shouldRejectAnOpenPendingInviteWith409BeforeThePlanCheck() {
+        when(teamService.requireRole(10L, 1L, TeamRole.ADMIN)).thenReturn(admin());
+        when(userService.findByEmail("carla@exemplo.test")).thenReturn(Optional.empty());
+        when(teamInviteRepository.findByTeam_IdAndEmailIgnoreCaseAndStatus(10L, "carla@exemplo.test", InviteStatus.PENDING))
+                .thenReturn(List.of(invite(InviteStatus.PENDING, LocalDateTime.now().plusDays(2))));
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> inviteService.createInvite(10L, 1L, dto("carla@exemplo.test", TeamRole.CREATOR)));
+
+        assertEquals(HttpStatus.CONFLICT, ex.getStatusCode());
+        verify(planService, never()).requireCanInvite(any());
+        verify(teamInviteRepository, never()).save(any());
+    }
+
+    @Test
+    void createInvite_shouldReplaceAnExpiredPendingInvite() {
+        List<TeamInvite> expired = List.of(invite(InviteStatus.PENDING, LocalDateTime.now().minusDays(1)));
+        when(teamService.requireRole(10L, 1L, TeamRole.ADMIN)).thenReturn(admin());
+        when(userService.findByEmail("carla@exemplo.test")).thenReturn(Optional.empty());
+        when(teamInviteRepository.findByTeam_IdAndEmailIgnoreCaseAndStatus(10L, "carla@exemplo.test", InviteStatus.PENDING))
+                .thenReturn(expired);
+        when(teamInviteRepository.save(any(TeamInvite.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        inviteService.createInvite(10L, 1L, dto("carla@exemplo.test", TeamRole.CREATOR));
+
+        verify(teamInviteRepository).deleteAll(expired);
+        verify(teamInviteRepository).save(any(TeamInvite.class));
+    }
+
+    @Test
+    void createInvite_shouldStopWith402WhenThePlanHasNoSeatLeft() {
+        TeamMember admin = admin();
+        when(teamService.requireRole(10L, 1L, TeamRole.ADMIN)).thenReturn(admin);
+        when(userService.findByEmail("carla@exemplo.test")).thenReturn(Optional.empty());
+        when(teamInviteRepository.findByTeam_IdAndEmailIgnoreCaseAndStatus(10L, "carla@exemplo.test", InviteStatus.PENDING))
+                .thenReturn(List.of());
+        doThrow(new ResponseStatusException(HttpStatus.PAYMENT_REQUIRED, "limite")).when(planService).requireCanInvite(admin.getTeam());
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> inviteService.createInvite(10L, 1L, dto("carla@exemplo.test", TeamRole.CREATOR)));
+
+        assertEquals(HttpStatus.PAYMENT_REQUIRED, ex.getStatusCode());
+        verify(teamInviteRepository, never()).save(any());
+        verify(teamInviteRepository, never()).deleteAll(any());
+        verifyNoInteractions(emailService);
+    }
+
+    @Test
+    void createInvite_shouldPropagateForbiddenWhenNotAdmin() {
+        when(teamService.requireRole(10L, 2L, TeamRole.ADMIN))
+                .thenThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "Seu papel na equipe não permite esta ação."));
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> inviteService.createInvite(10L, 2L, dto("carla@exemplo.test", TeamRole.CREATOR)));
+
+        assertEquals(HttpStatus.FORBIDDEN, ex.getStatusCode());
+        verifyNoInteractions(userService, emailService, teamInviteRepository);
+    }
+
+    @Test
+    void roleLabel_shouldNameEachRole() {
+        assertEquals("Administrador", InviteService.roleLabel(TeamRole.ADMIN));
+        assertEquals("Criador", InviteService.roleLabel(TeamRole.CREATOR));
+        assertEquals("Revisor", InviteService.roleLabel(TeamRole.REVIEWER));
     }
 }

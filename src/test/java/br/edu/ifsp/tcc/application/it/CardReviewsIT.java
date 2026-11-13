@@ -148,8 +148,7 @@ class CardReviewsIT extends AbstractIT {
                 map("decision", "APPROVED")).status());
 
         Person temp = person("temp");
-        Resp added = api.post(team.path() + "/members", ana.token(), map("email", temp.email(), "role", "REVIEWER"));
-        assertEquals(200, added.status(), added.body());
+        addMemberDirect(team.id(), temp, "REVIEWER");
         assertEquals(200, api.post(reviewsPath(team, card), temp.token(), map("decision", "APPROVED")).status());
         jdbc.update("UPDATE card_reviews SET reviewer_id = NULL WHERE kanban_item_id = ?", card);
 

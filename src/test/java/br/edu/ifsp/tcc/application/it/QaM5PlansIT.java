@@ -451,17 +451,23 @@ class QaM5PlansIT extends AbstractIT {
         assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM team_members WHERE team_id = ?", Integer.class, f.team().id()));
 
         setPlan(f.team().id(), "AGENCIA");
-        for (int i = 2; i <= 5; i++) {
-            Person p = person("seat" + i);
-            assertEquals(200, api.post(f.path() + "/members", f.token(), map("email", p.email(), "role", "CREATOR")).status(), "member " + i);
+        for (int i = 2; i <= 4; i++) {
+            addMemberDirect(f.team().id(), person("seat" + i), "CREATOR");
         }
+        // The 5th seat goes through the route: it is an invite now (the plan counts members + open invites)
+        Person fifth = person("seat5");
+        Resp invited = api.post(f.path() + "/members", f.token(), map("email", fifth.email(), "role", "CREATOR"));
+        assertEquals(200, invited.status(), invited.body());
+        assertEquals("PENDING", invited.text("status"));
+        assertEquals(4, plan(f).at("usage.members").asInt(), "an invite is not a member until accepted");
+        assertEquals(200, api.post("/api/v1/invites/" + MailCapture.inviteToken(fifth.email()) + "/accept", fifth.token(), null).status());
         Resp sixth = api.post(f.path() + "/members", f.token(), map("email", extra.email(), "role", "REVIEWER"));
         assertEquals(402, sixth.status(), sixth.body());
         assertTrue(sixth.text("message").contains("5 usuários"), sixth.body());
         assertFalse(sixth.text("message").contains("mude para"), "no plan above Agência: " + sixth.body());
         assertEquals(5, plan(f).at("usage.members").asInt());
-        // An unknown e-mail is a 404 (checked before the plan)
-        assertEquals(404, api.post(f.path() + "/members", f.token(), map("email", "ninguem." + UUID.randomUUID() + "@creatorworkbench.test", "role", "CREATOR")).status());
+        // An unknown e-mail is not a 404 any more (decision 22: no enumeration): the full team answers 402 like for a known one
+        assertEquals(402, api.post(f.path() + "/members", f.token(), map("email", "ninguem." + UUID.randomUUID() + "@creatorworkbench.test", "role", "CREATOR")).status());
     }
 
     @Test
@@ -694,10 +700,9 @@ class QaM5PlansIT extends AbstractIT {
         assertEquals(200, api.post("/api/v1/invites/" + tokenP3 + "/accept", p3.token(), null).status());
         assertEquals(402, api.post(invites, admin.token(), map("email", e6, "role", "CREATOR")).status(), "2 members + 3 open = 5 seats");
 
-        // Direct add looks at members only: it may take seats reserved by open invites (documented behaviour)
+        // Seats taken straight in the database (fixture): more members than the open invites left room for
         for (int i = 0; i < 3; i++) {
-            Person extra = person("direct" + i);
-            assertEquals(200, api.post(team.path() + "/members", admin.token(), map("email", extra.email(), "role", "CREATOR")).status());
+            addMemberDirect(team.id(), person("direct" + i), "CREATOR");
         }
         assertEquals(5, plan(new Free(admin, team)).at("usage.members").asInt());
         assertEquals(402, api.post(team.path() + "/members", admin.token(), map("email", person("late").email(), "role", "CREATOR")).status());
@@ -818,9 +823,8 @@ class QaM5PlansIT extends AbstractIT {
         Free f = freeTeam("handoff");
         assertEquals(200, api.post(f.path() + "/plan/trial", f.token(), map("plan", "AGENCIA")).status());
         Person puppet = person("puppet");
-        Resp added = api.post(f.path() + "/members", f.token(), map("email", puppet.email(), "role", "CREATOR"));
-        assertEquals(200, added.status(), added.body());
-        assertEquals(200, api.patch(f.path() + "/members/" + added.num("id"), f.token(), map("role", "ADMIN")).status());
+        long puppetMember = addMemberDirect(f.team().id(), puppet, "CREATOR");
+        assertEquals(200, api.patch(f.path() + "/members/" + puppetMember, f.token(), map("role", "ADMIN")).status());
         long ownMember = 0;
         for (var m : api.get(f.path() + "/members", puppet.token()).json()) {
             if (m.path("userId").asLong() == f.admin().id()) ownMember = m.path("id").asLong();

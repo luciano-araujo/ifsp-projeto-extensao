@@ -47,6 +47,9 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     static final Pattern USER_ROUTE = Pattern.compile("^/api/v1/users/(\\d{1,18})/(password|email-change)$");
 
+    /** POST /teams/{id}/members and POST /teams/{id}/invites: both create an invite and send an e-mail to any address. */
+    static final Pattern TEAM_INVITE_ROUTE = Pattern.compile("^/api/v1/teams/(\\d{1,18})/(members|invites)$");
+
     static final int MAX_BODY_BYTES = 16 * 1024;
     static final int MAX_EMAIL_LENGTH = 254;
     static final String TOO_LARGE_MESSAGE = "Requisição muito grande.";
@@ -77,7 +80,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        return !enabled || (!isAuthRoute(request) && userRoute(request) == null);
+        return !enabled || (!isAuthRoute(request) && userRoute(request) == null && teamInviteRoute(request) == null);
     }
 
     private static boolean isAuthRoute(HttpServletRequest request) {
@@ -96,6 +99,17 @@ public class RateLimitFilter extends OncePerRequestFilter {
                 ? "PUT".equalsIgnoreCase(request.getMethod())
                 : "POST".equalsIgnoreCase(request.getMethod());
         return right ? matcher : null;
+    }
+
+    /**
+     * Invite e-mails (decision 22): POST .../members and POST .../invites. Both routes share one bucket per team (the
+     * team id comes from the path; the caller is an authenticated ADMIN because the security chain already ran) and
+     * client IP, so alternating the two routes does not double the allowance. Returns the matcher or null.
+     */
+    private static Matcher teamInviteRoute(HttpServletRequest request) {
+        if (!"POST".equalsIgnoreCase(request.getMethod())) return null;
+        Matcher matcher = TEAM_INVITE_ROUTE.matcher(pathOf(request));
+        return matcher.matches() ? matcher : null;
     }
 
     /** Decoded and normalized path (so /api/auth/%6Cogin is the login route), not the raw request URI. */
@@ -119,8 +133,17 @@ public class RateLimitFilter extends OncePerRequestFilter {
         // The per-IP bucket is checked first; a blocked IP must not also charge the narrower bucket, otherwise an
         // attacker could drain a victim's bucket from an already blocked address
         Matcher userRoute = userRoute(request);
+        Matcher teamInviteRoute = teamInviteRoute(request);
         long retryAfter;
-        if (userRoute != null) {
+        if (teamInviteRoute != null) {
+            // per route + IP (the two routes are separate templates), then per team (id parsed from the path) + IP
+            retryAfter = rateLimitService.registerAttempt("ip|/api/v1/teams/{id}/" + teamInviteRoute.group(2) + "|" + ip,
+                    maxAttemptsPerIp);
+            if (retryAfter == 0) {
+                retryAfter = rateLimitService.registerAttempt("team-invite|" + Long.parseLong(teamInviteRoute.group(1))
+                        + "|" + ip, maxAttemptsUser);
+            }
+        } else if (userRoute != null) {
             // per route template + IP, then per user (id parsed from the path, so 007 and 7 share a bucket) + IP
             String template = "/api/v1/users/{id}/" + userRoute.group(2);
             retryAfter = rateLimitService.registerAttempt("ip|" + template + "|" + ip, maxAttemptsPerIp);
